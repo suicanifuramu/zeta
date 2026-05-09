@@ -1,0 +1,137 @@
+// ===== Quiz Automation =====
+import { claimQuiz, getQuiz, joinQuiz } from './api.js';
+
+function isJoined(data) {
+  return data?.type === 'Selected' || Boolean(data?.selection);
+}
+
+function isClaimed(data) {
+  return data?.type === 'Claimed' || data?.claimed === true || data?.rewardClaimed === true;
+}
+
+function getAvailableAt(data) {
+  return data.availableAt ? new Date(data.availableAt) : null;
+}
+
+function getRewardUntil(data) {
+  return data.rewardUntil ? new Date(data.rewardUntil) : null;
+}
+
+function formatTime(date) {
+  return date ? date.toLocaleString('ja-JP') : '-';
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function getQuizStatus() {
+  try {
+    const data = await getQuiz();
+    if (!data || !data.id) return 'クイズなし';
+
+    const now = new Date();
+    const availableAt = getAvailableAt(data);
+    const rewardUntil = getRewardUntil(data);
+
+    if (isClaimed(data)) {
+      return `報酬受取済み (ID: ${data.id})`;
+    }
+
+    if (isJoined(data)) {
+      if (availableAt && now < availableAt) {
+        return `参加済み: 報酬開始待ち (${formatTime(availableAt)})`;
+      }
+      if (availableAt && rewardUntil && now >= availableAt && now <= rewardUntil) {
+        return `参加済み: 報酬受け取り可能 (ID: ${data.id})`;
+      }
+      if (!availableAt) {
+        return `参加済み: 報酬受け取り試行可能 (ID: ${data.id})`;
+      }
+      return `参加済み (ID: ${data.id})`;
+    }
+
+    const options = (data.question?.plots || []).map(p => p.name).join(', ');
+    return `未参加: 選択肢 ${options || '-'}`;
+  } catch (e) {
+    console.error('[Quiz] Status check failed:', e);
+    return `エラー: ${e.message}`;
+  }
+}
+
+export async function runQuizAutomation() {
+  try {
+    let data = await getQuiz();
+    if (!data || !data.id) return 'クイズが見つかりません';
+
+    const quizId = data.id;
+    console.log('[Quiz] Quiz data:', JSON.stringify(data, null, 2));
+
+    // Already claimed
+    if (isClaimed(data)) {
+      return '報酬は既に受取済みです';
+    }
+
+    // Step 1: Join if not yet joined
+    let justJoined = false;
+    if (!isJoined(data)) {
+      const plots = data.question?.plots || [];
+      if (plots.length === 0) return 'クイズに選択肢がありません';
+
+      const selectedPlot = plots[0];
+      console.log(`[Quiz] Joining quiz ${quizId} with plot ${selectedPlot.id} (${selectedPlot.name})`);
+      await joinQuiz(quizId, selectedPlot.id);
+      justJoined = true;
+
+      // Re-fetch to get updated state
+      await delay(500);
+      data = await getQuiz();
+      console.log('[Quiz] After join:', JSON.stringify(data, null, 2));
+    }
+
+    // Step 2: Try to claim reward
+    // Try claiming regardless of availableAt/rewardUntil — the server will
+    // reject with an error if the timing isn't right, which is fine.
+    const now = new Date();
+    const availableAt = getAvailableAt(data);
+    const rewardUntil = getRewardUntil(data);
+
+    // If reward window hasn't opened yet, report that
+    if (availableAt && now < availableAt) {
+      return `参加${justJoined ? 'しました' : '済み'}。報酬開始: ${formatTime(availableAt)}`;
+    }
+
+    // If reward window has closed
+    if (rewardUntil && now > rewardUntil) {
+      return `参加${justJoined ? 'しました' : '済み'}。報酬期間終了 (${formatTime(rewardUntil)})`;
+    }
+
+    // Attempt claim
+    try {
+      console.log(`[Quiz] Claiming reward for quiz ${quizId}`);
+      const claimResult = await claimQuiz(quizId);
+      console.log('[Quiz] Claim result:', JSON.stringify(claimResult, null, 2));
+      return `報酬を受け取りました${claimResult?.reward ? ` (${JSON.stringify(claimResult.reward)})` : ''}`;
+    } catch (claimError) {
+      console.warn('[Quiz] Claim failed:', claimError.message);
+
+      // If we just joined, wait a bit and retry
+      if (justJoined) {
+        console.log('[Quiz] Retrying claim after delay...');
+        await delay(2000);
+        try {
+          const retryResult = await claimQuiz(quizId);
+          console.log('[Quiz] Retry claim result:', JSON.stringify(retryResult, null, 2));
+          return `報酬を受け取りました (リトライ)${retryResult?.reward ? ` (${JSON.stringify(retryResult.reward)})` : ''}`;
+        } catch (retryError) {
+          return `参加しました。報酬受け取り失敗: ${retryError.message}`;
+        }
+      }
+
+      return `参加済み。報酬受け取り失敗: ${claimError.message}`;
+    }
+  } catch (e) {
+    console.error('[Quiz] Automation failed:', e);
+    return `エラー: ${e.message}`;
+  }
+}
