@@ -13,6 +13,7 @@ import { startNewChat } from "@/lib/new-chat"
 let cachedPlots: any[] | null = null
 let cachedHasMore = true
 let cachedSeenIds = new Set<string>()
+let cachedCursor: string | null = null
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -27,30 +28,40 @@ export function HomePage() {
   const [dialogPlot, setDialogPlot] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const cursorRef = useRef<string | null>(cachedCursor)
+
   const loadPlots = useCallback(async (reset = false) => {
     if (reset) {
       seenIds.current.clear()
       setPlots([])
       setLoading(true)
       setHasMore(true)
+      cursorRef.current = null
     } else {
       setLoadingMore(true)
     }
     try {
-      const data = await getHomePlots(20)
+      const data = await getHomePlots(20, cursorRef.current || undefined)
       const newPlots = (data.plots || []).filter((p: any) => !seenIds.current.has(p.id))
       newPlots.forEach((p: any) => seenIds.current.add(p.id))
       
       cachedSeenIds = new Set(seenIds.current)
+      
+      const nextCursor = data.nextCursor || data.cursor || null
+      cursorRef.current = nextCursor
+      cachedCursor = nextCursor
 
-      if (newPlots.length === 0) {
+      if (newPlots.length === 0 && !nextCursor) {
         setHasMore(false)
         cachedHasMore = false
       } else {
         setPlots((prev) => {
           const next = reset ? newPlots : [...prev, ...newPlots]
           cachedPlots = next
-          cachedHasMore = true
+          
+          const more = !!nextCursor || (newPlots.length > 0 && data.plots?.length >= 20)
+          setHasMore(more)
+          cachedHasMore = more
           return next
         })
       }

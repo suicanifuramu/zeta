@@ -3,7 +3,7 @@
 declare module "@/lib/api" {
   const api: any;
   export default api;
-  export const getHomePlots: (limit?: number) => Promise<any>;
+  export const getHomePlots: (limit?: number, cursor?: string) => Promise<any>;
   export const getSpecialCuration: () => Promise<any>;
   export const getBanners: () => Promise<any>;
   export const getPopups: () => Promise<any>;

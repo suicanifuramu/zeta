@@ -68,8 +68,8 @@ async function patch(path, body) {
 }
 
 // Home
-export function getHomePlots(limit = 16) {
-  return get(`/v1/infinite-plots?limit=${limit}`);
+export function getHomePlots(limit = 16, cursor = '') {
+  return get(`/v1/infinite-plots?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
 }
 
 export function getSpecialCuration() {

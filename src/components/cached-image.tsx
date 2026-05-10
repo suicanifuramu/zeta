@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
 
 // In-memory object URL cache
 const memoryCache = new Map<string, string>()
@@ -7,10 +8,12 @@ interface CachedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string
 }
 
-export function CachedImage({ src, alt, className, onError, ...props }: CachedImageProps) {
+export function CachedImage({ src, alt, className, onError, onLoad, ...props }: CachedImageProps) {
   const [cachedSrc, setCachedSrc] = useState<string | undefined>(src ? (memoryCache.get(src) || src) : undefined)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
+    setLoaded(false)
     if (!src) return
     if (memoryCache.has(src)) {
       setCachedSrc(memoryCache.get(src))
@@ -52,7 +55,11 @@ export function CachedImage({ src, alt, className, onError, ...props }: CachedIm
     <img 
       src={cachedSrc} 
       alt={alt} 
-      className={className} 
+      className={cn("transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0", className)} 
+      onLoad={(e) => {
+        setLoaded(true)
+        if (onLoad) onLoad(e)
+      }}
       onError={(e) => {
         if (onError) onError(e)
         else (e.target as HTMLImageElement).style.display = "none"
