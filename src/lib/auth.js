@@ -3,6 +3,8 @@
 // Vite local middleware. accessToken remains session-scoped in the browser.
 
 const ACCESS_TOKEN_KEY = 'zeta_access_token';
+const REFRESH_TOKEN_KEY = 'zeta_refresh_token';
+const DEVICE_ID_KEY = 'zeta_device_id';
 const LEGACY_DEVICE_ID = '18fbd089f37a9994';
 const LOCAL_AUTH_ENDPOINT = '/local-auth';
 
@@ -53,31 +55,47 @@ function makeDeviceId() {
 }
 
 async function saveLocalAuth() {
+  // Sync to localStorage
+  if (savedDeviceId) localStorage.setItem(DEVICE_ID_KEY, savedDeviceId);
+  if (savedRefreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, savedRefreshToken);
+
+  // Sync to server-side storage (Node.js server or Vite middleware)
   await fetch(LOCAL_AUTH_ENDPOINT, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ deviceId: savedDeviceId, refreshToken: savedRefreshToken, accessToken })
   }).catch(e => {
-    console.warn('[Auth] local file save failed:', e);
+    console.debug('[Auth] local file save skipped:', e.message);
   });
 }
 
 export async function loadLocalAuth() {
   if (localAuthLoaded) return;
 
+  // Initial load from localStorage for immediate availability
+  savedDeviceId = localStorage.getItem(DEVICE_ID_KEY) || '';
+  savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) || '';
+
   try {
+    // Sync with server-side storage (Node.js server or Vite middleware)
     const res = await fetch(LOCAL_AUTH_ENDPOINT, { headers: { Accept: 'application/json' } });
     if (res.ok) {
       const data = await res.json();
-      savedDeviceId = data.deviceId || '';
-      savedRefreshToken = data.refreshToken || '';
+      // Server data takes precedence if available
+      if (data.deviceId) savedDeviceId = data.deviceId;
+      if (data.refreshToken) savedRefreshToken = data.refreshToken;
+      
       if (data.accessToken && !accessToken) {
         accessToken = data.accessToken;
         sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
       }
+
+      // Sync back to localStorage
+      if (savedDeviceId) localStorage.setItem(DEVICE_ID_KEY, savedDeviceId);
+      if (savedRefreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, savedRefreshToken);
     }
   } catch (e) {
-    console.warn('[Auth] local file load failed:', e);
+    console.debug('[Auth] local file load skipped:', e.message);
   }
 
   if (!savedDeviceId) {
@@ -266,6 +284,10 @@ export async function clearSession() {
   accessToken = null;
   savedRefreshToken = '';
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  // We keep deviceId in localStorage even after logout to maintain device identity
+  // localStorage.removeItem(DEVICE_ID_KEY); 
+  
   await fetch(LOCAL_AUTH_ENDPOINT, { method: 'DELETE' }).catch(() => {});
   window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
 }
