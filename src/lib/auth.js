@@ -56,7 +56,7 @@ async function saveLocalAuth() {
   await fetch(LOCAL_AUTH_ENDPOINT, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ deviceId: savedDeviceId, refreshToken: savedRefreshToken })
+    body: JSON.stringify({ deviceId: savedDeviceId, refreshToken: savedRefreshToken, accessToken })
   }).catch(e => {
     console.warn('[Auth] local file save failed:', e);
   });
@@ -71,6 +71,10 @@ export async function loadLocalAuth() {
       const data = await res.json();
       savedDeviceId = data.deviceId || '';
       savedRefreshToken = data.refreshToken || '';
+      if (data.accessToken && !accessToken) {
+        accessToken = data.accessToken;
+        sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      }
     }
   } catch (e) {
     console.warn('[Auth] local file load failed:', e);
@@ -94,7 +98,10 @@ function storeRefreshToken(token) {
 
 function storeAccessToken(token) {
   accessToken = normalizeBearerToken(token);
-  if (accessToken) sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  if (accessToken) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    saveLocalAuth();
+  }
 }
 
 function clearRefreshTimer() {
@@ -221,7 +228,7 @@ function scheduleRefresh() {
   const expiry = getTokenExpiry(accessToken);
   if (!expiry) return;
 
-  const delay = Math.max(expiry - Date.now() - 120000, 10000);
+  const delay = Math.max(expiry - Date.now() - 600000, 10000);
   refreshTimer = setTimeout(async () => {
     try {
       await refreshSession();

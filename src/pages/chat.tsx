@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2 } from "lucide-react"
+import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,7 +20,7 @@ import {
   getMessages, getMessagesByCursor, getPlot, getRecommended,
   getRecommendQuota, getRoom, getRoomModelSetting,
   getUserChatProfiles, refreshRecommended, regenMessageStream,
-  selectCandidate, selectUserChatProfile, sendMessageStream,
+  selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -120,6 +120,9 @@ export function ChatPage() {
   const [regenMsgId, setRegenMsgId] = useState<string | null>(null)
   const [regenContents, setRegenContents] = useState<any[]>([])
 
+  // Edit mode
+  const [editingMsg, setEditingMsg] = useState<{ id: string; candidateId: string } | null>(null)
+
   // Delete mode
   const [deleteMode, setDeleteMode] = useState(false)
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
@@ -137,6 +140,55 @@ export function ChatPage() {
   const [plotDetailOpen, setPlotDetailOpen] = useState(false)
   const [plotDetailData, setPlotDetailData] = useState<any>(null)
 
+  // Lock body scroll to prevent iOS Safari "black space" bouncing
+  useEffect(() => {
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalBodyOverflow = document.body.style.overflow
+    const originalPosition = document.body.style.position
+    const originalWidth = document.body.style.width
+    const originalHeight = document.body.style.height
+
+    document.documentElement.style.overflow = "hidden"
+    document.body.style.overflow = "hidden"
+    document.body.style.position = "fixed"
+    document.body.style.width = "100%"
+    document.body.style.height = "100%"
+    
+    const preventTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement
+      // Allow scrolling inside ScrollArea, explicitly marked touch-scrollable containers, or Vaul Drawers
+      if (
+        target.closest('[data-radix-scroll-area-viewport]') || 
+        target.closest('.touch-scrollable') || 
+        target.closest('[data-vaul-drawer]')
+      ) {
+        return
+      }
+      
+      if (target.tagName === 'TEXTAREA') {
+        const ta = target as HTMLTextAreaElement
+        // If textarea is not scrollable (single line or fits in view)
+        if (ta.scrollHeight <= ta.clientHeight) {
+          if (e.cancelable) e.preventDefault()
+        }
+        return // Let native touch scroll happen if scrollable
+      }
+      
+      if (e.cancelable) e.preventDefault()
+    }
+    document.addEventListener("touchmove", preventTouchMove, { passive: false })
+
+    return () => {
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.body.style.overflow = originalBodyOverflow
+      document.body.style.position = originalPosition
+      document.body.style.width = originalWidth
+      document.body.style.height = originalHeight
+      document.removeEventListener("touchmove", preventTouchMove)
+    }
+  }, [])
+
+  const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
@@ -145,6 +197,10 @@ export function ChatPage() {
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const [loadingHistory, setLoadingHistory] = useState(false)
+
+
+
+  const prevHeightRef = useRef<number>(0)
 
   const getViewport = useCallback(() => {
     const el = scrollRef.current
@@ -163,6 +219,44 @@ export function ChatPage() {
       setTimeout(doScroll, 300)
     })
   }, [getViewport])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto"
+      const newHeight = Math.min(inputRef.current.scrollHeight, 112)
+      inputRef.current.style.height = `${newHeight}px`
+      
+      if (prevHeightRef.current > 0 && prevHeightRef.current !== newHeight) {
+        scrollToBottom()
+      }
+      prevHeightRef.current = newHeight
+    }
+  }, [inputValue, scrollToBottom])
+
+  // Visual viewport synchronization for mobile keyboard gaps/overlaps
+  useEffect(() => {
+    if (!window.visualViewport) return
+    let prevVpHeight = window.visualViewport.height
+    const updateViewportHeight = () => {
+      if (containerRef.current) {
+        const newHeight = window.visualViewport!.height
+        containerRef.current.style.height = `${newHeight}px`
+        
+        // If height changed (e.g. keyboard appeared), ensure we scroll to bottom
+        if (prevVpHeight !== newHeight) {
+          window.scrollTo(0, 0) // Force window to stay at top to avoid browser auto-scroll offset
+          scrollToBottom()
+        }
+        prevVpHeight = newHeight
+      }
+    }
+    updateViewportHeight()
+    window.visualViewport.addEventListener("resize", updateViewportHeight)
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateViewportHeight)
+    }
+  }, [scrollToBottom])
 
   // Load initial messages (or detect new empty room)
   useEffect(() => {
@@ -313,7 +407,27 @@ export function ChatPage() {
     const text = inputValue.trim()
     if (!text || sending || !roomId) return
     setSending(true)
+
+    if (editingMsg) {
+      try {
+        await editMessage(roomId, editingMsg.id, editingMsg.candidateId, text)
+        const data = await getMessages(roomId, 50)
+        setMessages(data.messages || [])
+        toast.success("メッセージを編集しました")
+        setEditingMsg(null)
+        setInputValue("")
+        setRecVisible(false)
+      } catch (e: any) {
+        toast.error(`編集失敗: ${e.message}`)
+      } finally {
+        setSending(false)
+        inputRef.current?.focus()
+      }
+      return
+    }
+
     setInputValue("")
+    setRecVisible(false)
 
     // Optimistic user message
     const tempUserMsg = { id: `temp-user-${Date.now()}`, sender: { type: "USER" }, contents: [{ position: "RIGHT", text }] }
@@ -450,7 +564,8 @@ export function ChatPage() {
       }
       // If no items found, auto-generate new ones
       if (items.length === 0 && !refresh) {
-        return loadRecommendations(true)
+        await loadRecommendations(true)
+        return
       }
       setRecItems((prev) => {
         const combined = [...prev, ...items]
@@ -486,6 +601,7 @@ export function ChatPage() {
       toast.success("メッセージを削除しました")
       setDeleteMode(false)
       setSelectedMsgId(null)
+      setTimeout(scrollToBottom, 50)
     } catch (e: any) {
       toast.error(`削除失敗: ${e.message}`)
     } finally {
@@ -496,6 +612,17 @@ export function ChatPage() {
   const exitDeleteMode = () => {
     setDeleteMode(false)
     setSelectedMsgId(null)
+  }
+
+  const enterDeleteMode = async () => {
+    setDeleteMode(true)
+    if (!roomId) return
+    try {
+      const data = await getMessages(roomId, 50)
+      setMessages(data.messages || [])
+    } catch (e: any) {
+      toast.error(`履歴の同期に失敗しました: ${e.message}`)
+    }
   }
 
   const insertAsterisk = () => {
@@ -536,8 +663,83 @@ export function ChatPage() {
     }
   }
 
+  const renderedMessages = useMemo(() => {
+    return messages.map((msg) => {
+      const isIntro = !!msg.isIntro
+      const isBot = msg.sender?.type === "BOT"
+      const isSelected = deleteMode && selectedMsgId === msg.id
+      const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: any) => m.id === selectedMsgId) : -1
+      const msgIdx = messages.indexOf(msg)
+      const isAfterSelected = deleteMode && selectedIdx !== -1 && msgIdx > selectedIdx
+      const isMarked = isSelected || isAfterSelected
+      const isRegening = regenMsgId === msg.id
+      // Check if next message is also marked (for seamless highlight block)
+      const nextMsg = messages[msgIdx + 1]
+      const nextIsMarked = deleteMode && selectedIdx !== -1 && nextMsg && messages.indexOf(nextMsg) >= selectedIdx
+      const prevMsg = messages[msgIdx - 1]
+      const prevIsMarked = deleteMode && selectedIdx !== -1 && prevMsg && messages.indexOf(prevMsg) >= selectedIdx
+      return (
+        <div
+          key={msg.id}
+          className={cn(
+            deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors",
+            deleteMode && isIntro && "px-2 py-1 -mx-2 opacity-40 cursor-not-allowed",
+            isMarked && "bg-destructive/20",
+            isMarked && !prevIsMarked && "rounded-t-lg",
+            isMarked && !nextIsMarked && "rounded-b-lg",
+            deleteMode && !isMarked && !isIntro && "rounded-lg hover:bg-destructive/10",
+          )}
+          onClick={() => { if (deleteMode && !isIntro) setSelectedMsgId(msg.id) }}
+        >
+          {/* Show inline regen streaming instead of original content */}
+          {isRegening && regenContents.length > 0 ? (
+            regenContents.map((c: any, ci: number) => (
+              <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
+            ))
+          ) : isRegening && regenContents.length === 0 ? (
+            <StreamingDots />
+          ) : (
+            (msg.contents || []).map((c: any, ci: number) => (
+              <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
+            ))
+          )}
+          {/* BOT message controls: regen + candidate nav + edit */}
+          {!deleteMode && isBot && !isIntro && !isRegening && (
+            <div className="mb-2 ml-10 flex flex-wrap items-center gap-1">
+              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleRegen(msg.id)} aria-label="再生成">
+                <RefreshCw className="size-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "prev")} aria-label="前の候補">
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "next")} aria-label="次の候補">
+                <ChevronRight className="size-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => {
+                const txt = msg.contents?.map((c: any) => {
+                  if (c.position === "NARRATOR" || c.speakerName === "ナレーター") {
+                    return `@: ${c.text.trim()}`;
+                  } else if (c.speakerName) {
+                    return `@${c.speakerName}: ${c.text.trim()}`;
+                  }
+                  return `@: ${c.text.trim()}`;
+                }).join('\n\n') || ''
+                setEditingMsg({ id: msg.id, candidateId: msg.candidateId })
+                setInputValue(txt)
+                setTimeout(() => inputRef.current?.focus(), 0)
+              }} aria-label="編集">
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars])
+
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div ref={containerRef} className="fixed top-0 left-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-background">
       {/* Header */}
       <header className="glass sticky top-0 z-20 flex items-center gap-3 border-b border-border px-3 py-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")} aria-label="戻る">
@@ -553,7 +755,7 @@ export function ChatPage() {
           <p className="truncate text-sm font-semibold">{plotName}</p>
           <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => { deleteMode ? exitDeleteMode() : setDeleteMode(true) }} aria-label="削除モード" className={cn(deleteMode && "text-destructive")}>
+        <Button variant="ghost" size="icon" onClick={() => { deleteMode ? exitDeleteMode() : enterDeleteMode() }} aria-label="削除モード" className={cn(deleteMode && "text-destructive")}>
           <Trash2 className="size-4" />
         </Button>
         <AlertDialog>
@@ -596,62 +798,7 @@ export function ChatPage() {
                 <p className="text-xs text-muted-foreground">最初のメッセージです</p>
               )}
             </div>
-             {messages.map((msg) => {
-              const isIntro = !!msg.isIntro
-              const isBot = msg.sender?.type === "BOT"
-              const isSelected = deleteMode && selectedMsgId === msg.id
-              const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: any) => m.id === selectedMsgId) : -1
-              const msgIdx = messages.indexOf(msg)
-              const isAfterSelected = deleteMode && selectedIdx !== -1 && msgIdx > selectedIdx
-              const isMarked = isSelected || isAfterSelected
-              const isRegening = regenMsgId === msg.id
-              // Check if next message is also marked (for seamless highlight block)
-              const nextMsg = messages[msgIdx + 1]
-              const nextIsMarked = deleteMode && selectedIdx !== -1 && nextMsg && messages.indexOf(nextMsg) >= selectedIdx
-              const prevMsg = messages[msgIdx - 1]
-              const prevIsMarked = deleteMode && selectedIdx !== -1 && prevMsg && messages.indexOf(prevMsg) >= selectedIdx
-              return (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors",
-                    deleteMode && isIntro && "px-2 py-1 -mx-2 opacity-40 cursor-not-allowed",
-                    isMarked && "bg-destructive/20",
-                    isMarked && !prevIsMarked && "rounded-t-lg",
-                    isMarked && !nextIsMarked && "rounded-b-lg",
-                    deleteMode && !isMarked && !isIntro && "rounded-lg hover:bg-destructive/10",
-                  )}
-                  onClick={() => { if (deleteMode && !isIntro) setSelectedMsgId(msg.id) }}
-                >
-                  {/* Show inline regen streaming instead of original content */}
-                  {isRegening && regenContents.length > 0 ? (
-                    regenContents.map((c: any, ci: number) => (
-                      <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
-                    ))
-                  ) : isRegening && regenContents.length === 0 ? (
-                    <StreamingDots />
-                  ) : (
-                    (msg.contents || []).map((c: any, ci: number) => (
-                      <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
-                    ))
-                  )}
-                  {/* BOT message controls: regen + candidate nav */}
-                  {!deleteMode && isBot && !isIntro && !isRegening && (
-                    <div className="mb-2 ml-10 flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => handleRegen(msg.id)}>
-                        <RefreshCw className="mr-1 size-3" /> 再生成
-                      </Button>
-                      <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "prev")} aria-label="前の候補">
-                        <ChevronLeft className="size-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "next")} aria-label="次の候補">
-                        <ChevronRight className="size-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {renderedMessages}
             {streamContents !== null && (
               streamContents.length === 0
                 ? <StreamingDots />
@@ -702,7 +849,7 @@ export function ChatPage() {
               <p className="text-xs text-muted-foreground">推薦文がありません</p>
             ) : (
               pageItems.map((item: any, i: number) => (
-                <RecommendCard key={`${recPage}-${i}`} text={getRecText(item)} onClick={() => { setInputValue(getRecText(item)); inputRef.current?.focus() }} />
+                <RecommendCard key={`${recPage}-${i}`} text={getRecText(item)} onClick={() => { setInputValue(getRecText(item)); setRecVisible(false); inputRef.current?.focus() }} />
               ))
             )}
           </div>
@@ -753,6 +900,15 @@ export function ChatPage() {
         </div>
       ) : (
         <div className="glass border-t border-border px-3 py-2">
+          {editingMsg && (
+            <div className="mb-2 flex items-center justify-between text-xs text-primary px-1">
+              <span>メッセージを編集中...</span>
+              <Button variant="ghost" size="sm" className="h-5 px-2 text-muted-foreground hover:text-foreground" onClick={() => {
+                setEditingMsg(null)
+                setInputValue("")
+              }}>キャンセル</Button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className={cn("shrink-0", recVisible && "text-primary")} onClick={() => {
               setRecVisible((v) => !v)
@@ -767,7 +923,7 @@ export function ChatPage() {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
                 placeholder="メッセージを入力..."
-                className="min-h-10 max-h-28 resize-none border-0 bg-secondary/50 text-sm pr-9"
+                className="min-h-10 max-h-28 resize-none border-0 bg-secondary/50 text-sm pr-9 overscroll-contain"
                 rows={1}
                 style={{ fontSize: "16px" }}
               />

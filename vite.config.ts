@@ -12,10 +12,52 @@ async function readBody(req: import("http").IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8")
 }
 
+let backgroundRefreshTimer: NodeJS.Timeout | null = null
+
+function startBackgroundRefresh() {
+  if (backgroundRefreshTimer) return
+  backgroundRefreshTimer = setInterval(async () => {
+    try {
+      const current = JSON.parse(await fs.readFile(sessionFile, "utf8").catch(() => "{}") || "{}")
+      const { deviceId, refreshToken, accessToken } = current
+      if (!deviceId || !refreshToken || !accessToken) return
+      
+      const parts = String(accessToken).split('.')
+      if (parts.length !== 3) return
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
+      const expiry = payload.exp ? payload.exp * 1000 : 0
+      
+      if (expiry - Date.now() < 600000) {
+        console.log(`[Vite Background] Token expiring within 10 mins. Auto-refreshing...`)
+        const response = await fetch("https://api.zeta-ai.io/v1/auth/tokens", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ deviceId, type: "refresh", refreshToken })
+        })
+        
+        if (response.ok) {
+          const data = await response.json() as any
+          if (data.accessToken) {
+            current.accessToken = data.accessToken
+            if (data.refreshToken) current.refreshToken = data.refreshToken
+            await fs.writeFile(sessionFile, `${JSON.stringify(current, null, 2)}\n`, "utf8")
+            console.log(`[Vite Background] Background session refresh successful.`)
+          }
+        } else {
+          console.error(`[Vite Background] Refresh failed: ${response.status}`)
+        }
+      }
+    } catch (e) {
+      console.error(`[Vite Background] Auto-refresh error:`, e)
+    }
+  }, 60000)
+}
+
 function localAuthPlugin(): Plugin {
   return {
     name: "zeta-local-auth-store",
     configureServer(server) {
+      startBackgroundRefresh()
       server.middlewares.use("/local-auth", async (req, res) => {
         res.setHeader("Content-Type", "application/json; charset=utf-8")
         try {
@@ -30,6 +72,7 @@ function localAuthPlugin(): Plugin {
             const next = {
               deviceId: incoming.deviceId ?? current.deviceId ?? "",
               refreshToken: incoming.refreshToken ?? current.refreshToken ?? "",
+              accessToken: incoming.accessToken ?? current.accessToken ?? "",
             }
             await fs.writeFile(sessionFile, `${JSON.stringify(next, null, 2)}\n`, "utf8")
             res.end(JSON.stringify({ ok: true }))

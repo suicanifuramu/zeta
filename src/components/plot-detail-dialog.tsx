@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import { BookOpen, MessageCircle, ScrollText, Users } from "lucide-react"
 import { toast } from "sonner"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Drawer, DrawerContent } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -90,10 +92,13 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
     })
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0 sm:max-w-lg">
-        {/* Hero image */}
+  const isDesktop = useMediaQuery("(min-width: 768px)")
+  const ScrollContainer: any = isDesktop ? ScrollArea : "div"
+  const scrollProps = isDesktop ? { className: "max-h-[50vh]" } : { className: "max-h-[60vh] overflow-y-auto" }
+
+  const content = (
+    <>
+      {/* Hero image */}
         {heroImg ? (
           <div className="relative h-52 w-full overflow-hidden sm:h-64">
             <CachedImage
@@ -121,7 +126,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
           </div>
         )}
 
-        <ScrollArea className="max-h-[50vh]">
+        <ScrollContainer {...scrollProps}>
           <div className="flex flex-col gap-4 px-5 py-4">
             {/* Stats + interaction count */}
             {interactionCount > 0 && (
@@ -275,13 +280,15 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
               </>
             )}
           </div>
-        </ScrollArea>
+        </ScrollContainer>
 
         {/* Action footer */}
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            閉じる
-          </Button>
+          {isDesktop && (
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              閉じる
+            </Button>
+          )}
           {onStartChat && (
             <Button size="sm" onClick={handleStart} disabled={starting || loading}>
               {starting && <Spinner className="mr-1 size-3" />}
@@ -290,7 +297,24 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
             </Button>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+    </>
+  )
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0 sm:max-w-lg">
+          {content}
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[85vh] gap-0 overflow-hidden p-0">
+        {content}
+      </DrawerContent>
+    </Drawer>
   )
 }
