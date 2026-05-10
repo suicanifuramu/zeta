@@ -8,6 +8,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sessionFile = path.resolve(__dirname, '.zeta-session.json');
 
 const app = express();
+
+// 1. API Proxy (Must be before express.json() to avoid consuming the request body)
+app.use('/api', createProxyMiddleware({
+  target: 'https://api.zeta-ai.io',
+  changeOrigin: true,
+  pathRewrite: { '^/api': '' },
+  proxyTimeout: 60000,
+  timeout: 60000,
+  onProxyRes: (proxyRes, req, res) => {
+    const ct = proxyRes.headers['content-type'] || '';
+    // Handle SSE and streaming
+    if (ct.includes('text/event-stream') || req.url?.includes('/stream')) {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('X-Accel-Buffering', 'no');
+    }
+  }
+}));
+
+// 2. JSON Parser (Only for local-auth routes)
 app.use(express.json());
 
 // Background Refresh logic
@@ -92,20 +111,7 @@ app.delete('/local-auth', async (req, res) => {
   }
 });
 
-// Proxy /api to zeta-ai.io
-app.use('/api', createProxyMiddleware({
-  target: 'https://api.zeta-ai.io',
-  changeOrigin: true,
-  pathRewrite: { '^/api': '' },
-  onProxyRes: (proxyRes, req, res) => {
-    const ct = proxyRes.headers['content-type'] || '';
-    // Handle SSE and streaming
-    if (ct.includes('text/event-stream') || req.url?.includes('/stream')) {
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('X-Accel-Buffering', 'no');
-    }
-  }
-}));
+// (Removed from here and moved up)
 
 // Serve static files from dist
 app.use(express.static(path.resolve(__dirname, 'dist')));
