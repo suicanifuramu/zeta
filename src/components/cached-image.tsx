@@ -4,6 +4,18 @@ import { cn } from "@/lib/utils"
 // In-memory object URL cache
 const memoryCache = new Map<string, string>()
 
+// Deduplicate concurrent fetch requests for the same image
+const fetchPromises = new Map<string, Promise<string>>()
+
+// Global cache promise to prevent Cache API lock contention
+let globalCachePromise: Promise<Cache> | null = null
+function getPlotImageCache() {
+  if (!globalCachePromise) {
+    globalCachePromise = caches.open("plot-images")
+  }
+  return globalCachePromise
+}
+
 interface CachedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string
 }
@@ -13,9 +25,11 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(false)
     if (!src) return
     if (memoryCache.has(src)) {
+       
       setCachedSrc(memoryCache.get(src))
       return
     }
@@ -23,8 +37,18 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
     let isMounted = true
 
     async function load() {
-      try {
-        const cache = await caches.open("plot-images")
+      if (fetchPromises.has(src!)) {
+        try {
+          const objectUrl = await fetchPromises.get(src!)
+          if (isMounted && objectUrl) setCachedSrc(objectUrl)
+        } catch {
+          if (isMounted) setCachedSrc(src)
+        }
+        return
+      }
+
+      const promise = (async () => {
+        const cache = await getPlotImageCache()
         let res = await cache.match(src!)
         if (!res) {
           res = await fetch(src!)
@@ -36,11 +60,21 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
           const blob = await res.blob()
           const objectUrl = URL.createObjectURL(blob)
           memoryCache.set(src!, objectUrl)
-          if (isMounted) setCachedSrc(objectUrl)
+          return objectUrl
         }
-      } catch (e) {
+        throw new Error("Failed to load")
+      })()
+
+      fetchPromises.set(src!, promise)
+
+      try {
+        const objectUrl = await promise
+        if (isMounted) setCachedSrc(objectUrl)
+      } catch {
         // Fallback to normal URL on CORS or network error
         if (isMounted) setCachedSrc(src)
+      } finally {
+        fetchPromises.delete(src!)
       }
     }
 

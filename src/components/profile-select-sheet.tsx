@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -8,9 +9,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, Dr
 import { cn } from "@/lib/utils"
 
 interface ProfileSelectSheetProps {
-  profiles: any[]
+  profiles: UserChatProfile[]
   open: boolean
-  onSelect: (profile: any) => void
+  onSelect?: (profile: UserChatProfile) => void
   loading?: boolean
 }
 
@@ -28,7 +29,7 @@ export function ProfileSelectSheet({ profiles, open, onSelect, loading }: Profil
     if (!profile) return
     setConfirming(true)
     try {
-      await onSelect(profile)
+      await onSelect?.(profile)
     } finally {
       setConfirming(false)
     }

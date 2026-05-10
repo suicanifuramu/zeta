@@ -8,6 +8,7 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getRanking, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
+import type { Plot } from "@/lib/types"
 
 const TABS = [
   { value: "TRENDING", label: "トレンド" },
@@ -21,14 +22,14 @@ const MAX_ITEMS = 100
 export function RankingPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState("TRENDING")
-  const [allItems, setAllItems] = useState<any[]>([])
-  const [displayed, setDisplayed] = useState<any[]>([])
+  const [allItems, setAllItems] = useState<Plot[]>([])
+  const [displayed, setDisplayed] = useState<Plot[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Plot detail dialog
-  const [dialogPlot, setDialogPlot] = useState<any>(null)
+  const [dialogPlot, setDialogPlot] = useState<Plot | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const loadRanking = useCallback(async (type: string) => {
@@ -41,15 +42,18 @@ export function RankingPage() {
       setAllItems(items)
       setDisplayed(items.slice(0, BATCH_SIZE))
       setHasMore(items.length > BATCH_SIZE)
-    } catch (e: any) {
-      toast.error(`読み込み失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`)
       setHasMore(false)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { loadRanking(tab) }, [tab, loadRanking])
+  useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRanking(tab) 
+  }, [tab, loadRanking])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -70,7 +74,7 @@ export function RankingPage() {
     return () => observer.disconnect()
   }, [allItems, hasMore, loading])
 
-  const handleClick = async (plot: any) => {
+  const handleClick = async (plot: Plot) => {
     try {
       const data = await getActiveRoomId(plot.id)
       if (data.roomId) {
@@ -88,7 +92,7 @@ export function RankingPage() {
     }
   }
 
-  const handleStartChat = async (plot: any) => {
+  const handleStartChat = async (plot: Plot) => {
     setDialogOpen(false)
     await startNewChat(plot.id, navigate)
   }

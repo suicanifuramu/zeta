@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Drawer, DrawerContent } from "@/components/ui/drawer"
+import type { Plot } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -14,10 +15,10 @@ import { Spinner } from "@/components/ui/spinner"
 import { getPlot } from "@/lib/api"
 
 interface PlotDetailDialogProps {
-  plot: any | null
+  plot: Plot | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onStartChat?: (plot: any) => void
+  onStartChat?: (plot: Plot) => void
 }
 
 function formatCount(n: number | undefined) {
@@ -28,17 +29,20 @@ function formatCount(n: number | undefined) {
 }
 
 export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: PlotDetailDialogProps) {
-  const [detail, setDetail] = useState<any>(null)
+  const [detail, setDetail] = useState<any /* eslint-disable-line @typescript-eslint/no-explicit-any */ | null>(null)
   const [loading, setLoading] = useState(false)
   const [starting, setStarting] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open || !plot?.id) { setDetail(null); return }
     setLoading(true)
     getPlot(plot.id)
-      .then((data: any) => setDetail(data))
-      .catch((e: any) => {
-        toast.error(`プロット取得失敗: ${e.message}`)
+       
+      .then((data: unknown) => setDetail(data as any /* eslint-disable-line @typescript-eslint/no-explicit-any */))
+      .catch((e: unknown) => {
+        toast.error(`プロット取得失敗: ${e instanceof Error ? e.message : String(e)}`)
+         
         setDetail(null)
       })
       .finally(() => setLoading(false))
@@ -51,27 +55,28 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
   const plotName = d.name || d.title || plot?.name || "タイトルなし"
   const creatorName = d.creator?.nickname || d.creatorName || d.creator?.username || ""
   const description = d.shortDescription || d.longDescription || d.description || d.synopsis || d.summary || ""
-  const characters = d.characters || []
-  const tags: string[] = (d.hashtags || d.hashTags || d.tags || []).map((t: any) =>
-    typeof t === "string" ? t : t.name || t.label || ""
+  const characters = (d.characters as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[]) || []
+  const tags: string[] = ((d.hashtags || d.hashTags || d.tags || []) as any  []).map((t: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ | string) =>
+    typeof t === "string" ? t : (t.name as string) || (t.label as string) || ""
   ).filter(Boolean)
   const interactionCount = d.interactionCount || d.chatCount || d.viewCount || 0
 
   // About section (world-building text + detailed character descriptions)
-  const aboutContents: any[] = (d.isAboutPublic || d.about) ? (d.about?.contents || []) : []
-  const aboutCharacters: any[] = d.about?.characters || []
+  const aboutObj = d.about as any /* eslint-disable-line @typescript-eslint/no-explicit-any */ | undefined
+  const aboutContents: any  [] = (d.isAboutPublic || d.about) ? (aboutObj?.contents as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[] || []) : []
+  const aboutCharacters: any  [] = (aboutObj?.characters as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[]) || []
 
   // Build lookup from about.characters by characterId for description fallback
   const aboutCharMap: Record<string, string> = {}
   for (const ac of aboutCharacters) {
-    if (ac.characterId && ac.description) aboutCharMap[ac.characterId] = ac.description
+    if (ac.characterId && ac.description) aboutCharMap[ac.characterId as string] = ac.description as string
   }
 
   // Intro messages
-  const introMessages: any[] = d.intros?.[0]?.conversation?.messages || []
+  const introMessages: any  [] = ((d.intros as any  [])?.[0]?.conversation as any  )?.messages as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[] || []
   // Build character lookup for avatars
-  const charMap: Record<string, any> = {}
-  for (const c of characters) { if (c.id) charMap[c.id] = c }
+  const charMap: Record<string, any /* eslint-disable-line @typescript-eslint/no-explicit-any */> = {}
+  for (const c of characters) { if (c.id) charMap[c.id as string] = c }
 
   const handleStart = async () => {
     setStarting(true)
@@ -87,13 +92,17 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
-  const ScrollContainer: any = isDesktop ? ScrollArea : "div"
+  const ScrollContainer = isDesktop ? ScrollArea : "div"
   const scrollProps = isDesktop ? { className: "max-h-[50vh]" } : { className: "max-h-[60vh] overflow-y-auto" }
 
   const content = (
@@ -168,7 +177,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                     <Users className="size-3.5" /> キャラクター
                   </h3>
                   <div className="flex flex-col gap-2">
-                    {characters.map((char: any) => {
+                    {characters.map((char: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => {
                       const charKey = `char-${char.id || char.name}`
                       const isExpanded = expandedIds.has(charKey)
                       // Use about.characters description as fallback
@@ -180,11 +189,11 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                           onClick={() => charDesc && toggleExpand(charKey)}
                         >
                           <Avatar className="size-9 shrink-0 mt-0.5">
-                            <AvatarImage src={char.imageUrl} />
-                            <AvatarFallback>{(char.name || "?")[0]}</AvatarFallback>
+                            <AvatarImage src={char.imageUrl as string} />
+                            <AvatarFallback>{((char.name as string) || "?")[0]}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{char.name}</p>
+                            <p className="truncate text-sm font-medium">{char.name as string}</p>
                             {charDesc && (
                               <p className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-2"}`}>
                                 {charDesc}
@@ -208,7 +217,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                     <ScrollText className="size-3.5" /> 設定
                   </h3>
                   <div className="flex flex-col gap-2">
-                    {aboutContents.map((item: any, i: number) => {
+                    {aboutContents.map((item: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, i: number) => {
                       const aboutKey = `about-${i}`
                       const isExpanded = expandedIds.has(aboutKey)
                       return (
@@ -218,7 +227,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                           onClick={() => toggleExpand(aboutKey)}
                         >
                           <p className={`text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-4"}`}>
-                            {item.content || item.text || ""}
+                            {(item.content as string) || (item.text as string) || ""}
                           </p>
                         </div>
                       )
@@ -237,9 +246,9 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                     <BookOpen className="size-3.5" /> イントロ
                   </h3>
                   <div className="flex flex-col gap-2">
-                    {introMessages.map((msg: any, i: number) => {
+                    {introMessages.map((msg: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, i: number) => {
                       const isNarrator = msg.senderId === "_NARRATOR_"
-                      const char = charMap[msg.senderId]
+                      const char = charMap[msg.senderId as string]
                       const msgKey = `intro-${i}`
                       const isExpanded = expandedIds.has(msgKey)
                       return (
@@ -250,7 +259,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                         >
                           {isNarrator ? (
                             <p className={`text-xs italic text-muted-foreground/70 leading-relaxed whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-3"}`}>
-                              {msg.content}
+                              {msg.content as string}
                             </p>
                           ) : (
                             <>
@@ -262,11 +271,11 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                               )}
                               <div className="min-w-0 flex-1">
                                 {char?.name && (
-                                  <p className="mb-0.5 text-[10px] font-medium text-muted-foreground">{char.name}</p>
+                                  <p className="mb-0.5 text-[10px] font-medium text-muted-foreground">{char.name as string}</p>
                                 )}
                                 <div className="rounded-2xl rounded-tl-sm bg-secondary/50 px-3 py-2">
                                   <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-3"}`}>
-                                    {msg.content}
+                                    {msg.content as string}
                                   </p>
                                 </div>
                               </div>

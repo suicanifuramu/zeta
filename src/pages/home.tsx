@@ -9,15 +9,16 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getHomePlots, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
+import type { Plot } from "@/lib/types"
 
-let cachedPlots: any[] | null = null
+let cachedPlots: Plot[] | null = null
 let cachedHasMore = true
 let cachedSeenIds = new Set<string>()
 let cachedCursor: string | null = null
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [plots, setPlots] = useState<any[]>(cachedPlots || [])
+  const [plots, setPlots] = useState<Plot[]>(cachedPlots || [])
   const [loading, setLoading] = useState(!cachedPlots)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(cachedHasMore)
@@ -25,7 +26,7 @@ export function HomePage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Plot detail dialog
-  const [dialogPlot, setDialogPlot] = useState<any>(null)
+  const [dialogPlot, setDialogPlot] = useState<Plot | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const cursorRef = useRef<string | null>(cachedCursor)
@@ -42,8 +43,8 @@ export function HomePage() {
     }
     try {
       const data = await getHomePlots(20, cursorRef.current || undefined)
-      const newPlots = (data.plots || []).filter((p: any) => !seenIds.current.has(p.id))
-      newPlots.forEach((p: any) => seenIds.current.add(p.id))
+      const newPlots = (data.plots || []).filter((p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => !seenIds.current.has(p.id))
+      newPlots.forEach((p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => seenIds.current.add(p.id))
       
       cachedSeenIds = new Set(seenIds.current)
       
@@ -65,8 +66,8 @@ export function HomePage() {
           return next
         })
       }
-    } catch (e: any) {
-      toast.error(`読み込み失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`)
       setHasMore(false)
     } finally {
       setLoading(false)
@@ -75,6 +76,7 @@ export function HomePage() {
   }, [])
 
   useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!cachedPlots) loadPlots(true) 
   }, [loadPlots])
 
@@ -98,7 +100,7 @@ export function HomePage() {
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loadPlots])
 
-  const handlePlotClick = async (plot: any) => {
+  const handlePlotClick = async (plot: Plot) => {
     try {
       const data = await getActiveRoomId(plot.id)
       if (data.roomId) {
@@ -118,7 +120,7 @@ export function HomePage() {
     }
   }
 
-  const handleStartChat = async (plot: any) => {
+  const handleStartChat = async (plot: Plot) => {
     setDialogOpen(false)
     await startNewChat(plot.id, navigate)
   }

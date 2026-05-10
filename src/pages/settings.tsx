@@ -16,7 +16,7 @@ import {
   checkUserChatProfileAbuse, createUserChatProfile, deleteUserChatProfile,
   getSessionOverview, getUserChatProfiles, selectUserChatProfile, updateUserChatProfile,
 } from "@/lib/api"
-import { useAuth } from "@/lib/auth-context"
+import type { UserChatProfile, SessionOverview } from "@/lib/types"
 
 function formatDate(ms: number) {
   if (!ms) return "-"
@@ -31,17 +31,16 @@ function formatSeconds(s: number) {
 }
 
 export function SettingsPage() {
-  const auth = useAuth()
   const [deviceId, setDeviceIdState] = useState(getDeviceId())
   const [refreshToken, setRefreshToken] = useState(getRefreshToken())
   const [refreshing, setRefreshing] = useState(false)
 
   // Overview
-  const [overview, setOverview] = useState<any>(null)
+  const [overview, setOverview] = useState<SessionOverview | null>(null)
   const [loadingOverview, setLoadingOverview] = useState(false)
 
   // Profiles
-  const [profiles, setProfiles] = useState<any[]>([])
+  const [profiles, setProfiles] = useState<UserChatProfile[]>([])
   const [loadingProfiles, setLoadingProfiles] = useState(false)
   const [editId, setEditId] = useState("")
   const [profileName, setProfileName] = useState("")
@@ -64,10 +63,9 @@ export function SettingsPage() {
       if (refreshToken) importTokens(refreshToken)
       await refreshSession()
       setRefreshToken(getRefreshToken())
-      const newDeviceId = getDeviceId()
       toast.success("セッションを更新しました")
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e))
     } finally {
       setRefreshing(false)
     }
@@ -81,17 +79,17 @@ export function SettingsPage() {
 
   const loadOverview = async () => {
     setLoadingOverview(true)
-    try { setOverview(await getSessionOverview()) } catch (e: any) { toast.error(e.message) }
+    try { setOverview(await getSessionOverview() as SessionOverview) } catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
     finally { setLoadingOverview(false) }
   }
 
   const loadProfiles = async () => {
     setLoadingProfiles(true)
     try {
-      const data = await getUserChatProfiles(50)
+      const data = await getUserChatProfiles(50) as Record<string, UserChatProfile[]>
       const list = data.userChatProfiles || data.profiles || data || []
       setProfiles(Array.isArray(list) ? list : [])
-    } catch (e: any) { toast.error(e.message) }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
     finally { setLoadingProfiles(false) }
   }
 
@@ -110,7 +108,7 @@ export function SettingsPage() {
       }
       resetForm()
       await loadProfiles()
-    } catch (e: any) { toast.error(`${editId ? "更新" : "作成"}失敗: ${e.message}`) }
+    } catch (e: unknown) { toast.error(`${editId ? "更新" : "作成"}失敗: ${e instanceof Error ? e.message : String(e)}`) }
     finally { setProfileSaving(false) }
   }
 
@@ -233,7 +231,7 @@ export function SettingsPage() {
                       {!p.selected && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={async () => {
                           try { await selectUserChatProfile(p.id); toast.success("選択しました"); await loadProfiles() }
-                          catch (e: any) { toast.error(e.message) }
+                          catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
                         }}>選択</Button>
                       )}
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => {
@@ -242,7 +240,7 @@ export function SettingsPage() {
                       <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={async () => {
                         if (!confirm(`「${p.name}」を削除しますか?`)) return
                         try { await deleteUserChatProfile(p.id); toast.success("削除しました"); await loadProfiles() }
-                        catch (e: any) { toast.error(e.message) }
+                        catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
                       }}>削除</Button>
                     </div>
                   </div>
@@ -261,9 +259,9 @@ export function SettingsPage() {
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={async () => {
                   try {
-                    const data = await checkUserChatProfileAbuse({ name: profileName, description: profileDesc })
+                    const data = await checkUserChatProfileAbuse({ name: profileName, description: profileDesc }) as Record<string, boolean>
                     toast(data.isAbusing ? "内容チェック: NG" : "内容チェック: OK")
-                  } catch (e: any) { toast.error(e.message) }
+                  } catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
                 }}>内容チェック</Button>
                 {editId && <Button variant="ghost" size="sm" onClick={resetForm}>キャンセル</Button>}
                 <Button size="sm" onClick={handleSaveProfile} disabled={profileSaving}>

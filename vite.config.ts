@@ -36,7 +36,7 @@ function startBackgroundRefresh() {
         })
         
         if (response.ok) {
-          const data = await response.json() as any
+          const data = await response.json() as Record<string, string>
           if (data.accessToken) {
             current.accessToken = data.accessToken
             if (data.refreshToken) current.refreshToken = data.refreshToken

@@ -23,7 +23,7 @@ export async function startNewChat(plotId: string, navigate: (path: string) => v
     }
 
     navigate(`/chat/${roomId}`)
-  } catch (e: any) {
-    toast.error(`新規チャット失敗: ${e.message}`)
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : String(e))
   }
 }

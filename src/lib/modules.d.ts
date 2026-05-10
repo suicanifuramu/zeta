@@ -1,59 +1,59 @@
 // Type declarations for .js service modules
 
 declare module "@/lib/api" {
-  const api: any;
+  const api: any; /* eslint-disable-line @typescript-eslint/no-explicit-any */
   export default api;
-  export const getHomePlots: (limit?: number, cursor?: string) => Promise<any>;
-  export const getSpecialCuration: () => Promise<any>;
-  export const getBanners: () => Promise<any>;
-  export const getPopups: () => Promise<any>;
-  export const getFeatureFlag: (name: string) => Promise<any>;
-  export const getGenresRanking: () => Promise<any>;
-  export const getRanking: (type?: string, limit?: number, filterValues?: string) => Promise<any>;
-  export const getPlot: (plotId: string) => Promise<any>;
-  export const getPlotImages: (plotId: string) => Promise<any>;
-  export const getCharacterImages: (plotId: string, characterId: string) => Promise<any>;
-  export const getSimilarPlots: (plotId: string, limit?: number) => Promise<any>;
-  export const getLikedPlots: (limit?: number) => Promise<any>;
-  export const getActiveRoomId: (plotId: string) => Promise<any>;
-  export const createRoom: (plotId: string) => Promise<any>;
-  export const getRooms: (limit?: number) => Promise<any>;
-  export const getRoom: (roomId: string) => Promise<any>;
-  export const deleteRoom: (roomId: string) => Promise<any>;
-  export const getRoomModelSetting: (roomId: string) => Promise<any>;
-  export const getRoomCyoaSetting: (roomId: string) => Promise<any>;
-  export const getIntroBeforeSelection: (roomId: string) => Promise<any>;
-  export const createIntro: (roomId: string) => Promise<any>;
-  export const getSelectedPersona: (plotId: string, roomId: string) => Promise<any>;
-  export const getMessages: (roomId: string, limit?: number) => Promise<any>;
-  export const getMessagesByCursor: (roomId: string, cursor: string, limit?: number) => Promise<any>;
-  export const sendMessageStream: (roomId: string, text: string, onEvent: (event: any) => void, onDone?: () => void) => Promise<void>;
-  export const regenMessageStream: (roomId: string, messageId: string, onEvent: (event: any) => void, onDone?: () => void) => Promise<void>;
-  export const getCandidates: (roomId: string, messageId: string, limit?: number) => Promise<any>;
-  export const selectCandidate: (roomId: string, messageId: string, candidateId: string) => Promise<any>;
-  export const editMessage: (roomId: string, messageId: string, candidateId: string, text: string) => Promise<any>;
-  export const deleteMessages: (roomId: string, messageId: string) => Promise<any>;
-  export const getRecommended: (roomId: string) => Promise<any>;
-  export const refreshRecommended: (roomId: string) => Promise<any>;
-  export const getRecommendQuota: () => Promise<any>;
-  export const getCoinBalance: () => Promise<any>;
-  export const getCreatorStats: () => Promise<any>;
-  export const getZetaPassSubscription: () => Promise<any>;
-  export const getZetaPassPromotionEligibility: () => Promise<any>;
-  export const getZetaPassProConversionStatus: () => Promise<any>;
-  export const getLatestNotificationTime: () => Promise<any>;
-  export const getAppPushSetting: (type?: string) => Promise<any>;
-  export const getStoreProducts: (productType: string) => Promise<any>;
-  export const getSessionOverview: () => Promise<any>;
-  export const getUserChatProfiles: (limit?: number, opts?: { plotId?: string; roomId?: string }) => Promise<any>;
-  export const createUserChatProfile: (data: { name: string; description: string }) => Promise<any>;
-  export const checkUserChatProfileAbuse: (data: { name: string; description: string }) => Promise<any>;
-  export const updateUserChatProfile: (profileId: string, data: { name: string; description: string }) => Promise<any>;
-  export const deleteUserChatProfile: (profileId: string) => Promise<any>;
-  export const selectUserChatProfile: (profileId: string, opts?: { plotId?: string; roomId?: string }) => Promise<any>;
-  export const getQuiz: () => Promise<any>;
-  export const joinQuiz: (quizId: string, plotId: string) => Promise<any>;
-  export const claimQuiz: (quizId: string) => Promise<any>;
+  export const getHomePlots: (limit?: number, cursor?: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getSpecialCuration: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getBanners: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getPopups: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getFeatureFlag: (name: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getGenresRanking: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRanking: (type?: string, limit?: number, filterValues?: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getPlot: (plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getPlotImages: (plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getCharacterImages: (plotId: string, characterId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getSimilarPlots: (plotId: string, limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getLikedPlots: (limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getActiveRoomId: (plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const createRoom: (plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRooms: (limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRoom: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const deleteRoom: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRoomModelSetting: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRoomCyoaSetting: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getIntroBeforeSelection: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const createIntro: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getSelectedPersona: (plotId: string, roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getMessages: (roomId: string, limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getMessagesByCursor: (roomId: string, cursor: string, limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const sendMessageStream: (roomId: string, text: string, onEvent: (event: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => void, onDone?: () => void) => Promise<void>;
+  export const regenMessageStream: (roomId: string, messageId: string, onEvent: (event: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => void, onDone?: () => void) => Promise<void>;
+  export const getCandidates: (roomId: string, messageId: string, limit?: number) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const selectCandidate: (roomId: string, messageId: string, candidateId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const editMessage: (roomId: string, messageId: string, candidateId: string, text: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const deleteMessages: (roomId: string, messageId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRecommended: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const refreshRecommended: (roomId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getRecommendQuota: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getCoinBalance: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getCreatorStats: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getZetaPassSubscription: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getZetaPassPromotionEligibility: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getZetaPassProConversionStatus: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getLatestNotificationTime: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getAppPushSetting: (type?: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getStoreProducts: (productType: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getSessionOverview: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getUserChatProfiles: (limit?: number, opts?: { plotId?: string; roomId?: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const createUserChatProfile: (data: { name: string; description: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const checkUserChatProfileAbuse: (data: { name: string; description: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const updateUserChatProfile: (profileId: string, data: { name: string; description: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const deleteUserChatProfile: (profileId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const selectUserChatProfile: (profileId: string, opts?: { plotId?: string; roomId?: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const getQuiz: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const joinQuiz: (quizId: string, plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const claimQuiz: (quizId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
 }
 
 declare module "./api" {
@@ -65,13 +65,13 @@ declare module "./api.js" {
 }
 
 declare module "@/lib/auth" {
-  export function ensureAccessToken(): Promise<any>;
+  export function ensureAccessToken(): Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export function getAccessToken(): string | null;
-  export function refreshSession(): Promise<any>;
+  export function refreshSession(): Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export function initAuth(): Promise<boolean>;
-  export function getAuthState(): any;
+  export function getAuthState(): any; /* eslint-disable-line @typescript-eslint/no-explicit-any */
   export function loadLocalAuth(): Promise<void>;
-  export function decodeJwt(token: string): any;
+  export function decodeJwt(token: string): any; /* eslint-disable-line @typescript-eslint/no-explicit-any */
   export function getTokenExpiry(token: string): number;
   export function getRefreshToken(): string;
   export function getDeviceId(): string;

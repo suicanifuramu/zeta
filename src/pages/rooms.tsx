@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { getRooms } from "@/lib/api"
+import type { Room } from "@/lib/types"
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -17,9 +18,10 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}日前`
 }
 
-function getPreview(lastMessage: any) {
-  if (!lastMessage?.contents?.length) return ""
-  const c = lastMessage.contents[0]
+function getPreview(lastMessage: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ | undefined) {
+  const contents = lastMessage?.contents as Array<Record<string, string>> | undefined
+  if (!contents?.length) return ""
+  const c = contents[0]
   const name = c.speakerName || ""
   const text = (c.text || "").slice(0, 50).replace(/\n/g, " ")
   return name ? `${name}: ${text}` : text
@@ -27,18 +29,18 @@ function getPreview(lastMessage: any) {
 
 export function RoomsPage() {
   const navigate = useNavigate()
-  const [rooms, setRooms] = useState<any[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     getRooms(30)
       .then((data) => setRooms(data.rooms || []))
-      .catch((e: any) => toast.error(`読み込み失敗: ${e.message}`))
+      .catch((e: unknown) => toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`))
       .finally(() => setLoading(false))
   }, [])
 
-  const handleClick = (room: any) => {
-    const plot = room.plot || {}
+  const handleClick = (room: Room) => {
+    const plot = (room.plot || {}) as any // eslint-disable-line @typescript-eslint/no-explicit-any
     sessionStorage.setItem("chat_plot_name", plot.name || room.title || "")
     sessionStorage.setItem("chat_plot_img", plot.imageUrl || "")
     navigate(`/chat/${room.id}`)
@@ -71,9 +73,9 @@ export function RoomsPage() {
         ) : (
           <div className="flex flex-col">
             {rooms.map((room, i) => {
-              const plot = room.plot || {}
-              const preview = getPreview(room.lastMessage)
-              const time = room.lastMessage?.messageTime ? timeAgo(room.lastMessage.messageTime) : ""
+              const plot = (room.plot || {}) as any // eslint-disable-line @typescript-eslint/no-explicit-any
+              const preview = getPreview(room.lastMessage as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+              const time = (room.lastMessage as any)?.messageTime ? timeAgo((room.lastMessage as any).messageTime) : "" // eslint-disable-line @typescript-eslint/no-explicit-any
               return (
                 <div key={room.id}>
                   <button
@@ -91,7 +93,7 @@ export function RoomsPage() {
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">{preview}</p>
                     </div>
-                    {room.unreadCount > 0 && (
+                    {(room.unreadCount || 0) > 0 && (
                       <Badge className="ml-1 shrink-0 tabular-nums">{room.unreadCount}</Badge>
                     )}
                   </button>

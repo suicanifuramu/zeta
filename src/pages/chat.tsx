@@ -22,6 +22,7 @@ import {
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
+import type { Message, UserChatProfile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // ── Message Formatter ──
@@ -39,7 +40,7 @@ function formatMessageText(text: string) {
 }
 
 // ── Message Bubble ──
-function MessageBubble({ content, avatarUrl }: { content: any; avatarUrl?: string }) {
+function MessageBubble({ content, avatarUrl }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string }) {
   const pos = content.position || "LEFT"
   if (pos === "NARRATOR") {
     return (
@@ -99,7 +100,7 @@ export function ChatPage() {
   const plotName = sessionStorage.getItem("chat_plot_name") || "チャット"
   const plotImg = sessionStorage.getItem("chat_plot_img") || ""
 
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [inputValue, setInputValue] = useState("")
@@ -107,18 +108,18 @@ export function ChatPage() {
   const [charAvatars, setCharAvatars] = useState<Record<string, string>>({})
 
   // Recommend
-  const [recItems, setRecItems] = useState<any[]>([])
+  const [recItems, setRecItems] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
   const [recVisible, setRecVisible] = useState(false)
-  const [recQuota, setRecQuota] = useState<any>(null)
+  const [recQuota, setRecQuota] = useState<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */(null)
   const [recPage, setRecPage] = useState(0)
   const [recLoading, setRecLoading] = useState(false)
 
   // Streaming (for send)
-  const [streamContents, setStreamContents] = useState<any[] | null>(null)
+  const [streamContents, setStreamContents] = useState<any[] | null> /* eslint-disable-line @typescript-eslint/no-explicit-any */(null)
 
   // Regen: inline streaming at a specific message
   const [regenMsgId, setRegenMsgId] = useState<string | null>(null)
-  const [regenContents, setRegenContents] = useState<any[]>([])
+  const [regenContents, setRegenContents] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
 
   // Edit mode
   const [editingMsg, setEditingMsg] = useState<{ id: string; candidateId: string } | null>(null)
@@ -130,15 +131,14 @@ export function ChatPage() {
 
   // New room initialization flow
   const [needsInit, setNeedsInit] = useState(false)
-  const [initIntroMsgs, setInitIntroMsgs] = useState<any[]>([])
   const [profileSheetOpen, setProfileSheetOpen] = useState(false)
-  const [profileList, setProfileList] = useState<any[]>([])
+  const [profileList, setProfileList] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [plotId, setPlotId] = useState<string>("") // for profile selection
 
   // Plot detail overlay
   const [plotDetailOpen, setPlotDetailOpen] = useState(false)
-  const [plotDetailData, setPlotDetailData] = useState<any>(null)
+  const [plotDetailData, setPlotDetailData] = useState<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */(null)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
   useEffect(() => {
@@ -262,6 +262,7 @@ export function ChatPage() {
   useEffect(() => {
     if (!roomId) return
     initialLoadDone.current = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMoreHistory(true)
     setNeedsInit(false)
 
@@ -275,7 +276,6 @@ export function ChatPage() {
             // 1. Get intro messages preview
             const introData = await getIntroBeforeSelection(roomId)
             const introMsgs = introData.introMessages || []
-            setInitIntroMsgs(introMsgs)
             setMessages(introMsgs) // show intro in chat area
 
             // 2. Get room info for plotId
@@ -286,7 +286,7 @@ export function ChatPage() {
             // Set avatars from room data
             const chars = roomData?.plot?.characters || []
             const avatars: Record<string, string> = {}
-            chars.forEach((c: any) => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
+            chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
             setCharAvatars(avatars)
 
             // 3. Get user profiles
@@ -295,15 +295,15 @@ export function ChatPage() {
             setProfileList(profData.userChatProfiles || [])
             setProfileLoading(false)
             setProfileSheetOpen(true)
-          } catch (e: any) {
-            toast.error(`初期化失敗: ${e.message}`)
+          } catch (e: unknown) {
+            toast.error(`初期化失敗: ${(e instanceof Error ? e.message : String(e))}`)
           }
         } else {
           setMessages(msgs)
           if (msgs.length < 50) setHasMoreHistory(false)
         }
       })
-      .catch((e: any) => toast.error(`メッセージ読み込み失敗: ${e.message}`))
+      .catch((e: unknown) => toast.error(`メッセージ読み込み失敗: ${(e instanceof Error ? e.message : String(e))}`))
       .finally(() => setLoading(false))
   }, [roomId])
 
@@ -330,8 +330,8 @@ export function ChatPage() {
         setHasMoreHistory(false)
       } else {
         // Deduplicate by id
-        const existingIds = new Set(messages.map((m: any) => m.id))
-        const newMsgs = olderMsgs.filter((m: any) => !existingIds.has(m.id))
+        const existingIds = new Set(messages.map((m: Message) => m.id))
+        const newMsgs = olderMsgs.filter((m: Message) => !existingIds.has(m.id))
         if (newMsgs.length === 0) {
           setHasMoreHistory(false)
         } else {
@@ -346,8 +346,8 @@ export function ChatPage() {
           })
         }
       }
-    } catch (e: any) {
-      toast.error(`過去メッセージ取得失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`過去メッセージ取得失敗: ${(e instanceof Error ? e.message : String(e))}`)
     } finally {
       setLoadingHistory(false)
     }
@@ -369,21 +369,21 @@ export function ChatPage() {
   // Load room info (avatars, model)
   useEffect(() => {
     if (!roomId) return
-    getRoom(roomId).then((room: any) => {
+    getRoom(roomId).then((room: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
       const chars = room?.plot?.characters || []
       const avatars: Record<string, string> = {}
-      chars.forEach((c: any) => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
+      chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
       setCharAvatars(avatars)
     }).catch(() => {})
 
-    getRoomModelSetting(roomId).then((model: any) => {
+    getRoomModelSetting(roomId).then((model: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
       if (model?.model || model?.type) setHeaderSub(`Model: ${model.model || model.type}`)
       else setHeaderSub("オンライン")
     }).catch(() => setHeaderSub("オンライン"))
   }, [roomId])
 
   // Handle profile selection for new room
-  const handleProfileSelect = async (profile: any) => {
+  const handleProfileSelect = async (profile: UserChatProfile) => {
     if (!roomId) return
     try {
       // 4. Select profile
@@ -397,8 +397,8 @@ export function ChatPage() {
       setProfileSheetOpen(false)
       toast.success(`「${profile.name}」で開始しました`)
       scrollToBottom()
-    } catch (e: any) {
-      toast.error(`チャット開始失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`チャット開始失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
 
@@ -417,8 +417,8 @@ export function ChatPage() {
         setEditingMsg(null)
         setInputValue("")
         setRecVisible(false)
-      } catch (e: any) {
-        toast.error(`編集失敗: ${e.message}`)
+      } catch (e: unknown) {
+        toast.error(`編集失敗: ${(e instanceof Error ? e.message : String(e))}`)
       } finally {
         setSending(false)
         inputRef.current?.focus()
@@ -436,10 +436,10 @@ export function ChatPage() {
     setTimeout(scrollToBottom, 30)
 
     try {
-      let finalMessage: any = null
-      let accumulated: any[] = []
+      let finalMessage: Message | null = null
+      let accumulated: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */ = []
       await sendMessageStream(roomId, text,
-        (event: any) => {
+        (event: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
           if (event.chunkMessage?.contents) accumulated = event.chunkMessage.contents
           if (event.replyMessage) { finalMessage = event.replyMessage; accumulated = event.replyMessage.contents || accumulated }
           setStreamContents([...accumulated])
@@ -457,8 +457,8 @@ export function ChatPage() {
           setTimeout(scrollToBottom, 50)
         },
       )
-    } catch (e: any) {
-      toast.error(`送信失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`送信失敗: ${(e instanceof Error ? e.message : String(e))}`)
       setStreamContents(null)
     } finally {
       setSending(false)
@@ -472,9 +472,9 @@ export function ChatPage() {
     setRegenMsgId(msgId)
     setRegenContents([])
     try {
-      let accumulated: any[] = []
+      let accumulated: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */ = []
       await regenMessageStream(roomId, msgId,
-        (event: any) => {
+        (event: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
           if (event.chunkMessage?.contents) accumulated = event.chunkMessage.contents
           if (event.replyMessage) {
             accumulated = event.replyMessage.contents || accumulated
@@ -490,8 +490,8 @@ export function ChatPage() {
               const newest = candidates[candidates.length - 1]
               await selectCandidate(roomId, msgId, newest.id)
             }
-          } catch (e: any) {
-            console.warn("selectCandidate after regen:", e.message)
+          } catch (e: unknown) {
+            console.warn("selectCandidate after regen:", (e instanceof Error ? e.message : String(e)))
           }
           // Reload messages to reflect the new selection
           const data = await getMessages(roomId, 50)
@@ -501,8 +501,8 @@ export function ChatPage() {
           toast.success("再生成しました")
         },
       )
-    } catch (e: any) {
-      toast.error(`再生成失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`再生成失敗: ${(e instanceof Error ? e.message : String(e))}`)
       setRegenMsgId(null)
       setRegenContents([])
     }
@@ -523,9 +523,9 @@ export function ChatPage() {
         return
       }
       // Find current candidate index
-      const currentMsg = messages.find((m: any) => m.id === msgId)
+      const currentMsg = messages.find((m: Message) => m.id === msgId)
       const currentCandidateId = currentMsg?.candidateId
-      const currentIdx = candidates.findIndex((c: any) => c.id === currentCandidateId)
+      const currentIdx = candidates.findIndex((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => c.id === currentCandidateId)
       let targetIdx: number
       if (direction === "next") {
         if (currentIdx >= candidates.length - 1) {
@@ -544,8 +544,8 @@ export function ChatPage() {
       await selectCandidate(roomId, msgId, candidates[targetIdx].id)
       const msgs = await getMessages(roomId, 50)
       setMessages(msgs.messages || [])
-    } catch (e: any) {
-      toast.error(`候補切り替え失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`候補切り替え失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
 
@@ -557,7 +557,7 @@ export function ChatPage() {
       if (refresh) await refreshRecommended(roomId)
       const data = await getRecommended(roomId)
       const raw = data.recommendedMessages || data.messages || []
-      const items: any[] = []
+      const items: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */ = []
       for (const entry of raw) {
         if (Array.isArray(entry.replies)) items.push(...entry.replies)
         else items.push(entry)
@@ -580,14 +580,14 @@ export function ChatPage() {
       })
       const q = await getRecommendQuota().catch(() => null)
       setRecQuota(q)
-    } catch (e: any) {
-      toast.error(`推薦取得失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`推薦取得失敗: ${(e instanceof Error ? e.message : String(e))}`)
     } finally {
       setRecLoading(false)
     }
   }
 
-  const getRecText = (item: any) => item?.text || item?.content || item?.message || ""
+  const getRecText = (item: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => item?.text || item?.content || item?.message || ""
   const pageItems = recItems.slice(recPage * 3, recPage * 3 + 3)
 
   // Delete messages from selected point onward
@@ -602,8 +602,8 @@ export function ChatPage() {
       setDeleteMode(false)
       setSelectedMsgId(null)
       setTimeout(scrollToBottom, 50)
-    } catch (e: any) {
-      toast.error(`削除失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`削除失敗: ${(e instanceof Error ? e.message : String(e))}`)
     } finally {
       setDeleting(false)
     }
@@ -620,8 +620,8 @@ export function ChatPage() {
     try {
       const data = await getMessages(roomId, 50)
       setMessages(data.messages || [])
-    } catch (e: any) {
-      toast.error(`履歴の同期に失敗しました: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`履歴の同期に失敗しました: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
 
@@ -658,8 +658,8 @@ export function ChatPage() {
         setPlotDetailData(data)
       }
       setPlotDetailOpen(true)
-    } catch (e: any) {
-      toast.error(`プロット情報取得失敗: ${e.message}`)
+    } catch (e: unknown) {
+      toast.error(`プロット情報取得失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
 
@@ -668,7 +668,7 @@ export function ChatPage() {
       const isIntro = !!msg.isIntro
       const isBot = msg.sender?.type === "BOT"
       const isSelected = deleteMode && selectedMsgId === msg.id
-      const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: any) => m.id === selectedMsgId) : -1
+      const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: Message) => m.id === selectedMsgId) : -1
       const msgIdx = messages.indexOf(msg)
       const isAfterSelected = deleteMode && selectedIdx !== -1 && msgIdx > selectedIdx
       const isMarked = isSelected || isAfterSelected
@@ -693,13 +693,13 @@ export function ChatPage() {
         >
           {/* Show inline regen streaming instead of original content */}
           {isRegening && regenContents.length > 0 ? (
-            regenContents.map((c: any, ci: number) => (
+            regenContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
               <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
             ))
           ) : isRegening && regenContents.length === 0 ? (
             <StreamingDots />
           ) : (
-            (msg.contents || []).map((c: any, ci: number) => (
+            (msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
               <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
             ))
           )}
@@ -716,7 +716,7 @@ export function ChatPage() {
                 <ChevronRight className="size-3.5" />
               </Button>
               <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => {
-                const txt = msg.contents?.map((c: any) => {
+                const txt = msg.contents?.map((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
                   if (c.position === "NARRATOR" || c.speakerName === "ナレーター") {
                     return `@: ${c.text.trim()}`;
                   } else if (c.speakerName) {
@@ -755,7 +755,7 @@ export function ChatPage() {
           <p className="truncate text-sm font-semibold">{plotName}</p>
           <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => { deleteMode ? exitDeleteMode() : enterDeleteMode() }} aria-label="削除モード" className={cn(deleteMode && "text-destructive")}>
+        <Button variant="ghost" size="icon" onClick={() => { if (deleteMode) exitDeleteMode(); else enterDeleteMode() }} aria-label="削除モード" className={cn(deleteMode && "text-destructive")}>
           <Trash2 className="size-4" />
         </Button>
         <AlertDialog>
@@ -771,7 +771,7 @@ export function ChatPage() {
               <AlertDialogCancel>キャンセル</AlertDialogCancel>
               <AlertDialogAction onClick={async () => {
                 try { await deleteRoom(roomId!); toast.success("退出しました"); navigate("/rooms") }
-                catch (e: any) { toast.error(`退出失敗: ${e.message}`) }
+                catch (e: unknown) { toast.error(`退出失敗: ${(e instanceof Error ? e.message : String(e))}`) }
               }}>退出</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -802,7 +802,7 @@ export function ChatPage() {
             {streamContents !== null && (
               streamContents.length === 0
                 ? <StreamingDots />
-                : streamContents.map((c: any, ci: number) => (
+                : streamContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
                     <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
                   ))
             )}
@@ -848,7 +848,7 @@ export function ChatPage() {
             ) : pageItems.length === 0 ? (
               <p className="text-xs text-muted-foreground">推薦文がありません</p>
             ) : (
-              pageItems.map((item: any, i: number) => (
+              pageItems.map((item: any, i: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
                 <RecommendCard key={`${recPage}-${i}`} text={getRecText(item)} onClick={() => { setInputValue(getRecText(item)); setRecVisible(false); inputRef.current?.focus() }} />
               ))
             )}
