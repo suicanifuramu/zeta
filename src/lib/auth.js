@@ -69,8 +69,8 @@ async function saveLocalAuth() {
   });
 }
 
-export async function loadLocalAuth() {
-  if (localAuthLoaded) return;
+export async function loadLocalAuth(force = false) {
+  if (localAuthLoaded && !force) return;
 
   // Initial load from localStorage for immediate availability
   savedDeviceId = localStorage.getItem(DEVICE_ID_KEY) || '';
@@ -85,7 +85,7 @@ export async function loadLocalAuth() {
       if (data.deviceId) savedDeviceId = data.deviceId;
       if (data.refreshToken) savedRefreshToken = data.refreshToken;
       
-      if (data.accessToken && !accessToken) {
+      if (data.accessToken && data.accessToken !== accessToken) {
         accessToken = data.accessToken;
         sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
       }
@@ -130,7 +130,11 @@ function clearRefreshTimer() {
 export function decodeJwt(token) {
   try {
     const payload = normalizeBearerToken(token).split('.')[1];
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) {
+      base64 += '='.repeat(4 - pad);
+    }
     const json = decodeURIComponent(
       atob(base64).split('').map(c => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`).join('')
     );
@@ -208,7 +212,17 @@ export function getAuthState() {
 }
 
 export async function refreshSession() {
-  await loadLocalAuth();
+  await loadLocalAuth(true);
+
+  // If the token we just loaded is already fresh (expires in > 10 mins), 
+  // don't perform network refresh as another process already did it.
+  if (accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
+    console.log('[Auth] Token was already refreshed by another process');
+    scheduleRefresh();
+    window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
+    return accessToken;
+  }
+
   const refreshToken = savedRefreshToken;
   if (!refreshToken) throw new Error('Refresh Token is not set');
 

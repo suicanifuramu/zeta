@@ -45,7 +45,8 @@ function startBackgroundRefresh() {
       // Decode JWT to check expiry
       const parts = String(accessToken).split('.');
       if (parts.length !== 3) return;
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
       const expiry = payload.exp ? payload.exp * 1000 : 0;
       
       // Refresh if expiring within 10 minutes
