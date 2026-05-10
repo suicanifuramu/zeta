@@ -111,7 +111,7 @@ app.use('/api', createProxyMiddleware({
 app.use(express.static(path.resolve(__dirname, 'dist')));
 
 // Fallback to index.html for SPA
-app.get('*', (req, res) => {
+app.get('(.*)', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
 });
 
