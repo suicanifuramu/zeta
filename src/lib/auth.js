@@ -78,7 +78,7 @@ export async function loadLocalAuth(force = false) {
 
   try {
     // Sync with server-side storage (Node.js server or Vite middleware)
-    const res = await fetch(LOCAL_AUTH_ENDPOINT, { headers: { Accept: 'application/json' } });
+    const res = await fetch(`${LOCAL_AUTH_ENDPOINT}?t=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       // Server data takes precedence if available
@@ -217,7 +217,16 @@ export async function refreshSession(forceNetwork = false) {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     try {
+      const oldToken = accessToken;
       await loadLocalAuth(true);
+
+      // If the token was updated by loadLocalAuth and is fresh, skip network refresh even if forced
+      if (accessToken !== oldToken && accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
+        console.log('[Auth] Token was updated from local auth');
+        scheduleRefresh();
+        window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
+        return accessToken;
+      }
 
       // If we don't force network refresh, and the token we just loaded is already fresh (expires in > 10 mins), 
       // don't perform network refresh as another process already did it.

@@ -868,9 +868,9 @@ export function ChatPage() {
       </header>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="min-h-0 flex-1 px-4 py-3">
+      <ScrollArea ref={scrollRef} className="min-h-0 flex-1">
         {loading ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 px-4 py-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className={cn("flex gap-2", i % 2 === 1 ? "flex-row-reverse" : "")}>
                 <Skeleton className="size-8 rounded-full" />
@@ -879,7 +879,7 @@ export function ChatPage() {
             ))}
           </div>
         ) : (
-          <div aria-live="polite">
+          <div aria-live="polite" className="px-4 py-3">
             {/* Top sentinel for loading older messages */}
             <div ref={topSentinelRef} className="flex justify-center py-2">
               {loadingHistory && <Spinner className="size-5" />}
