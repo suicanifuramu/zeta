@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil } from "lucide-react"
+import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -129,6 +129,9 @@ export function ChatPage() {
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Scroll to bottom
+  const [showScrollBottom, setShowScrollBottom] = useState(false)
+
   // New room initialization flow
   const [needsInit, setNeedsInit] = useState(false)
   const [profileSheetOpen, setProfileSheetOpen] = useState(false)
@@ -193,6 +196,7 @@ export function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
+  const touchStartRef = useRef<{ x: number, y: number } | null>(null)
 
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -207,6 +211,29 @@ export function ChatPage() {
     if (!el) return null
     return el.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement | null
   }, [])
+
+  // Track scroll position to show/hide scroll-to-bottom button
+  useEffect(() => {
+    const viewport = getViewport()
+    if (!viewport) return
+
+    const handleScroll = () => {
+      const isNearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 150
+      setShowScrollBottom(!isNearBottom)
+    }
+
+    viewport.addEventListener("scroll", handleScroll, { passive: true })
+    const resizeObserver = new ResizeObserver(() => handleScroll())
+    if (viewport.firstElementChild) {
+      resizeObserver.observe(viewport.firstElementChild)
+    }
+    handleScroll()
+
+    return () => {
+      viewport.removeEventListener("scroll", handleScroll)
+      resizeObserver.disconnect()
+    }
+  }, [getViewport])
 
   const scrollToBottom = useCallback(() => {
     const doScroll = () => {
@@ -239,13 +266,15 @@ export function ChatPage() {
     if (!window.visualViewport) return
     let prevVpHeight = window.visualViewport.height
     const updateViewportHeight = () => {
-      if (containerRef.current) {
-        const newHeight = window.visualViewport!.height
+      if (containerRef.current && window.visualViewport) {
+        const newHeight = window.visualViewport.height
+        const offsetTop = window.visualViewport.offsetTop
+        
         containerRef.current.style.height = `${newHeight}px`
+        containerRef.current.style.transform = `translateY(${offsetTop}px)`
         
         // If height changed (e.g. keyboard appeared), ensure we scroll to bottom
         if (prevVpHeight !== newHeight) {
-          window.scrollTo(0, 0) // Force window to stay at top to avoid browser auto-scroll offset
           scrollToBottom()
         }
         prevVpHeight = newHeight
@@ -253,8 +282,10 @@ export function ChatPage() {
     }
     updateViewportHeight()
     window.visualViewport.addEventListener("resize", updateViewportHeight)
+    window.visualViewport.addEventListener("scroll", updateViewportHeight)
     return () => {
       window.visualViewport?.removeEventListener("resize", updateViewportHeight)
+      window.visualViewport?.removeEventListener("scroll", updateViewportHeight)
     }
   }, [scrollToBottom])
 
@@ -417,6 +448,8 @@ export function ChatPage() {
         setEditingMsg(null)
         setInputValue("")
         setRecVisible(false)
+        setRecPage(0)
+        setTimeout(scrollToBottom, 50)
       } catch (e: unknown) {
         toast.error(`編集失敗: ${(e instanceof Error ? e.message : String(e))}`)
       } finally {
@@ -428,6 +461,7 @@ export function ChatPage() {
 
     setInputValue("")
     setRecVisible(false)
+    setRecPage(0)
 
     // Optimistic user message
     const tempUserMsg = { id: `temp-user-${Date.now()}`, sender: { type: "USER" }, contents: [{ position: "RIGHT", text }] }
@@ -454,6 +488,7 @@ export function ChatPage() {
             setMessages(data.messages || [])
           }
           setRecItems([])
+          setRecPage(0)
           setTimeout(scrollToBottom, 50)
         },
       )
@@ -499,6 +534,7 @@ export function ChatPage() {
           setRegenMsgId(null)
           setRegenContents([])
           toast.success("再生成しました")
+          setTimeout(scrollToBottom, 50)
         },
       )
     } catch (e: unknown) {
@@ -544,6 +580,7 @@ export function ChatPage() {
       await selectCandidate(roomId, msgId, candidates[targetIdx].id)
       const msgs = await getMessages(roomId, 50)
       setMessages(msgs.messages || [])
+      setTimeout(scrollToBottom, 50)
     } catch (e: unknown) {
       toast.error(`候補切り替え失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
@@ -681,10 +718,25 @@ export function ChatPage() {
       return (
         <div
           key={msg.id}
+          onTouchStart={(e) => {
+            if (!deleteMode && isBot && !isIntro) {
+              touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (!deleteMode && isBot && !isIntro && touchStartRef.current) {
+              const diffX = e.changedTouches[0].clientX - touchStartRef.current.x
+              const diffY = e.changedTouches[0].clientY - touchStartRef.current.y
+              if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+                handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+              }
+              touchStartRef.current = null
+            }
+          }}
           className={cn(
             deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors",
             deleteMode && isIntro && "px-2 py-1 -mx-2 opacity-40 cursor-not-allowed",
-            isMarked && "bg-destructive/20",
+            isMarked && "bg-destructive/20 ring-2 ring-destructive ring-inset",
             isMarked && !prevIsMarked && "rounded-t-lg",
             isMarked && !nextIsMarked && "rounded-b-lg",
             deleteMode && !isMarked && !isIntro && "rounded-lg hover:bg-destructive/10",
@@ -809,6 +861,21 @@ export function ChatPage() {
           </div>
         )}
       </ScrollArea>
+
+      {/* Scroll to bottom button */}
+      <div className="relative w-full h-0 pointer-events-none">
+        {showScrollBottom && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-4 right-4 z-30 rounded-full shadow-md border border-border opacity-90 hover:opacity-100 pointer-events-auto animate-in fade-in zoom-in duration-200"
+            onClick={scrollToBottom}
+            aria-label="最下部へ"
+          >
+            <ArrowDown className="size-5" />
+          </Button>
+        )}
+      </div>
 
       {/* Delete mode floating action sheet */}
       {deleteMode && (

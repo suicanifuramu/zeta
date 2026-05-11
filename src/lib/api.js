@@ -17,7 +17,7 @@ async function request(path, options = {}, retry = true) {
   });
 
   if (res.status === 401 && retry) {
-    await refreshSession();
+    await refreshSession(true);
     return request(path, options, false);
   }
 
@@ -169,7 +169,7 @@ export function getMessagesByCursor(roomId, cursor, limit = 30) {
 }
 
 // Send message (SSE stream)
-export async function sendMessageStream(roomId, text, onEvent, onDone) {
+export async function sendMessageStream(roomId, text, onEvent, onDone, retry = true) {
   await ensureAccessToken();
   const res = await fetch(`${BASE}/v1/rooms/${roomId}/messages/stream`, {
     method: 'POST',
@@ -181,12 +181,17 @@ export async function sendMessageStream(roomId, text, onEvent, onDone) {
     body: JSON.stringify({ type: 'TEXT', text })
   });
 
+  if (res.status === 401 && retry) {
+    await refreshSession(true);
+    return sendMessageStream(roomId, text, onEvent, onDone, false);
+  }
+
   if (!res.ok) throw new Error(`Send failed: ${res.status}`);
   await readSSE(res, onEvent, onDone);
 }
 
 // Regen (SSE stream)
-export async function regenMessageStream(roomId, messageId, onEvent, onDone) {
+export async function regenMessageStream(roomId, messageId, onEvent, onDone, retry = true) {
   await ensureAccessToken();
   const res = await fetch(`${BASE}/v1/rooms/${roomId}/messages/${messageId}/candidates/stream`, {
     method: 'POST',
@@ -196,6 +201,11 @@ export async function regenMessageStream(roomId, messageId, onEvent, onDone) {
       'Content-Type': 'application/json'
     }
   });
+
+  if (res.status === 401 && retry) {
+    await refreshSession(true);
+    return regenMessageStream(roomId, messageId, onEvent, onDone, false);
+  }
 
   if (!res.ok) throw new Error(`Regen failed: ${res.status}`);
   await readSSE(res, onEvent, onDone);

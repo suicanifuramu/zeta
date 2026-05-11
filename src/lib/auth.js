@@ -211,39 +211,52 @@ export function getAuthState() {
   };
 }
 
-export async function refreshSession() {
-  await loadLocalAuth(true);
+let refreshPromise = null;
 
-  // If the token we just loaded is already fresh (expires in > 10 mins), 
-  // don't perform network refresh as another process already did it.
-  if (accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
-    console.log('[Auth] Token was already refreshed by another process');
-    scheduleRefresh();
-    window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
-    return accessToken;
-  }
+export async function refreshSession(forceNetwork = false) {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      await loadLocalAuth(true);
 
-  const refreshToken = savedRefreshToken;
-  if (!refreshToken) throw new Error('Refresh Token is not set');
+      // If we don't force network refresh, and the token we just loaded is already fresh (expires in > 10 mins), 
+      // don't perform network refresh as another process already did it.
+      if (!forceNetwork && accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
+        console.log('[Auth] Token was already refreshed by another process');
+        scheduleRefresh();
+        window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
+        return accessToken;
+      }
 
-  const res = await fetch('/api/v1/auth/tokens', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ deviceId: getDeviceId(), type: 'refresh', refreshToken })
-  });
+      const refreshToken = savedRefreshToken;
+      if (!refreshToken) throw new Error('Refresh Token is not set');
 
-  if (!res.ok) {
-    throw new Error(`Session refresh failed (${res.status})`);
-  }
+      const res = await fetch('/api/v1/auth/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), type: 'refresh', refreshToken })
+      });
 
-  const data = await res.json();
-  if (!data.accessToken) throw new Error('accessToken is missing in response');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          clearSession(); // Logout if refresh fails with 401/403
+        }
+        throw new Error(`Session refresh failed (${res.status})`);
+      }
 
-  storeAccessToken(data.accessToken);
-  if (data.refreshToken) storeRefreshToken(data.refreshToken);
-  scheduleRefresh();
-  window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
-  return accessToken;
+      const data = await res.json();
+      if (!data.accessToken) throw new Error('accessToken is missing in response');
+
+      storeAccessToken(data.accessToken);
+      if (data.refreshToken) storeRefreshToken(data.refreshToken);
+      scheduleRefresh();
+      window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
+      return accessToken;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 export async function ensureAccessToken() {
