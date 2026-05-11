@@ -196,7 +196,8 @@ export function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
-  const touchStartRef = useRef<{ x: number, y: number } | null>(null)
+  const touchStateRef = useRef<{ x: number, y: number, isScrolling: boolean, isSwiping: boolean } | null>(null)
+  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | null }>({ id: "", direction: null })
 
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -614,6 +615,7 @@ export function ChatPage() {
         }
         targetIdx = currentIdx - 1
       }
+      lastSwipeDirectionRef.current = { id: msgId, direction }
       await selectCandidate(roomId, msgId, candidates[targetIdx].id)
       const msgs = await getMessages(roomId, 50)
       setMessages(msgs.messages || [])
@@ -755,19 +757,42 @@ export function ChatPage() {
       return (
         <div
           key={msg.id}
+          style={{ touchAction: 'pan-y' }}
           onTouchStart={(e) => {
             if (!deleteMode && isBot && !isIntro) {
-              touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+              touchStateRef.current = { 
+                x: e.touches[0].clientX, 
+                y: e.touches[0].clientY, 
+                isScrolling: false, 
+                isSwiping: false 
+              }
+            }
+          }}
+          onTouchMove={(e) => {
+            if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
+              const state = touchStateRef.current
+              const diffX = e.touches[0].clientX - state.x
+              const diffY = e.touches[0].clientY - state.y
+              
+              if (!state.isSwiping && !state.isScrolling) {
+                if (Math.abs(diffY) > 10) {
+                  state.isScrolling = true
+                } else if (Math.abs(diffX) > 10) {
+                  state.isSwiping = true
+                }
+              }
             }
           }}
           onTouchEnd={(e) => {
-            if (!deleteMode && isBot && !isIntro && touchStartRef.current) {
-              const diffX = e.changedTouches[0].clientX - touchStartRef.current.x
-              const diffY = e.changedTouches[0].clientY - touchStartRef.current.y
-              if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-                handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+            if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
+              const state = touchStateRef.current
+              if (state.isSwiping && !state.isScrolling) {
+                const diffX = e.changedTouches[0].clientX - state.x
+                if (Math.abs(diffX) > 50) {
+                  handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+                }
               }
-              touchStartRef.current = null
+              touchStateRef.current = null
             }
           }}
           className={cn(
@@ -788,9 +813,18 @@ export function ChatPage() {
           ) : isRegening && regenContents.length === 0 ? (
             <StreamingDots />
           ) : (
-            (msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
-              <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
-            ))
+            <div 
+              key={`${msg.id}-${msg.candidateId || 0}`}
+              className={cn(
+                "animate-in fade-in zoom-in-95 duration-300",
+                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "next" && "slide-in-from-right-8",
+                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "prev" && "slide-in-from-left-8"
+              )}
+            >
+              {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
+                <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
+              ))}
+            </div>
           )}
           {/* BOT message controls: regen + candidate nav + edit */}
           {!deleteMode && isBot && !isIntro && !isRegening && (
