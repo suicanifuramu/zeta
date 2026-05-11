@@ -619,6 +619,13 @@ export function ChatPage() {
       await selectCandidate(roomId, msgId, candidates[targetIdx].id)
       const msgs = await getMessages(roomId, 50)
       setMessages(msgs.messages || [])
+      
+      const el = document.getElementById(`msg-swipe-${msgId}`)
+      if (el) {
+        el.style.transition = 'none'
+        el.style.transform = 'translateX(0px)'
+      }
+      
       setTimeout(scrollToBottom, 50)
     } catch (e: unknown) {
       toast.error(`候補切り替え失敗: ${(e instanceof Error ? e.message : String(e))}`)
@@ -757,9 +764,12 @@ export function ChatPage() {
       return (
         <div
           key={msg.id}
+          id={`msg-swipe-${msg.id}`}
           style={{ touchAction: 'pan-y' }}
           onTouchStart={(e) => {
             if (!deleteMode && isBot && !isIntro) {
+              const el = document.getElementById(`msg-swipe-${msg.id}`)
+              if (el) el.style.transition = 'none'
               touchStateRef.current = { 
                 x: e.touches[0].clientX, 
                 y: e.touches[0].clientY, 
@@ -781,15 +791,38 @@ export function ChatPage() {
                   state.isSwiping = true
                 }
               }
+
+              if (state.isSwiping) {
+                const el = document.getElementById(`msg-swipe-${msg.id}`)
+                if (el) {
+                  const moveX = diffX * 0.8 // Dampen slightly
+                  el.style.transform = `translateX(${moveX}px)`
+                }
+              }
             }
           }}
           onTouchEnd={(e) => {
             if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
               const state = touchStateRef.current
+              const el = document.getElementById(`msg-swipe-${msg.id}`)
               if (state.isSwiping && !state.isScrolling) {
                 const diffX = e.changedTouches[0].clientX - state.x
                 if (Math.abs(diffX) > 50) {
+                  if (el) {
+                     el.style.transition = 'transform 0.2s ease-out'
+                     el.style.transform = `translateX(${diffX > 0 ? 100 : -100}px)`
+                  }
                   handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+                } else {
+                  if (el) {
+                     el.style.transition = 'transform 0.2s ease-out'
+                     el.style.transform = 'translateX(0px)'
+                  }
+                }
+              } else {
+                if (el) {
+                   el.style.transition = 'transform 0.2s ease-out'
+                   el.style.transform = 'translateX(0px)'
                 }
               }
               touchStateRef.current = null
@@ -797,6 +830,11 @@ export function ChatPage() {
           }}
           onTouchCancel={() => {
             if (touchStateRef.current) touchStateRef.current = null
+            const el = document.getElementById(`msg-swipe-${msg.id}`)
+            if (el) {
+               el.style.transition = 'transform 0.2s ease-out'
+               el.style.transform = 'translateX(0px)'
+            }
           }}
           className={cn(
             deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors border-2",
