@@ -247,6 +247,43 @@ export function ChatPage() {
     })
   }, [getViewport])
 
+  const smoothScrollToBottom = useCallback(() => {
+    const viewport = getViewport()
+    if (!viewport) return
+
+    const start = viewport.scrollTop
+    const end = viewport.scrollHeight - viewport.clientHeight
+    const distance = end - start
+    
+    if (distance <= 0) return
+
+    // Dynamic duration based on distance (min 200ms, max 500ms)
+    const duration = Math.min(200 + (distance / 1000) * 100, 500)
+    const startTime = performance.now()
+
+    // easeOutExpo for a fast initial speed and smooth deceleration
+    const easeOutExpo = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
+
+    const animateScroll = (currentTime: number) => {
+      // Re-calculate end in case height changed during animation
+      const currentEnd = viewport.scrollHeight - viewport.clientHeight
+      const currentDistance = currentEnd - start
+      
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      
+      viewport.scrollTop = start + currentDistance * easeOutExpo(progress)
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll)
+      } else {
+        // Ensure it strictly hits the bottom
+        viewport.scrollTop = viewport.scrollHeight
+      }
+    }
+    requestAnimationFrame(animateScroll)
+  }, [getViewport])
+
   // Auto-resize textarea
   useEffect(() => {
     if (inputRef.current) {
@@ -734,12 +771,12 @@ export function ChatPage() {
             }
           }}
           className={cn(
-            deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors",
+            deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors border-2",
             deleteMode && isIntro && "px-2 py-1 -mx-2 opacity-40 cursor-not-allowed",
-            isMarked && "bg-destructive/20 ring-2 ring-destructive ring-inset",
-            isMarked && !prevIsMarked && "rounded-t-lg",
-            isMarked && !nextIsMarked && "rounded-b-lg",
-            deleteMode && !isMarked && !isIntro && "rounded-lg hover:bg-destructive/10",
+            deleteMode && !isMarked && !isIntro && "border-transparent rounded-lg hover:bg-destructive/10",
+            isMarked && "bg-destructive/20 border-l-destructive border-r-destructive",
+            isMarked && (prevIsMarked ? "border-t-transparent" : "rounded-t-lg border-t-destructive"),
+            isMarked && (nextIsMarked ? "border-b-transparent" : "rounded-b-lg border-b-destructive"),
           )}
           onClick={() => { if (deleteMode && !isIntro) setSelectedMsgId(msg.id) }}
         >
@@ -869,7 +906,7 @@ export function ChatPage() {
             variant="secondary"
             size="icon"
             className="absolute bottom-4 right-4 z-30 rounded-full shadow-md border border-border opacity-90 hover:opacity-100 pointer-events-auto animate-in fade-in zoom-in duration-200"
-            onClick={scrollToBottom}
+            onClick={smoothScrollToBottom}
             aria-label="最下部へ"
           >
             <ArrowDown className="size-5" />
