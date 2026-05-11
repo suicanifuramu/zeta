@@ -197,7 +197,7 @@ export function ChatPage() {
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
   const touchStateRef = useRef<{ x: number, y: number, isScrolling: boolean, isSwiping: boolean } | null>(null)
-  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | null }>({ id: "", direction: null })
+  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | null, key: number }>({ id: "", direction: null, key: 0 })
 
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -615,7 +615,7 @@ export function ChatPage() {
         }
         targetIdx = currentIdx - 1
       }
-      lastSwipeDirectionRef.current = { id: msgId, direction }
+      lastSwipeDirectionRef.current = { id: msgId, direction, key: Date.now() }
       await selectCandidate(roomId, msgId, candidates[targetIdx].id)
       const msgs = await getMessages(roomId, 50)
       setMessages(msgs.messages || [])
@@ -795,6 +795,9 @@ export function ChatPage() {
               touchStateRef.current = null
             }
           }}
+          onTouchCancel={() => {
+            if (touchStateRef.current) touchStateRef.current = null
+          }}
           className={cn(
             deleteMode && !isIntro && "cursor-pointer px-2 py-1 -mx-2 transition-colors border-2",
             deleteMode && isIntro && "px-2 py-1 -mx-2 opacity-40 cursor-not-allowed",
@@ -814,9 +817,9 @@ export function ChatPage() {
             <StreamingDots />
           ) : (
             <div 
-              key={`${msg.id}-${msg.candidateId || 0}`}
+              key={`${msg.id}-${lastSwipeDirectionRef.current.id === msg.id ? lastSwipeDirectionRef.current.key : (msg.candidateId || 0)}`}
               className={cn(
-                "animate-in fade-in zoom-in-95 duration-300",
+                "animate-in fade-in duration-300",
                 lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "next" && "slide-in-from-right-8",
                 lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "prev" && "slide-in-from-left-8"
               )}
