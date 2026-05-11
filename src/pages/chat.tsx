@@ -197,7 +197,7 @@ export function ChatPage() {
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
   const touchStateRef = useRef<{ x: number, y: number, isScrolling: boolean, isSwiping: boolean } | null>(null)
-  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | null, key: number }>({ id: "", direction: null, key: 0 })
+  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | "regen" | null, key: number }>({ id: "", direction: null, key: 0 })
 
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -542,6 +542,7 @@ export function ChatPage() {
   // Regen: generate a new candidate via SSE, shown inline at the message position
   const handleRegen = async (msgId: string) => {
     if (!roomId) return
+    lastSwipeDirectionRef.current = { id: msgId, direction: "regen", key: Date.now() }
     setRegenMsgId(msgId)
     setRegenContents([])
     try {
@@ -583,18 +584,19 @@ export function ChatPage() {
   }
 
   // Switch candidate on an existing message
-  const handleSwitchCandidate = async (msgId: string, direction: "prev" | "next") => {
-    if (!roomId) return
+  const handleSwitchCandidate = async (msgId: string, direction: "prev" | "next"): Promise<boolean> => {
+    if (!roomId) return false
     try {
       const data = await getCandidates(roomId, msgId)
       const candidates = data.candidates || []
       if (candidates.length <= 1) {
         if (direction === "next") {
           handleRegen(msgId)
+          return true
         } else {
           toast.info("候補がありません")
+          return false
         }
-        return
       }
       // Find current candidate index
       const currentMsg = messages.find((m: Message) => m.id === msgId)
@@ -605,13 +607,13 @@ export function ChatPage() {
         if (currentIdx >= candidates.length - 1) {
           // At the last candidate, regen a new one
           handleRegen(msgId)
-          return
+          return true
         }
         targetIdx = currentIdx + 1
       } else {
         if (currentIdx <= 0) {
           toast.info("最初の候補です")
-          return
+          return false
         }
         targetIdx = currentIdx - 1
       }
@@ -627,8 +629,10 @@ export function ChatPage() {
       }
       
       setTimeout(scrollToBottom, 50)
+      return true
     } catch (e: unknown) {
       toast.error(`候補切り替え失敗: ${(e instanceof Error ? e.message : String(e))}`)
+      return false
     }
   }
 
@@ -795,13 +799,12 @@ export function ChatPage() {
               if (state.isSwiping) {
                 const el = document.getElementById(`msg-swipe-${msg.id}`)
                 if (el) {
-                  const moveX = diffX * 0.8 // Dampen slightly
-                  el.style.transform = `translateX(${moveX}px)`
+                  el.style.transform = `translateX(${diffX}px)`
                 }
               }
             }
           }}
-          onTouchEnd={(e) => {
+          onTouchEnd={async (e) => {
             if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
               const state = touchStateRef.current
               const el = document.getElementById(`msg-swipe-${msg.id}`)
@@ -809,10 +812,14 @@ export function ChatPage() {
                 const diffX = e.changedTouches[0].clientX - state.x
                 if (Math.abs(diffX) > 50) {
                   if (el) {
-                     el.style.transition = 'transform 0.2s ease-out'
-                     el.style.transform = `translateX(${diffX > 0 ? 100 : -100}px)`
+                     el.style.transition = 'transform 0.3s ease-out'
+                     el.style.transform = `translateX(${diffX > 0 ? 100 : -100}vw)`
                   }
-                  handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+                  const success = await handleSwitchCandidate(msg.id, diffX > 0 ? "prev" : "next")
+                  if (!success && el) {
+                     el.style.transition = 'transform 0.3s ease-out'
+                     el.style.transform = 'translateX(0px)'
+                  }
                 } else {
                   if (el) {
                      el.style.transition = 'transform 0.2s ease-out'
@@ -857,9 +864,10 @@ export function ChatPage() {
             <div 
               key={`${msg.id}-${lastSwipeDirectionRef.current.id === msg.id ? lastSwipeDirectionRef.current.key : (msg.candidateId || 0)}`}
               className={cn(
-                "animate-in fade-in duration-300",
-                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "next" && "slide-in-from-right-8",
-                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "prev" && "slide-in-from-left-8"
+                "animate-in duration-300",
+                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "next" ? "slide-in-from-right-full fade-in" : "",
+                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "prev" ? "slide-in-from-left-full fade-in" : "",
+                (lastSwipeDirectionRef.current.id !== msg.id || lastSwipeDirectionRef.current.direction === "regen") ? "zoom-in-95 fade-in" : ""
               )}
             >
               {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
