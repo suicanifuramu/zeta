@@ -1,13 +1,24 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
-import { useEffect } from "react"
+import { Suspense, lazy, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/layout/app-shell"
-import { HomePage } from "@/pages/home"
-import { RankingPage } from "@/pages/ranking"
-import { RoomsPage } from "@/pages/rooms"
-import { ChatPage } from "@/pages/chat"
-import { SettingsPage } from "@/pages/settings"
 import { Spinner } from "@/components/ui/spinner"
+
+// Lazy-loaded pages for route-based code splitting
+const HomePage = lazy(() => import("@/pages/home").then((m) => ({ default: m.HomePage })))
+const RankingPage = lazy(() => import("@/pages/ranking").then((m) => ({ default: m.RankingPage })))
+const RoomsPage = lazy(() => import("@/pages/rooms").then((m) => ({ default: m.RoomsPage })))
+const ChatPage = lazy(() => import("@/pages/chat").then((m) => ({ default: m.ChatPage })))
+const SettingsPage = lazy(() => import("@/pages/settings").then((m) => ({ default: m.SettingsPage })))
+
+function PageSpinner() {
+  return (
+    <div className="flex min-h-[50dvh] items-center justify-center">
+      <Spinner className="size-6" />
+    </div>
+  )
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -33,16 +44,18 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
-      <Routes>
-      <Route element={<AppShell />}>
-        <Route index element={<HomePage />} />
-        <Route path="ranking" element={<RankingPage />} />
-        <Route path="rooms" element={<RoomsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="chat/:roomId" element={<ChatPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      <Suspense fallback={<PageSpinner />}>
+        <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<HomePage />} />
+          <Route path="ranking" element={<RankingPage />} />
+          <Route path="rooms" element={<RoomsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="chat/:roomId" element={<ChatPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      </Suspense>
     </>
   )
 }
