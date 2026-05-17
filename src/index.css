@@ -119,9 +119,10 @@
 
 /* ===== Custom Utilities ===== */
 .glass {
-  background: oklch(0.12 0.02 275 / 85%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: oklch(0.12 0.02 275 / 90%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform;
 }
 .glow-sm { box-shadow: 0 0 15px oklch(0.65 0.25 290 / 15%); }
 .glow-md { box-shadow: 0 0 25px oklch(0.65 0.25 290 / 20%); }

@@ -120,6 +120,10 @@ export function ChatPage() {
   // Regen: inline streaming at a specific message
   const [regenMsgId, setRegenMsgId] = useState<string | null>(null)
   const [regenContents, setRegenContents] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
+  const prevRegenMsgIdRef = useRef<string | null>(null)
+
+  // Candidates cache: msgId -> { candidates, currentIdx }
+  const [candidatesCache, setCandidatesCache] = useState<Record<string, { candidates: any[]; currentIdx: number }>> /* eslint-disable-line @typescript-eslint/no-explicit-any */({})
 
   // Edit mode
   const [editingMsg, setEditingMsg] = useState<{ id: string; candidateId: string } | null>(null)
@@ -384,6 +388,14 @@ export function ChatPage() {
     }
   }, [loading, messages, scrollToBottom])
 
+  // Auto-scroll to bottom when regen completes (regenMsgId transitions from non-null to null)
+  useEffect(() => {
+    if (prevRegenMsgIdRef.current !== null && regenMsgId === null) {
+      scrollToBottom()
+    }
+    prevRegenMsgIdRef.current = regenMsgId
+  }, [regenMsgId, scrollToBottom])
+
   // Load older messages (upward scroll)
   const loadOlderMessages = useCallback(async () => {
     if (!roomId || loadingHistory || !hasMoreHistory || messages.length === 0) return
@@ -539,6 +551,27 @@ export function ChatPage() {
     }
   }
 
+  // Ensure candidates are cached for a message (lazy-load on first interaction)
+  const ensureCandidatesCached = useCallback(async (msgId: string): Promise<{ candidates: any[]; currentIdx: number } | null> => {
+    // Return from cache if available
+    const cached = candidatesCache[msgId]
+    if (cached) return cached
+    if (!roomId) return null
+    try {
+      const data = await getCandidates(roomId, msgId)
+      const candidates = data.candidates || []
+      const currentMsg = messages.find((m: any) => m.id === msgId) /* eslint-disable-line @typescript-eslint/no-explicit-any */
+      const currentCandidateId = currentMsg?.candidateId
+      const currentIdx = candidates.findIndex((c: any) => c.id === currentCandidateId) /* eslint-disable-line @typescript-eslint/no-explicit-any */
+      const entry = { candidates, currentIdx: currentIdx >= 0 ? currentIdx : candidates.length - 1 }
+      setCandidatesCache((prev) => ({ ...prev, [msgId]: entry }))
+      return entry
+    } catch (e: unknown) {
+      console.warn("ensureCandidatesCached:", (e instanceof Error ? e.message : String(e)))
+      return null
+    }
+  }, [roomId, candidatesCache, messages])
+
   // Regen: generate a new candidate via SSE, shown inline at the message position
   const handleRegen = async (msgId: string) => {
     if (!roomId) return
@@ -560,20 +593,34 @@ export function ChatPage() {
           try {
             const candData = await getCandidates(roomId, msgId)
             const candidates = candData.candidates || []
+            const newestIdx = candidates.length - 1
             if (candidates.length > 0) {
-              const newest = candidates[candidates.length - 1]
+              const newest = candidates[newestIdx]
               await selectCandidate(roomId, msgId, newest.id)
+              // Update cache with fresh data
+              setCandidatesCache((prev) => ({ ...prev, [msgId]: { candidates, currentIdx: newestIdx } }))
+              // Optimistic local update: apply newest candidate contents to the message
+              const newestContents = newest.contents || newest.content
+              if (newestContents) {
+                setMessages((prev) => prev.map((m) =>
+                  m.id === msgId ? { ...m, contents: Array.isArray(newestContents) ? newestContents : [newestContents], candidateId: newest.id } : m
+                ))
+              } else {
+                // Fallback: use streamed content
+                setMessages((prev) => prev.map((m) =>
+                  m.id === msgId ? { ...m, contents: accumulated, candidateId: newest.id } : m
+                ))
+              }
             }
           } catch (e: unknown) {
             console.warn("selectCandidate after regen:", (e instanceof Error ? e.message : String(e)))
+            // Fallback: reload all messages
+            const data = await getMessages(roomId, 50)
+            setMessages(data.messages || [])
           }
-          // Reload messages to reflect the new selection
-          const data = await getMessages(roomId, 50)
-          setMessages(data.messages || [])
           setRegenMsgId(null)
           setRegenContents([])
           toast.success("再生成しました")
-          setTimeout(scrollToBottom, 50)
         },
       )
     } catch (e: unknown) {
@@ -583,12 +630,14 @@ export function ChatPage() {
     }
   }
 
-  // Switch candidate on an existing message
+  // Switch candidate on an existing message (optimized with cache)
   const handleSwitchCandidate = async (msgId: string, direction: "prev" | "next"): Promise<boolean> => {
     if (!roomId) return false
     try {
-      const data = await getCandidates(roomId, msgId)
-      const candidates = data.candidates || []
+      const cached = await ensureCandidatesCached(msgId)
+      if (!cached) return false
+      const { candidates, currentIdx } = cached
+
       if (candidates.length <= 1) {
         if (direction === "next") {
           handleRegen(msgId)
@@ -598,14 +647,10 @@ export function ChatPage() {
           return false
         }
       }
-      // Find current candidate index
-      const currentMsg = messages.find((m: Message) => m.id === msgId)
-      const currentCandidateId = currentMsg?.candidateId
-      const currentIdx = candidates.findIndex((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => c.id === currentCandidateId)
+
       let targetIdx: number
       if (direction === "next") {
         if (currentIdx >= candidates.length - 1) {
-          // At the last candidate, regen a new one
           handleRegen(msgId)
           return true
         }
@@ -617,17 +662,32 @@ export function ChatPage() {
         }
         targetIdx = currentIdx - 1
       }
+
+      const targetCandidate = candidates[targetIdx]
       lastSwipeDirectionRef.current = { id: msgId, direction, key: Date.now() }
-      await selectCandidate(roomId, msgId, candidates[targetIdx].id)
-      const msgs = await getMessages(roomId, 50)
-      setMessages(msgs.messages || [])
-      
+
+      // Update cache index immediately
+      setCandidatesCache((prev) => ({ ...prev, [msgId]: { ...prev[msgId], currentIdx: targetIdx } }))
+
+      // Optimistic local update: apply candidate contents without reloading
+      const targetContents = targetCandidate.contents || targetCandidate.content
+      if (targetContents) {
+        setMessages((prev) => prev.map((m) =>
+          m.id === msgId ? { ...m, contents: Array.isArray(targetContents) ? targetContents : [targetContents], candidateId: targetCandidate.id } : m
+        ))
+      }
+
+      // Fire selectCandidate in background (no await for instant UX)
+      selectCandidate(roomId, msgId, targetCandidate.id).catch((e: unknown) => {
+        console.warn("selectCandidate bg:", (e instanceof Error ? e.message : String(e)))
+      })
+
       const el = document.getElementById(`msg-swipe-${msgId}`)
       if (el) {
         el.style.transition = 'none'
         el.style.transform = 'translateX(0px)'
       }
-      
+
       setTimeout(scrollToBottom, 50)
       return true
     } catch (e: unknown) {
@@ -751,9 +811,12 @@ export function ChatPage() {
   }
 
   const renderedMessages = useMemo(() => {
+    // Only the last BOT message supports regen/candidate-switch/edit (API limitation)
+    const lastBotMsgId = [...messages].reverse().find((m) => m.sender?.type === "BOT" && !m.isIntro)?.id || null
     return messages.map((msg) => {
       const isIntro = !!msg.isIntro
       const isBot = msg.sender?.type === "BOT"
+      const isLastBot = msg.id === lastBotMsgId
       const isSelected = deleteMode && selectedMsgId === msg.id
       const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: Message) => m.id === selectedMsgId) : -1
       const msgIdx = messages.indexOf(msg)
@@ -771,7 +834,7 @@ export function ChatPage() {
           id={`msg-swipe-${msg.id}`}
           style={{ touchAction: 'pan-y' }}
           onTouchStart={(e) => {
-            if (!deleteMode && isBot && !isIntro) {
+            if (!deleteMode && isLastBot && !isIntro) {
               const el = document.getElementById(`msg-swipe-${msg.id}`)
               if (el) el.style.transition = 'none'
               touchStateRef.current = { 
@@ -783,7 +846,7 @@ export function ChatPage() {
             }
           }}
           onTouchMove={(e) => {
-            if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
+            if (!deleteMode && isLastBot && !isIntro && touchStateRef.current) {
               const state = touchStateRef.current
               const diffX = e.touches[0].clientX - state.x
               const diffY = e.touches[0].clientY - state.y
@@ -805,7 +868,7 @@ export function ChatPage() {
             }
           }}
           onTouchEnd={async (e) => {
-            if (!deleteMode && isBot && !isIntro && touchStateRef.current) {
+            if (!deleteMode && isLastBot && !isIntro && touchStateRef.current) {
               const state = touchStateRef.current
               const el = document.getElementById(`msg-swipe-${msg.id}`)
               if (state.isSwiping && !state.isScrolling) {
@@ -875,40 +938,50 @@ export function ChatPage() {
               ))}
             </div>
           )}
-          {/* BOT message controls: regen + candidate nav + edit */}
-          {!deleteMode && isBot && !isIntro && !isRegening && (
-            <div className="mb-2 ml-10 flex flex-wrap items-center gap-1">
-              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleRegen(msg.id)} aria-label="再生成">
-                <RefreshCw className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "prev")} aria-label="前の候補">
-                <ChevronLeft className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "next")} aria-label="次の候補">
-                <ChevronRight className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => {
-                const txt = msg.contents?.map((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
-                  if (c.position === "NARRATOR" || c.speakerName === "ナレーター") {
+          {/* BOT message controls: regen + candidate nav + edit (last BOT message only) */}
+          {!deleteMode && isLastBot && !isIntro && !isRegening && (() => {
+            const cache = candidatesCache[msg.id]
+            const candCount = cache?.candidates?.length || 0
+            const candIdx = cache?.currentIdx ?? -1
+            return (
+              <div className="mb-2 ml-10 flex flex-wrap items-center gap-1">
+                <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleRegen(msg.id)} aria-label="再生成">
+                  <RefreshCw className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "prev")} aria-label="前の候補">
+                  <ChevronLeft className="size-3.5" />
+                </Button>
+                {candCount > 1 && (
+                  <span className="text-[10px] tabular-nums text-muted-foreground min-w-6 text-center select-none">
+                    {candIdx + 1}/{candCount}
+                  </span>
+                )}
+                <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => handleSwitchCandidate(msg.id, "next")} aria-label="次の候補">
+                  <ChevronRight className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-7 text-muted-foreground" onClick={() => {
+                  const txt = msg.contents?.map((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
+                    if (c.position === "NARRATOR" || c.speakerName === "ナレーター") {
+                      return `@: ${c.text.trim()}`;
+                    } else if (c.speakerName) {
+                      return `@${c.speakerName}: ${c.text.trim()}`;
+                    }
                     return `@: ${c.text.trim()}`;
-                  } else if (c.speakerName) {
-                    return `@${c.speakerName}: ${c.text.trim()}`;
-                  }
-                  return `@: ${c.text.trim()}`;
-                }).join('\n\n') || ''
-                setEditingMsg({ id: msg.id, candidateId: msg.candidateId })
-                setInputValue(txt)
-                setTimeout(() => inputRef.current?.focus(), 0)
-              }} aria-label="編集">
-                <Pencil className="size-3.5" />
-              </Button>
-            </div>
-          )}
+                  }).join('\n\n') || ''
+                  setEditingMsg({ id: msg.id, candidateId: msg.candidateId })
+                  setInputValue(txt)
+                  setTimeout(() => inputRef.current?.focus(), 0)
+                }} aria-label="編集">
+                  <Pencil className="size-3.5" />
+                </Button>
+              </div>
+            )
+          })()}
         </div>
       )
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars])
+  }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars, candidatesCache])
 
   return (
     <div ref={containerRef} className="fixed top-0 left-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-background">

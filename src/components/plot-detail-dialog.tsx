@@ -103,7 +103,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const ScrollContainer = isDesktop ? ScrollArea : "div"
-  const scrollProps = isDesktop ? { className: "max-h-[50vh]" } : { className: "max-h-[60vh] overflow-y-auto" }
+  const scrollProps = isDesktop ? { className: "max-h-[50vh]" } : { className: "max-h-[60vh] overflow-y-auto overscroll-contain touch-scrollable" }
 
   const content = (
     <>

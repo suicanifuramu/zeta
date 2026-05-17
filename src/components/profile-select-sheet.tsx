@@ -1,10 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
 
@@ -16,11 +15,16 @@ interface ProfileSelectSheetProps {
 }
 
 export function ProfileSelectSheet({ profiles, open, onSelect, loading }: ProfileSelectSheetProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    const def = profiles.find((p) => p.selected || p.isDefault)
-    return def?.id || profiles[0]?.id || null
-  })
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+
+  // Sync selectedId when profiles change (initial load or refresh)
+  useEffect(() => {
+    if (profiles.length > 0 && !selectedId) {
+      const def = profiles.find((p) => p.selected || p.isDefault)
+      setSelectedId(def?.id || profiles[0]?.id || null)
+    }
+  }, [profiles, selectedId])
 
   if (!open) return null
 
@@ -44,7 +48,8 @@ export function ProfileSelectSheet({ profiles, open, onSelect, loading }: Profil
             <DrawerDescription>チャットで使用するプロフィールを選んでください</DrawerDescription>
           </DrawerHeader>
 
-          <ScrollArea className="max-h-[40vh] px-5">
+          {/* Native scroll — no Radix ScrollArea overhead */}
+          <div className="max-h-[40vh] overflow-y-auto overscroll-contain px-5 touch-scrollable">
             <div className="flex flex-col gap-2 py-2">
               {loading ? (
                 <div className="flex justify-center py-8">
@@ -94,7 +99,7 @@ export function ProfileSelectSheet({ profiles, open, onSelect, loading }: Profil
                 })
               )}
             </div>
-          </ScrollArea>
+          </div>
           <DrawerFooter className="px-5 py-4 border-t border-border mt-2">
             <Button
               className="w-full"
