@@ -1,10 +1,17 @@
 // Lightweight new-chat helper. Opens original flow via navigation.
 // The full modal flow is handled by NewChatDialog component.
 import { toast } from "sonner"
-import { createRoom, getActiveRoomId } from "@/lib/api"
+import { createRoom, getActiveRoomId, getPlot } from "@/lib/api"
 
 export async function startNewChat(plotId: string, navigate: (path: string) => void) {
   try {
+    // Pre-fetch plot info for header display before navigating
+    getPlot(plotId).then((plot: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (plot?.name) sessionStorage.setItem("chat_plot_name", plot.name)
+      const img = plot?.imageUrl || plot?.initialRoomImageUrl || ""
+      sessionStorage.setItem("chat_plot_img", img)
+    }).catch(() => {})
+
     let roomId: string | undefined
     try {
       const data = await getActiveRoomId(plotId)

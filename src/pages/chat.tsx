@@ -97,8 +97,8 @@ function RecommendCard({ text, onClick }: { text: string; onClick: () => void })
 export function ChatPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const plotName = sessionStorage.getItem("chat_plot_name") || "チャット"
-  const plotImg = sessionStorage.getItem("chat_plot_img") || ""
+  const [plotName, setPlotName] = useState(() => sessionStorage.getItem("chat_plot_name") || "チャット")
+  const [plotImg, setPlotImg] = useState(() => sessionStorage.getItem("chat_plot_img") || "")
 
   const [messages, setMessages] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
   const [loading, setLoading] = useState(true)
@@ -455,6 +455,18 @@ export function ChatPage() {
       const avatars: Record<string, string> = {}
       chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
       setCharAvatars(avatars)
+
+      // Update header from room data to fix stale sessionStorage bug
+      const roomPlotName = room?.plot?.name || room?.title
+      const roomPlotImg = room?.plot?.imageUrl
+      if (roomPlotName) {
+        setPlotName(roomPlotName)
+        sessionStorage.setItem("chat_plot_name", roomPlotName)
+      }
+      if (roomPlotImg !== undefined) {
+        setPlotImg(roomPlotImg || "")
+        sessionStorage.setItem("chat_plot_img", roomPlotImg || "")
+      }
     }).catch(() => {})
 
     getRoomModelSetting(roomId).then((model: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {

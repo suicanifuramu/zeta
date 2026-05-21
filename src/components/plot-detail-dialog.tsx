@@ -168,6 +168,35 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
               </p>
             ) : null}
 
+            {/* About / 設定 section */}
+            {aboutContents.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <ScrollText className="size-3.5" /> 設定
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {aboutContents.map((item: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, i: number) => {
+                      const aboutKey = `about-${i}`
+                      const isExpanded = expandedIds.has(aboutKey)
+                      return (
+                        <div
+                          key={i}
+                          className="cursor-pointer rounded-lg bg-secondary/30 px-3 py-2"
+                          onClick={() => toggleExpand(aboutKey)}
+                        >
+                          <p className={`text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-4"}`}>
+                            {(item.content as string) || (item.text as string) || ""}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Characters */}
             {characters.length > 0 && (
               <>
@@ -200,35 +229,6 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
                               </p>
                             )}
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* About / 設定 section */}
-            {aboutContents.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <ScrollText className="size-3.5" /> 設定
-                  </h3>
-                  <div className="flex flex-col gap-2">
-                    {aboutContents.map((item: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, i: number) => {
-                      const aboutKey = `about-${i}`
-                      const isExpanded = expandedIds.has(aboutKey)
-                      return (
-                        <div
-                          key={i}
-                          className="cursor-pointer rounded-lg bg-secondary/30 px-3 py-2"
-                          onClick={() => toggleExpand(aboutKey)}
-                        >
-                          <p className={`text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-4"}`}>
-                            {(item.content as string) || (item.text as string) || ""}
-                          </p>
                         </div>
                       )
                     })}

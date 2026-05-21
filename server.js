@@ -9,6 +9,113 @@ const sessionFile = path.resolve(__dirname, '.zeta-session.json');
 
 const app = express();
 
+const API_BASE = 'https://api.zeta-ai.io';
+
+// ── Quiz Automation (server-side) ──
+function quizHeaders(accessToken) {
+  return {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`
+  };
+}
+
+async function apiGet(path, accessToken) {
+  const res = await fetch(`${API_BASE}${path}`, { headers: quizHeaders(accessToken) });
+  if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+async function apiPost(path, accessToken, body = null) {
+  const opts = { method: 'POST', headers: quizHeaders(accessToken) };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+function isJoined(data) {
+  return data?.type === 'Selected' || Boolean(data?.selection);
+}
+
+function isClaimed(data) {
+  return data?.type === 'Claimed' || data?.claimed === true || data?.rewardClaimed === true;
+}
+
+async function runQuizAutomation(accessToken) {
+  try {
+    let data = await apiGet('/v1/daily-quizzes', accessToken);
+    if (!data || !data.id) {
+      console.log('[Quiz] No quiz available.');
+      return;
+    }
+
+    const quizId = data.id;
+
+    if (isClaimed(data)) {
+      console.log('[Quiz] Already claimed.');
+      return;
+    }
+
+    // Step 1: Join if not yet joined
+    let justJoined = false;
+    if (!isJoined(data)) {
+      const plots = data.question?.plots || [];
+      if (plots.length === 0) {
+        console.log('[Quiz] No plots to select.');
+        return;
+      }
+      const selectedPlot = plots[0];
+      console.log(`[Quiz] Joining quiz ${quizId} with plot ${selectedPlot.id} (${selectedPlot.name})`);
+      await apiPost(`/v1/daily-quizzes/${quizId}/selection`, accessToken, {
+        selection: { type: 'SinglePlotSelection', plotId: selectedPlot.id }
+      });
+      justJoined = true;
+
+      // Re-fetch to get updated state
+      await new Promise(r => setTimeout(r, 500));
+      data = await apiGet('/v1/daily-quizzes', accessToken);
+    }
+
+    // Step 2: Try to claim reward
+    const now = new Date();
+    const availableAt = data.availableAt ? new Date(data.availableAt) : null;
+    const rewardUntil = data.rewardUntil ? new Date(data.rewardUntil) : null;
+
+    if (availableAt && now < availableAt) {
+      console.log(`[Quiz] Joined${justJoined ? ' (new)' : ''}. Reward not yet available until ${availableAt.toLocaleString('ja-JP')}.`);
+      return;
+    }
+
+    if (rewardUntil && now > rewardUntil) {
+      console.log(`[Quiz] Reward window closed (${rewardUntil.toLocaleString('ja-JP')}).`);
+      return;
+    }
+
+    // Attempt claim
+    try {
+      console.log(`[Quiz] Claiming reward for quiz ${quizId}...`);
+      const result = await apiPost(`/v1/daily-quizzes/${quizId}/claim-reward`, accessToken);
+      console.log(`[Quiz] Claimed successfully.`, result?.reward ? JSON.stringify(result.reward) : '');
+    } catch (claimError) {
+      console.warn(`[Quiz] Claim failed: ${claimError.message}`);
+      if (justJoined) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const retryResult = await apiPost(`/v1/daily-quizzes/${quizId}/claim-reward`, accessToken);
+          console.log(`[Quiz] Retry claim succeeded.`, retryResult?.reward ? JSON.stringify(retryResult.reward) : '');
+        } catch (retryError) {
+          console.warn(`[Quiz] Retry claim also failed: ${retryError.message}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`[Quiz] Automation error:`, e.message);
+  }
+}
+
 // 1. API Proxy (Must be before express.json() to avoid consuming the request body)
 app.use('/api', createProxyMiddleware({
   target: 'https://api.zeta-ai.io',
@@ -65,6 +172,10 @@ function startBackgroundRefresh() {
             if (data.refreshToken) current.refreshToken = data.refreshToken;
             await fs.writeFile(sessionFile, `${JSON.stringify(current, null, 2)}\n`, "utf8");
             console.log(`[Background] Refresh successful.`);
+
+            // Run quiz automation after session refresh
+            console.log(`[Background] Running quiz automation...`);
+            await runQuizAutomation(current.accessToken);
           }
         } else {
           console.error(`[Background] Refresh failed: ${response.status}`);
@@ -74,6 +185,20 @@ function startBackgroundRefresh() {
       console.error(`[Background] Error:`, e);
     }
   }, 60000);
+}
+
+// Run quiz on startup as well
+async function runQuizOnStartup() {
+  try {
+    const text = await fs.readFile(sessionFile, "utf8").catch(() => null);
+    if (!text) return;
+    const current = JSON.parse(text);
+    if (!current.accessToken) return;
+    console.log('[Startup] Running quiz automation...');
+    await runQuizAutomation(current.accessToken);
+  } catch (e) {
+    console.error('[Startup] Quiz automation error:', e.message);
+  }
 }
 
 // Routes for local-auth
@@ -126,4 +251,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Production server running on http://0.0.0.0:${PORT}`);
   startBackgroundRefresh();
+  runQuizOnStartup();
 });
+
