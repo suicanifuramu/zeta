@@ -1,31 +1,31 @@
-// ===== Quiz Automation =====
+// ===== Quiz Automation (Client-side) =====
 import { claimQuiz, getQuiz, joinQuiz } from './api.js';
 
-function isJoined(data) {
+function isJoined(data: any): boolean {
   return data?.type === 'Selected' || Boolean(data?.selection);
 }
 
-function isClaimed(data) {
+function isClaimed(data: any): boolean {
   return data?.type === 'Claimed' || data?.claimed === true || data?.rewardClaimed === true;
 }
 
-function getAvailableAt(data) {
+function getAvailableAt(data: any): Date | null {
   return data.availableAt ? new Date(data.availableAt) : null;
 }
 
-function getRewardUntil(data) {
+function getRewardUntil(data: any): Date | null {
   return data.rewardUntil ? new Date(data.rewardUntil) : null;
 }
 
-function formatTime(date) {
+function formatTime(date: Date | null): string {
   return date ? date.toLocaleString('ja-JP') : '-';
 }
 
-function delay(ms) {
+function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function getQuizStatus() {
+export async function getQuizStatus(): Promise<string> {
   try {
     const data = await getQuiz();
     if (!data || !data.id) return 'クイズなし';
@@ -51,15 +51,15 @@ export async function getQuizStatus() {
       return `参加済み (ID: ${data.id})`;
     }
 
-    const options = (data.question?.plots || []).map(p => p.name).join(', ');
+    const options = (data.question?.plots || []).map((p: any) => p.name).join(', ');
     return `未参加: 選択肢 ${options || '-'}`;
   } catch (e) {
     console.error('[Quiz] Status check failed:', e);
-    return `エラー: ${e.message}`;
+    return `エラー: ${e instanceof Error ? e.message : String(e)}`;
   }
 }
 
-export async function runQuizAutomation() {
+export async function runQuizAutomation(): Promise<string> {
   try {
     let data = await getQuiz();
     if (!data || !data.id) return 'クイズが見つかりません';
@@ -90,8 +90,6 @@ export async function runQuizAutomation() {
     }
 
     // Step 2: Try to claim reward
-    // Try claiming regardless of availableAt/rewardUntil — the server will
-    // reject with an error if the timing isn't right, which is fine.
     const now = new Date();
     const availableAt = getAvailableAt(data);
     const rewardUntil = getRewardUntil(data);
@@ -112,8 +110,9 @@ export async function runQuizAutomation() {
       const claimResult = await claimQuiz(quizId);
       console.log('[Quiz] Claim result:', JSON.stringify(claimResult, null, 2));
       return `報酬を受け取りました${claimResult?.reward ? ` (${JSON.stringify(claimResult.reward)})` : ''}`;
-    } catch (claimError) {
-      console.warn('[Quiz] Claim failed:', claimError.message);
+    } catch (claimError: unknown) {
+      const claimErr = claimError as Error;
+      console.warn('[Quiz] Claim failed:', claimErr.message);
 
       // If we just joined, wait a bit and retry
       if (justJoined) {
@@ -124,14 +123,14 @@ export async function runQuizAutomation() {
           console.log('[Quiz] Retry claim result:', JSON.stringify(retryResult, null, 2));
           return `報酬を受け取りました (リトライ)${retryResult?.reward ? ` (${JSON.stringify(retryResult.reward)})` : ''}`;
         } catch (retryError) {
-          return `参加しました。報酬受け取り失敗: ${retryError.message}`;
+          return `参加しました。報酬受け取り失敗: ${retryError instanceof Error ? retryError.message : String(retryError)}`;
         }
       }
 
-      return `参加済み。報酬受け取り失敗: ${claimError.message}`;
+      return `参加済み。報酬受け取り失敗: ${claimErr.message}`;
     }
   } catch (e) {
     console.error('[Quiz] Automation failed:', e);
-    return `エラー: ${e.message}`;
+    return `エラー: ${e instanceof Error ? e.message : String(e)}`;
   }
 }

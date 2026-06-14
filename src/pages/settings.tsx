@@ -51,7 +51,7 @@ export function SettingsPage() {
   const [quizStatus, setQuizStatus] = useState("確認中...")
 
   useEffect(() => {
-    import("@/lib/quiz").then(async (mod) => {
+    import("@/lib/quiz-client").then(async (mod) => {
       try { setQuizStatus(await mod.getQuizStatus()) } catch { setQuizStatus("取得失敗") }
     }).catch(() => setQuizStatus("モジュール読み込み失敗"))
   }, [])
@@ -151,9 +151,6 @@ export function SettingsPage() {
               <Textarea rows={2} value={refreshToken} onChange={(e) => setRefreshToken(e.target.value)} className="font-mono text-xs" />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => window.open("https://zeta-ai.io/ja", "_blank")}>
-                本家ログインを開く
-              </Button>
               <Button variant="outline" size="sm" onClick={handleLogout}>ログアウト</Button>
               <Button variant="outline" size="sm" onClick={() => {
                 setDeviceId(deviceId)
@@ -166,7 +163,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              本家でログイン後、DevTools の Application &gt; Cookies から TOKEN / REFRESH_TOKEN / DEVICE_ID をコピーして貼ると取り込めます。
+              Device ID / Refresh Token を入力して「Token を保存」するとローカルストレージに保存されます。
             </p>
           </CardContent>
         </Card>
@@ -283,8 +280,14 @@ export function SettingsPage() {
             <p className="mb-3 text-sm text-muted-foreground">ステータス: {quizStatus}</p>
             <Button variant="outline" size="sm" onClick={async () => {
               setQuizStatus("実行中...")
-              const mod = await import("@/lib/quiz")
-              setQuizStatus(await mod.runQuizAutomation())
+              const mod = await import("@/lib/quiz-client")
+              const result = await mod.runQuizAutomation()
+              setQuizStatus(result)
+              if (result.startsWith("エラー") || result.startsWith("失敗")) {
+                toast.error(result)
+              } else {
+                toast.success(result)
+              }
             }}>手動実行</Button>
           </CardContent>
         </Card>

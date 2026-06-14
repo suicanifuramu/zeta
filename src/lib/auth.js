@@ -1,12 +1,10 @@
 // ===== Auth Module =====
-// deviceId / refreshToken are stored in app/.zeta-session.json through the
-// Vite local middleware. accessToken remains session-scoped in the browser.
+// deviceId / refreshToken / accessToken are stored in localStorage.
+// accessToken is also kept in sessionStorage for immediate access.
 
 const ACCESS_TOKEN_KEY = 'zeta_access_token';
 const REFRESH_TOKEN_KEY = 'zeta_refresh_token';
 const DEVICE_ID_KEY = 'zeta_device_id';
-const LEGACY_DEVICE_ID = '18fbd089f37a9994';
-const LOCAL_AUTH_ENDPOINT = '/local-auth';
 
 let accessToken = null;
 let refreshTimer = null;
@@ -54,53 +52,20 @@ function makeDeviceId() {
   return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function saveLocalAuth() {
-  // Sync to localStorage
+function saveLocalAuth() {
   if (savedDeviceId) localStorage.setItem(DEVICE_ID_KEY, savedDeviceId);
   if (savedRefreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, savedRefreshToken);
-
-  // Sync to server-side storage (Node.js server or Vite middleware)
-  await fetch(LOCAL_AUTH_ENDPOINT, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ deviceId: savedDeviceId, refreshToken: savedRefreshToken, accessToken })
-  }).catch(e => {
-    console.debug('[Auth] local file save skipped:', e.message);
-  });
 }
 
 export async function loadLocalAuth(force = false) {
   if (localAuthLoaded && !force) return;
 
-  // Initial load from localStorage for immediate availability
   savedDeviceId = localStorage.getItem(DEVICE_ID_KEY) || '';
   savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) || '';
 
-  try {
-    // Sync with server-side storage (Node.js server or Vite middleware)
-    const res = await fetch(`${LOCAL_AUTH_ENDPOINT}?t=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      // Server data takes precedence if available
-      if (data.deviceId) savedDeviceId = data.deviceId;
-      if (data.refreshToken) savedRefreshToken = data.refreshToken;
-      
-      if (data.accessToken && data.accessToken !== accessToken) {
-        accessToken = data.accessToken;
-        sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-      }
-
-      // Sync back to localStorage
-      if (savedDeviceId) localStorage.setItem(DEVICE_ID_KEY, savedDeviceId);
-      if (savedRefreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, savedRefreshToken);
-    }
-  } catch (e) {
-    console.debug('[Auth] local file load skipped:', e.message);
-  }
-
   if (!savedDeviceId) {
-    savedDeviceId = LEGACY_DEVICE_ID || makeDeviceId();
-    await saveLocalAuth();
+    savedDeviceId = makeDeviceId();
+    saveLocalAuth();
   }
 
   localAuthLoaded = true;
@@ -159,7 +124,7 @@ export function getRefreshToken() {
 
 export function getDeviceId() {
   if (!savedDeviceId) {
-    savedDeviceId = LEGACY_DEVICE_ID || makeDeviceId();
+    savedDeviceId = makeDeviceId();
     saveLocalAuth();
   }
   return savedDeviceId;
@@ -220,7 +185,6 @@ export async function refreshSession(forceNetwork = false) {
       const oldToken = accessToken;
       await loadLocalAuth(true);
 
-      // If the token was updated by loadLocalAuth and is fresh, skip network refresh even if forced
       if (accessToken !== oldToken && accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
         console.log('[Auth] Token was updated from local auth');
         scheduleRefresh();
@@ -228,8 +192,6 @@ export async function refreshSession(forceNetwork = false) {
         return accessToken;
       }
 
-      // If we don't force network refresh, and the token we just loaded is already fresh (expires in > 10 mins), 
-      // don't perform network refresh as another process already did it.
       if (!forceNetwork && accessToken && getTokenExpiry(accessToken) > Date.now() + 600000) {
         console.log('[Auth] Token was already refreshed by another process');
         scheduleRefresh();
@@ -240,7 +202,7 @@ export async function refreshSession(forceNetwork = false) {
       const refreshToken = savedRefreshToken;
       if (!refreshToken) throw new Error('Refresh Token is not set');
 
-      const res = await fetch('/api/v1/auth/tokens', {
+      const res = await fetch(`${BASE}/v1/auth/tokens`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ deviceId: getDeviceId(), type: 'refresh', refreshToken })
@@ -248,7 +210,7 @@ export async function refreshSession(forceNetwork = false) {
 
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
-          clearSession(); // Logout if refresh fails with 401/403
+          clearSession();
         }
         throw new Error(`Session refresh failed (${res.status})`);
       }
@@ -321,9 +283,7 @@ export async function clearSession() {
   savedRefreshToken = '';
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
-  // We keep deviceId in localStorage even after logout to maintain device identity
-  // localStorage.removeItem(DEVICE_ID_KEY); 
-  
-  await fetch(LOCAL_AUTH_ENDPOINT, { method: 'DELETE' }).catch(() => {});
   window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
 }
+
+const BASE = 'https://api.zeta-ai.io';

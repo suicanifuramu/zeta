@@ -1,7 +1,7 @@
 // ===== API Client =====
 import { ensureAccessToken, getAccessToken, refreshSession } from './auth.js';
 
-const BASE = '/api';
+const BASE = 'https://api.zeta-ai.io';
 
 function headers(extra = {}) {
   const h = { Accept: 'application/json', ...extra };
