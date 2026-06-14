@@ -43,6 +43,22 @@ export interface Candidate {
   isFinalized?: boolean
 }
 
+export interface InfoBoxItem {
+  label: string
+  value: string
+}
+
+export interface InfoBoxCharacter {
+  name: string
+  items: InfoBoxItem[]
+}
+
+export interface InfoBoxContent {
+  type: "INFO_BOX"
+  scenes: unknown[]
+  characters: InfoBoxCharacter[]
+}
+
 export interface UserChatProfile {
   id: string
   name: string

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ProfileSelectSheet } from "@/components/profile-select-sheet"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
+import { InfoBox } from "@/components/info-box"
 import {
   createIntro, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
   getMessages, getMessagesByCursor, getPlot, getRecommended,
@@ -22,7 +23,7 @@ import {
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
-import type { Message, UserChatProfile } from "@/lib/types"
+import type { Message, UserChatProfile, InfoBoxContent } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // ── Message Formatter ──
@@ -930,9 +931,12 @@ export function ChatPage() {
         >
           {/* Show inline regen streaming instead of original content */}
           {isRegening && regenContents.length > 0 ? (
-            regenContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
-              <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
-            ))
+            regenContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
+              if (c.type === "INFO_BOX") {
+                return <InfoBox key={`regen-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
+              }
+              return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
+            })
           ) : isRegening && regenContents.length === 0 ? (
             <StreamingDots />
           ) : (
@@ -945,9 +949,12 @@ export function ChatPage() {
                 (lastSwipeDirectionRef.current.id !== msg.id || lastSwipeDirectionRef.current.direction === "regen") ? "zoom-in-95 fade-in" : ""
               )}
             >
-              {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
-                <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
-              ))}
+              {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
+                if (c.type === "INFO_BOX") {
+                  return <InfoBox key={ci} data={c as InfoBoxContent} charAvatars={charAvatars} />
+                }
+                return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
+              })}
             </div>
           )}
           {/* BOT message controls: regen + candidate nav + edit (last BOT message only) */}
@@ -1059,9 +1066,12 @@ export function ChatPage() {
             {streamContents !== null && (
               streamContents.length === 0
                 ? <StreamingDots />
-                : streamContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => (
-                    <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
-                  ))
+                : streamContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
+                    if (c.type === "INFO_BOX") {
+                      return <InfoBox key={`stream-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
+                    }
+                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
+                  })
             )}
           </div>
         )}
