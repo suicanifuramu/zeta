@@ -9,6 +9,7 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getHomePlots, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
+import { preloadImagesAsync } from "@/lib/image-preloader"
 import type { Plot } from "@/lib/types"
 
 let cachedPlots: Plot[] | null = null
@@ -51,6 +52,13 @@ export function HomePage() {
       const nextCursor = data.nextCursor || data.cursor || null
       cursorRef.current = nextCursor
       cachedCursor = nextCursor
+
+      const imageUrls = newPlots
+        .map((p: Plot) => p.imageUrl)
+        .filter((u: string | undefined): u is string => typeof u === "string")
+      if (imageUrls.length > 0) {
+        preloadImagesAsync(imageUrls, { concurrency: 6, priority: "low" })
+      }
 
       if (newPlots.length === 0 && !nextCursor) {
         setHasMore(false)

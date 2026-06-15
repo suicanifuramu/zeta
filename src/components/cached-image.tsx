@@ -4,10 +4,10 @@ import { cacheManager } from "@/lib/cache-db"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
 
 // In-memory object URL cache
-const memoryCache = new Map<string, string>()
+export const memoryCache = new Map<string, string>()
 
 // Deduplicate concurrent fetch requests for the same image
-const fetchPromises = new Map<string, Promise<string>>()
+export const fetchPromises = new Map<string, Promise<string>>()
 
 // Global cache promise to prevent Cache API lock contention
 let globalCachePromise: Promise<Cache> | null = null

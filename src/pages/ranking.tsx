@@ -8,6 +8,7 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getRanking, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
+import { preloadImagesAsync } from "@/lib/image-preloader"
 import type { Plot } from "@/lib/types"
 
 const TABS = [
@@ -39,6 +40,14 @@ export function RankingPage() {
     try {
       const data = await getRanking(type, MAX_ITEMS)
       const items = data.rankings || []
+      
+      const imageUrls = items
+        .map((p: Plot) => p.imageUrl)
+        .filter((u: string | undefined): u is string => typeof u === "string")
+      if (imageUrls.length > 0) {
+        preloadImagesAsync(imageUrls, { concurrency: 6, priority: "low" })
+      }
+      
       setAllItems(items)
       setDisplayed(items.slice(0, BATCH_SIZE))
       setHasMore(items.length > BATCH_SIZE)
