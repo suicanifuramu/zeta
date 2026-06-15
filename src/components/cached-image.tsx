@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { cacheManager } from "@/lib/cache-db"
+import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
 
 // In-memory object URL cache
 const memoryCache = new Map<string, string>()
@@ -20,17 +22,27 @@ interface CachedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string
 }
 
+let cleanupInitialized = false
+
 export function CachedImage({ src, alt, className, onError, onLoad, ...props }: CachedImageProps) {
   const [cachedSrc, setCachedSrc] = useState<string | undefined>(src ? (memoryCache.get(src) || src) : undefined)
   const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!cleanupInitialized) {
+      cleanupInitialized = true
+      runStartupCleanup()
+      startPeriodicCleanup()
+    }
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(false)
     if (!src) return
     if (memoryCache.has(src)) {
-       
       setCachedSrc(memoryCache.get(src))
+      cacheManager.recordAccess(src).catch(() => {})
       return
     }
 
@@ -83,13 +95,19 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
     return () => { isMounted = false }
   }, [src])
 
+  useEffect(() => {
+    if (cachedSrc && cachedSrc !== src && src) {
+      cacheManager.recordAccess(src).catch(() => {})
+    }
+  }, [cachedSrc, src])
+
   if (!cachedSrc) return null
 
   return (
-    <img 
-      src={cachedSrc} 
-      alt={alt} 
-      className={cn("transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0", className)} 
+    <img
+      src={cachedSrc}
+      alt={alt}
+      className={cn("transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0", className)}
       onLoad={(e) => {
         setLoaded(true)
         if (onLoad) onLoad(e)
@@ -98,7 +116,7 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
         if (onError) onError(e)
         else (e.target as HTMLImageElement).style.display = "none"
       }}
-      {...props} 
+      {...props}
     />
   )
 }
