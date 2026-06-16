@@ -1,4 +1,4 @@
-import { memoryCache, fetchPromises } from "@/components/cached-image";
+import { memoryCache, fetchPromises } from "@/lib/image-cache";
 
 interface PreloadOptions {
   concurrency?: number;
