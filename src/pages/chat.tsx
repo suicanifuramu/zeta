@@ -501,7 +501,7 @@ export function ChatPage() {
   // Send message
   const sendMessage = async () => {
     const text = inputValue.trim()
-    if (!text || sending || !roomId) return
+    if (sending || !roomId) return
     setSending(true)
 
     if (editingMsg) {
@@ -528,9 +528,14 @@ export function ChatPage() {
     setRecVisible(false)
     setRecPage(0)
 
-    // Optimistic user message
-    const tempUserMsg = { id: `temp-user-${Date.now()}`, sender: { type: "USER" }, contents: [{ position: "RIGHT", text }] }
-    setMessages((prev) => [...prev, tempUserMsg])
+    // Track if this is an empty message (for not showing user message)
+    const isEmptyMessage = !text
+
+    // Optimistic user message (only for non-empty messages)
+    if (!isEmptyMessage) {
+      const tempUserMsg = { id: `temp-user-${Date.now()}`, sender: { type: "USER" }, contents: [{ position: "RIGHT", text }] }
+      setMessages((prev) => [...prev, tempUserMsg])
+    }
     setStreamContents([])
     setTimeout(scrollToBottom, 30)
 
@@ -1222,7 +1227,7 @@ export function ChatPage() {
                 <Asterisk className="size-4" />
               </Button>
             </div>
-            <Button size="icon" disabled={!inputValue.trim() || sending} onClick={sendMessage} aria-label="送信">
+            <Button size="icon" disabled={sending} onClick={sendMessage} aria-label="送信">
               {sending ? <Spinner className="size-4" /> : <Send className="size-4" />}
             </Button>
           </div>
