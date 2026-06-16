@@ -1,3 +1,4 @@
+import React from "react"
 import { MessageCircle } from "lucide-react"
 import { CachedImage } from "@/components/cached-image"
 import { Card, CardContent } from "@/components/ui/card"
@@ -26,7 +27,7 @@ function formatCount(n: number) {
   return String(n)
 }
 
-export function PlotCard({ plot, onClick, className }: PlotCardProps) {
+export const PlotCard = React.memo(function PlotCard({ plot, onClick, className }: PlotCardProps) {
   const tags = (plot.hashtags || []).slice(0, 3)
 
   return (
@@ -86,4 +87,4 @@ export function PlotCard({ plot, onClick, className }: PlotCardProps) {
       </CardContent>
     </Card>
   )
-}
+})

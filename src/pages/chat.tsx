@@ -1,12 +1,12 @@
-/* eslint-disable react-hooks/refs */
+import React, { Suspense } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -14,9 +14,11 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { ProfileSelectSheet } from "@/components/profile-select-sheet"
-import { PlotDetailDialog } from "@/components/plot-detail-dialog"
-import { InfoBox } from "@/components/info-box"
+
+// Lazy-loaded dialogs for code splitting
+const PlotDetailDialogLazy = React.lazy(() => import("@/components/plot-detail-dialog").then(m => ({ default: m.PlotDetailDialog })))
+const ProfileSelectSheetLazy = React.lazy(() => import("@/components/profile-select-sheet").then(m => ({ default: m.ProfileSelectSheet })))
+const InfoBoxLazy = React.lazy(() => import("@/components/info-box").then(m => ({ default: m.InfoBox })))
 import {
   createIntro, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
   getMessages, getMessagesByCursor, getPlot, getRecommended,
@@ -26,6 +28,15 @@ import {
 } from "@/lib/api"
 import type { Message, UserChatProfile, InfoBoxContent, Candidate } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+// Type definitions for message content
+interface StreamContentItem {
+  position: string
+  speakerName?: string
+  text: string
+}
+
+type StreamContent = StreamContentItem | InfoBoxContent
 
 // ── Message Formatter ──
 function formatMessageText(text: string) {
@@ -42,12 +53,19 @@ function formatMessageText(text: string) {
 }
 
 // ── Message Bubble ──
-function MessageBubble({ content, avatarUrl }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string }) {
-  const pos = content.position || "LEFT"
+const MessageBubble = React.memo(function MessageBubble({ content, avatarUrl }: { content: StreamContent; avatarUrl?: string }) {
+  // Handle InfoBoxContent early
+  if ("type" in content && content.type === "INFO_BOX") {
+    return <Suspense fallback={null}><InfoBoxLazy data={content} charAvatars={{}} /></Suspense>
+  }
+  
+  // Now TypeScript knows content is StreamContentItem (has position, speakerName, text)
+  const contentItem = content as StreamContentItem
+  const pos = contentItem.position || "LEFT"
   if (pos === "NARRATOR") {
     return (
       <div className="mx-auto my-2 max-w-md rounded-lg bg-muted/50 px-4 py-2 text-center text-sm italic text-muted-foreground whitespace-pre-wrap">
-        {formatMessageText(content.text)}
+        {formatMessageText(contentItem.text)}
       </div>
     )
   }
@@ -57,18 +75,18 @@ function MessageBubble({ content, avatarUrl }: { content: any /* eslint-disable-
       {!isRight && (
         <Avatar className="size-8 shrink-0">
           <AvatarImage src={avatarUrl} />
-          <AvatarFallback>{(content.speakerName || "?")[0]}</AvatarFallback>
+          <AvatarFallback>{(contentItem.speakerName || "?")[0]}</AvatarFallback>
         </Avatar>
       )}
       <div className={cn("max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed", isRight ? "bg-primary text-primary-foreground" : "bg-secondary")}>
-        {!isRight && content.speakerName && (
-          <p className="mb-1 text-xs font-medium text-muted-foreground">{content.speakerName}</p>
+        {!isRight && contentItem.speakerName && (
+          <p className="mb-1 text-xs font-medium text-muted-foreground">{contentItem.speakerName}</p>
         )}
-        <div className="whitespace-pre-wrap break-words">{formatMessageText(content.text)}</div>
+        <div className="whitespace-pre-wrap break-words">{formatMessageText(contentItem.text)}</div>
       </div>
     </div>
   )
-}
+})
 
 // ── Streaming dots ──
 function StreamingDots() {
@@ -117,7 +135,7 @@ export function ChatPage() {
   const [recLoading, setRecLoading] = useState(false)
 
   // Streaming (for send)
-  const [streamContents, setStreamContents] = useState<any[] | null> /* eslint-disable-line @typescript-eslint/no-explicit-any */(null)
+  const [streamContents, setStreamContents] = useState<StreamContent[] | null>(null)
 
   // Regen: inline streaming at a specific message
   const [regenMsgId, setRegenMsgId] = useState<string | null>(null)
@@ -199,6 +217,7 @@ export function ChatPage() {
 
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
@@ -215,9 +234,8 @@ export function ChatPage() {
   const prevHeightRef = useRef<number>(0)
 
   const getViewport = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return null
-    return el.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement | null
+    // Use virtualizer's scroll element for virtualized list
+    return virtualizerRef.current
   }, [])
 
   // Track scroll position to show/hide scroll-to-bottom button
@@ -246,7 +264,9 @@ export function ChatPage() {
   const scrollToBottom = useCallback(() => {
     const doScroll = () => {
       const viewport = getViewport()
-      if (viewport) viewport.scrollTop = viewport.scrollHeight
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight
+      }
     }
     requestAnimationFrame(() => {
       doScroll()
@@ -941,7 +961,7 @@ export function ChatPage() {
           {isRegening && regenContents.length > 0 ? (
             regenContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
               if (c.type === "INFO_BOX") {
-                return <InfoBox key={`regen-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
+                return <Suspense fallback={null}><InfoBoxLazy key={`regen-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} /></Suspense>
               }
               return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
             })
@@ -959,7 +979,7 @@ export function ChatPage() {
             >
               {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
                 if (c.type === "INFO_BOX") {
-                  return <InfoBox key={ci} data={c as InfoBoxContent} charAvatars={charAvatars} />
+                  return <Suspense fallback={null}><InfoBoxLazy key={ci} data={c as InfoBoxContent} charAvatars={charAvatars} /></Suspense>
                 }
                 return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
               })}
@@ -1010,6 +1030,15 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars, candidatesCache, lastSwipeDirection])
 
+  // Virtualizer for message list
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => virtualizerRef.current,
+    estimateSize: () => 120,
+    overscan: 5,
+    scrollMargin: 0,
+  })
+
   return (
     <div ref={containerRef} className="fixed top-0 left-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-background">
       {/* Header */}
@@ -1051,7 +1080,7 @@ export function ChatPage() {
       </header>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="min-h-0 flex-1">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
         {loading ? (
           <div className="flex flex-col gap-3 px-4 py-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -1062,7 +1091,12 @@ export function ChatPage() {
             ))}
           </div>
         ) : (
-          <div aria-live="polite" className="px-4 py-3">
+          <div
+            ref={virtualizerRef}
+            className="relative"
+            style={{ height: "100%" }}
+            onScroll={() => {}}
+          >
             {/* Top sentinel for loading older messages */}
             <div ref={topSentinelRef} className="flex justify-center py-2">
               {loadingHistory && <Spinner className="size-5" />}
@@ -1070,20 +1104,52 @@ export function ChatPage() {
                 <p className="text-xs text-muted-foreground">最初のメッセージです</p>
               )}
             </div>
-            {renderedMessages}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => (
+                <div
+                  key={messages[virtualRow.index]?.id ?? virtualRow.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {renderedMessages[virtualRow.index]}
+                </div>
+              ))}
+            </div>
             {streamContents !== null && (
-              streamContents.length === 0
-                ? <StreamingDots />
-                : streamContents.map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
-                    if (c.type === "INFO_BOX") {
-                      return <InfoBox key={`stream-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
-                    }
-                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
-                  })
+              <div
+                style={{
+                  height: "auto",
+                  minHeight: "60px",
+                }}
+              >
+                {streamContents.length === 0
+                  ? <StreamingDots />
+                  : streamContents.map((c: StreamContent, ci: number) => {
+                      if ("type" in c && c.type === "INFO_BOX") {
+                        return <Suspense fallback={null}><InfoBoxLazy key={`stream-${ci}`} data={c} charAvatars={charAvatars} /></Suspense>
+                      }
+                      // StreamContentItem has speakerName
+                      const item = c as StreamContentItem
+                      return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[item.speakerName ?? ""]} />
+                    })
+              }
+              </div>
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Scroll to bottom button */}
       <div className="relative w-full h-0 pointer-events-none">
@@ -1235,19 +1301,23 @@ export function ChatPage() {
       )}
 
       {/* Profile selection bottom sheet (new room only) */}
-      <ProfileSelectSheet
-        profiles={profileList}
-        open={profileSheetOpen}
-        onSelect={handleProfileSelect}
-        loading={profileLoading}
-      />
+      <Suspense fallback={null}>
+        <ProfileSelectSheetLazy
+          profiles={profileList}
+          open={profileSheetOpen}
+          onSelect={handleProfileSelect}
+          loading={profileLoading}
+        />
+      </Suspense>
 
       {/* Plot Detail Overlay */}
-      <PlotDetailDialog 
-        plot={plotDetailData} 
-        open={plotDetailOpen} 
-        onOpenChange={setPlotDetailOpen} 
-      />
+      <Suspense fallback={null}>
+        <PlotDetailDialogLazy 
+          plot={plotDetailData} 
+          open={plotDetailOpen} 
+          onOpenChange={setPlotDetailOpen} 
+        />
+      </Suspense>
     </div>
   )
 }
