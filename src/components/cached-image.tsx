@@ -4,9 +4,6 @@ import { cacheManager } from "@/lib/cache-db"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
 import { memoryCache, fetchPromises } from "@/lib/image-cache"
 
-// Re-export for image-preloader.ts
-export { memoryCache, fetchPromises } from "@/lib/image-cache"
-
 // Global cache promise to prevent Cache API lock contention
 let globalCachePromise: Promise<Cache> | null = null
 function getPlotImageCache() {
