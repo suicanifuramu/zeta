@@ -1,53 +1,162 @@
 // TypeScript declarations for api.js
-export function getHomePlots(limit?: number, cursor?: string): Promise<any>;
-export function getSpecialCuration(): Promise<any>;
-export function getBanners(): Promise<any>;
-export function getPopups(): Promise<any>;
-export function getFeatureFlag(name: string): Promise<any>;
-export function getGenresRanking(): Promise<any>;
-export function getRanking(type?: string, limit?: number, filterValues?: string): Promise<any>;
-export function getPlot(plotId: string): Promise<any>;
-export function getPlotImages(plotId: string): Promise<any>;
-export function getCharacterImages(plotId: string, characterId: string): Promise<any>;
-export function getSimilarPlots(plotId: string, limit?: number): Promise<any>;
-export function getLikedPlots(limit?: number): Promise<any>;
-export function getActiveRoomId(plotId: string): Promise<any>;
-export function createRoom(plotId: string): Promise<any>;
-export function getRooms(limit?: number): Promise<any>;
-export function getRoom(roomId: string): Promise<any>;
-export function deleteRoom(roomId: string): Promise<any>;
-export function getRoomModelSetting(roomId: string): Promise<any>;
-export function getRoomCyoaSetting(roomId: string): Promise<any>;
-export function getIntroBeforeSelection(roomId: string): Promise<any>;
-export function createIntro(roomId: string): Promise<any>;
-export function getSelectedPersona(plotId: string, roomId: string): Promise<any>;
-export function getMessages(roomId: string, limit?: number): Promise<any>;
-export function getMessagesByCursor(roomId: string, cursor: string, limit?: number): Promise<any>;
-export function sendMessageStream(roomId: string, text: string, onEvent: (event: any) => void, onDone: () => void, retry?: boolean): Promise<void>;
-export function regenMessageStream(roomId: string, messageId: string, onEvent: (event: any) => void, onDone: () => void, retry?: boolean): Promise<void>;
-export function getCandidates(roomId: string, messageId: string, limit?: number): Promise<any>;
-export function selectCandidate(roomId: string, messageId: string, candidateId: string): Promise<any>;
-export function editMessage(roomId: string, messageId: string, candidateId: string, text: string): Promise<any>;
-export function deleteMessages(roomId: string, messageId: string): Promise<any>;
-export function getRecommended(roomId: string): Promise<any>;
-export function refreshRecommended(roomId: string): Promise<any>;
-export function getRecommendQuota(): Promise<any>;
-export function getCoinBalance(): Promise<any>;
-export function getCoinAutoPaymentSettings(): Promise<any>;
-export function getCreatorStats(): Promise<any>;
-export function getZetaPassSubscription(): Promise<any>;
-export function getZetaPassPromotionEligibility(): Promise<any>;
-export function getZetaPassProConversionStatus(): Promise<any>;
-export function getLatestNotificationTime(): Promise<any>;
-export function getAppPushSetting(type?: string): Promise<any>;
-export function getStoreProducts(productType: string): Promise<any>;
-export function getSessionOverview(): Promise<any>;
-export function getUserChatProfiles(limit?: number, options?: { plotId?: string; roomId?: string }): Promise<any>;
-export function createUserChatProfile(data: { name: string; description?: string }): Promise<any>;
-export function checkUserChatProfileAbuse(data: { name: string; description?: string }): Promise<any>;
-export function updateUserChatProfile(profileId: string, data: { name: string; description?: string }): Promise<any>;
-export function deleteUserChatProfile(profileId: string): Promise<any>;
-export function selectUserChatProfile(profileId: string, options?: { plotId?: string; roomId?: string }): Promise<any>;
-export function getQuiz(): Promise<any>;
-export function joinQuiz(quizId: string, plotId: string): Promise<any>;
-export function claimQuiz(quizId: string): Promise<any>;
+import type {
+  ApiHomeResponse,
+  ApiRankingResponse,
+  ApiRoomsResponse,
+  ApiMessagesResponse,
+  SessionOverview,
+  UserChatProfile,
+  QuizData,
+  SpecialCurationResponse,
+  Banner,
+  Popup,
+  FeatureFlagResponse,
+  GenreRankingResponse,
+  PlotDetailResponse,
+  PlotImage,
+  CharacterImage,
+  SimilarPlotsResponse,
+  LikedPlotsResponse,
+  ActiveRoomIdResponse,
+  CreateRoomResponse,
+  RoomDetailResponse,
+  DeleteRoomResponse,
+  ModelSettingResponse,
+  CyoaSettingResponse,
+  IntroBeforeSelectionResponse,
+  CreateIntroResponse,
+  SelectedPersonaResponse,
+  CandidatesResponse,
+  SelectCandidateResponse,
+  EditMessageResponse,
+  DeleteMessagesResponse,
+  RecommendedResponse,
+  RefreshRecommendedResponse,
+  RecommendQuotaResponse,
+  CoinBalanceResponse,
+  AutoPaymentSettingsResponse,
+  CreatorStatsResponse,
+  SubscriptionResponse,
+  PromotionEligibilityResponse,
+  ProConversionStatusResponse,
+  NotificationTimeResponse,
+  PushSettingResponse,
+  StoreProductsResponse,
+  UserChatProfilesResponse,
+  AbuseCheckResponse,
+  SelectProfileResponse,
+  QuizData,
+  JoinQuizResponse,
+  ClaimQuizResponse,
+} from "./types";
+
+// Home/Discovery
+export function getHomePlots(limit?: number, cursor?: string): Promise<ApiHomeResponse>;
+export function getSpecialCuration(): Promise<SpecialCurationResponse>;
+export function getBanners(): Promise<Banner[]>;
+export function getPopups(): Promise<Popup[]>;
+export function getFeatureFlag(name: string): Promise<FeatureFlagResponse>;
+
+// Ranking
+export function getGenresRanking(): Promise<GenreRankingResponse>;
+export function getRanking(type?: string, limit?: number, filterValues?: string): Promise<ApiRankingResponse>;
+
+// Plots / rooms
+export function getPlot(plotId: string): Promise<PlotDetailResponse>;
+export function getPlotImages(plotId: string): Promise<PlotImage[]>;
+export function getCharacterImages(plotId: string, characterId: string): Promise<CharacterImage[]>;
+export function getSimilarPlots(plotId: string, limit?: number): Promise<SimilarPlotsResponse>;
+export function getLikedPlots(limit?: number): Promise<LikedPlotsResponse>;
+export function getActiveRoomId(plotId: string): Promise<ActiveRoomIdResponse>;
+export function createRoom(plotId: string): Promise<CreateRoomResponse>;
+export function getRooms(limit?: number): Promise<ApiRoomsResponse>;
+export function getRoom(roomId: string): Promise<RoomDetailResponse>;
+export function deleteRoom(roomId: string): Promise<DeleteRoomResponse>;
+export function getRoomModelSetting(roomId: string): Promise<ModelSettingResponse>;
+export function getRoomCyoaSetting(roomId: string): Promise<CyoaSettingResponse>;
+export function getIntroBeforeSelection(roomId: string): Promise<IntroBeforeSelectionResponse>;
+export function createIntro(roomId: string): Promise<CreateIntroResponse>;
+export function getSelectedPersona(plotId: string, roomId: string): Promise<SelectedPersonaResponse>;
+
+// Messages
+export function getMessages(roomId: string, limit?: number): Promise<ApiMessagesResponse>;
+export function getMessagesByCursor(roomId: string, cursor: string, limit?: number): Promise<ApiMessagesResponse>;
+export function sendMessageStream(
+  roomId: string,
+  text: string,
+  onEvent: (event: unknown) => void,
+  onDone: () => void,
+  retry?: boolean
+): Promise<void>;
+export function regenMessageStream(
+  roomId: string,
+  messageId: string,
+  onEvent: (event: unknown) => void,
+  onDone: () => void,
+  retry?: boolean
+): Promise<void>;
+export function getCandidates(roomId: string, messageId: string, limit?: number): Promise<CandidatesResponse>;
+export function selectCandidate(roomId: string, messageId: string, candidateId: string): Promise<SelectCandidateResponse>;
+export function editMessage(roomId: string, messageId: string, candidateId: string, text: string): Promise<EditMessageResponse>;
+export function deleteMessages(roomId: string, messageId: string): Promise<DeleteMessagesResponse>;
+
+// Recommend
+export function getRecommended(roomId: string): Promise<RecommendedResponse>;
+export function refreshRecommended(roomId: string): Promise<RefreshRecommendedResponse>;
+export function getRecommendQuota(): Promise<RecommendQuotaResponse>;
+
+// Account / session-adjacent
+export function getCoinBalance(): Promise<CoinBalanceResponse>;
+export function getCoinAutoPaymentSettings(): Promise<AutoPaymentSettingsResponse>;
+export function getCreatorStats(): Promise<CreatorStatsResponse>;
+export function getZetaPassSubscription(): Promise<SubscriptionResponse>;
+export function getZetaPassPromotionEligibility(): Promise<PromotionEligibilityResponse>;
+export function getZetaPassProConversionStatus(): Promise<ProConversionStatusResponse>;
+export function getLatestNotificationTime(): Promise<NotificationTimeResponse>;
+export function getAppPushSetting(type?: string): Promise<PushSettingResponse>;
+export function getStoreProducts(productType: string): Promise<StoreProductsResponse>;
+export function getSessionOverview(): Promise<SessionOverview>;
+
+// User chat profiles / personas
+export function getUserChatProfiles(limit?: number, options?: { plotId?: string; roomId?: string }): Promise<UserChatProfilesResponse>;
+export function createUserChatProfile(data: { name: string; description?: string }): Promise<UserChatProfile>;
+export function checkUserChatProfileAbuse(data: { name: string; description?: string }): Promise<AbuseCheckResponse>;
+export function updateUserChatProfile(profileId: string, data: { name: string; description?: string }): Promise<UserChatProfile>;
+export function deleteUserChatProfile(profileId: string): Promise<void>;
+export function selectUserChatProfile(profileId: string, options?: { plotId?: string; roomId?: string }): Promise<SelectProfileResponse>;
+
+// Quiz
+export function getQuiz(): Promise<QuizData>;
+export function joinQuiz(quizId: string, plotId: string): Promise<JoinQuizResponse>;
+export function claimQuiz(quizId: string): Promise<ClaimQuizResponse>;
+
+// Additional types referenced above
+export interface Banner {
+  id: string;
+  imageUrl: string;
+  linkUrl?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface Popup {
+  id: string;
+  title: string;
+  message: string;
+  imageUrl?: string;
+  actionUrl?: string;
+  actionText?: string;
+}
+
+export interface FeatureFlagResponse {
+  enabled: boolean;
+  name: string;
+  config?: Record<string, unknown>;
+}
+
+export interface CharacterImage {
+  id: string;
+  url: string;
+  characterId: string;
+  order: number;
+}

@@ -1,19 +1,20 @@
 // ===== Quiz Automation (Client-side) =====
-import { claimQuiz, getQuiz, joinQuiz } from './api.js';
+import { claimQuiz, getQuiz, joinQuiz, getPlot } from './api.js';
+import type { QuizData, QuizPlot } from './types';
 
-function isJoined(data: any): boolean {
+function isJoined(data: QuizData): boolean {
   return data?.type === 'Selected' || Boolean(data?.selection);
 }
 
-function isClaimed(data: any): boolean {
+function isClaimed(data: QuizData): boolean {
   return data?.type === 'Claimed' || data?.claimed === true || data?.rewardClaimed === true;
 }
 
-function getAvailableAt(data: any): Date | null {
+function getAvailableAt(data: QuizData): Date | null {
   return data.availableAt ? new Date(data.availableAt) : null;
 }
 
-function getRewardUntil(data: any): Date | null {
+function getRewardUntil(data: QuizData): Date | null {
   return data.rewardUntil ? new Date(data.rewardUntil) : null;
 }
 
@@ -51,7 +52,7 @@ export async function getQuizStatus(): Promise<string> {
       return `参加済み (ID: ${data.id})`;
     }
 
-    const options = (data.question?.plots || []).map((p: any) => p.name).join(', ');
+    const options = (data.question?.plots || []).map((p: QuizPlot) => p.name).join(', ');
     return `未参加: 選択肢 ${options || '-'}`;
   } catch (e) {
     console.error('[Quiz] Status check failed:', e);
@@ -78,9 +79,36 @@ export async function runQuizAutomation(): Promise<string> {
       const plots = data.question?.plots || [];
       if (plots.length === 0) return 'クイズに選択肢がありません';
 
-      const selectedPlot = plots[0];
+      // Fetch plot details to get interactionCount and select the one with max messages
+      let selectedPlot: QuizPlot = plots[0];
+      try {
+        const plotDetails = await Promise.all(
+          plots.map((p: QuizPlot) => getPlot(p.id).catch(() => null))
+        );
+        const validPlots = plotDetails.filter(
+          (p): p is { id: string; name: string; interactionCount?: number } =>
+            p !== null && typeof p.interactionCount === 'number'
+        );
+        if (validPlots.length > 0) {
+          selectedPlot = validPlots.reduce((max, p) =>
+            (p.interactionCount ?? 0) > (max.interactionCount ?? 0) ? p : max
+          );
+          console.log(
+            '[Quiz] Plot interaction counts:',
+            validPlots.map((p) => ({ id: p.id, name: p.name, count: p.interactionCount }))
+          );
+          console.log(
+            `[Quiz] Selected plot with max messages: ${selectedPlot.id} (${selectedPlot.name}, ${selectedPlot.interactionCount} messages)`
+          );
+        } else {
+          console.log('[Quiz] No valid interactionCount, falling back to first plot');
+        }
+      } catch (e) {
+        console.warn('[Quiz] Failed to fetch plot details, using first plot:', e);
+      }
+
       console.log(`[Quiz] Joining quiz ${quizId} with plot ${selectedPlot.id} (${selectedPlot.name})`);
-      await joinQuiz(quizId, selectedPlot.id);
+      await joinQuiz(String(quizId), selectedPlot.id);
       justJoined = true;
 
       // Re-fetch to get updated state
@@ -107,7 +135,7 @@ export async function runQuizAutomation(): Promise<string> {
     // Attempt claim
     try {
       console.log(`[Quiz] Claiming reward for quiz ${quizId}`);
-      const claimResult = await claimQuiz(quizId);
+      const claimResult = await claimQuiz(String(quizId));
       console.log('[Quiz] Claim result:', JSON.stringify(claimResult, null, 2));
       return `報酬を受け取りました${claimResult?.reward ? ` (${JSON.stringify(claimResult.reward)})` : ''}`;
     } catch (claimError: unknown) {
@@ -119,7 +147,7 @@ export async function runQuizAutomation(): Promise<string> {
         console.log('[Quiz] Retrying claim after delay...');
         await delay(2000);
         try {
-          const retryResult = await claimQuiz(quizId);
+          const retryResult = await claimQuiz(String(quizId));
           console.log('[Quiz] Retry claim result:', JSON.stringify(retryResult, null, 2));
           return `報酬を受け取りました (リトライ)${retryResult?.reward ? ` (${JSON.stringify(retryResult.reward)})` : ''}`;
         } catch (retryError) {

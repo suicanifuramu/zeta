@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
@@ -15,16 +15,14 @@ interface ProfileSelectSheetProps {
 }
 
 export function ProfileSelectSheet({ profiles, open, onSelect, loading }: ProfileSelectSheetProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState(false)
-
-  // Sync selectedId when profiles change (initial load or refresh)
-  useEffect(() => {
-    if (profiles.length > 0 && !selectedId) {
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (profiles.length > 0) {
       const def = profiles.find((p) => p.selected || p.isDefault)
-      setSelectedId(def?.id || profiles[0]?.id || null)
+      return def?.id || profiles[0]?.id || null
     }
-  }, [profiles, selectedId])
+    return null
+  })
+  const [confirming, setConfirming] = useState(false)
 
   if (!open) return null
 

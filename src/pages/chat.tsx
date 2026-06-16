@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
@@ -23,7 +24,7 @@ import {
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
-import type { Message, UserChatProfile, InfoBoxContent } from "@/lib/types"
+import type { Message, UserChatProfile, InfoBoxContent, Candidate } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // ── Message Formatter ──
@@ -202,7 +203,8 @@ export function ChatPage() {
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
   const touchStateRef = useRef<{ x: number, y: number, isScrolling: boolean, isSwiping: boolean } | null>(null)
-  const lastSwipeDirectionRef = useRef<{ id: string, direction: "prev" | "next" | "regen" | null, key: number }>({ id: "", direction: null, key: 0 })
+  const [lastSwipeDirection, setLastSwipeDirection] = useState<{ id: string, direction: "prev" | "next" | "regen" | null, key: number }>({ id: "", direction: null, key: 0 })
+  const swipeKeyRef = useRef(0)
 
   // History pagination
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -565,7 +567,7 @@ export function ChatPage() {
   }
 
   // Ensure candidates are cached for a message (lazy-load on first interaction)
-  const ensureCandidatesCached = useCallback(async (msgId: string): Promise<{ candidates: any[]; currentIdx: number } | null> => {
+  const ensureCandidatesCached = useCallback(async (msgId: string): Promise<{ candidates: Candidate[]; currentIdx: number } | null> => {
     // Return from cache if available
     const cached = candidatesCache[msgId]
     if (cached) return cached
@@ -573,9 +575,9 @@ export function ChatPage() {
     try {
       const data = await getCandidates(roomId, msgId)
       const candidates = data.candidates || []
-      const currentMsg = messages.find((m: any) => m.id === msgId) /* eslint-disable-line @typescript-eslint/no-explicit-any */
+      const currentMsg = messages.find((m) => m.id === msgId)
       const currentCandidateId = currentMsg?.candidateId
-      const currentIdx = candidates.findIndex((c: any) => c.id === currentCandidateId) /* eslint-disable-line @typescript-eslint/no-explicit-any */
+      const currentIdx = candidates.findIndex((c: Candidate) => c.id === currentCandidateId)
       const entry = { candidates, currentIdx: currentIdx >= 0 ? currentIdx : candidates.length - 1 }
       setCandidatesCache((prev) => ({ ...prev, [msgId]: entry }))
       return entry
@@ -588,7 +590,8 @@ export function ChatPage() {
   // Regen: generate a new candidate via SSE, shown inline at the message position
   const handleRegen = async (msgId: string) => {
     if (!roomId) return
-    lastSwipeDirectionRef.current = { id: msgId, direction: "regen", key: Date.now() }
+    swipeKeyRef.current += 1
+    setLastSwipeDirection({ id: msgId, direction: "regen", key: swipeKeyRef.current })
     setRegenMsgId(msgId)
     setRegenContents([])
     try {
@@ -677,7 +680,8 @@ export function ChatPage() {
       }
 
       const targetCandidate = candidates[targetIdx]
-      lastSwipeDirectionRef.current = { id: msgId, direction, key: Date.now() }
+      swipeKeyRef.current += 1
+      setLastSwipeDirection({ id: msgId, direction, key: swipeKeyRef.current })
 
       // Update cache index immediately
       setCandidatesCache((prev) => ({ ...prev, [msgId]: { ...prev[msgId], currentIdx: targetIdx } }))
@@ -828,7 +832,6 @@ export function ChatPage() {
     const lastBotMsgId = [...messages].reverse().find((m) => m.sender?.type === "BOT" && !m.isIntro)?.id || null
     return messages.map((msg) => {
       const isIntro = !!msg.isIntro
-      const isBot = msg.sender?.type === "BOT"
       const isLastBot = msg.id === lastBotMsgId
       const isSelected = deleteMode && selectedMsgId === msg.id
       const selectedIdx = deleteMode && selectedMsgId ? messages.findIndex((m: Message) => m.id === selectedMsgId) : -1
@@ -941,12 +944,12 @@ export function ChatPage() {
             <StreamingDots />
           ) : (
             <div 
-              key={`${msg.id}-${lastSwipeDirectionRef.current.id === msg.id ? lastSwipeDirectionRef.current.key : (msg.candidateId || 0)}`}
+              key={`${msg.id}-${lastSwipeDirection.id === msg.id ? lastSwipeDirection.key : (msg.candidateId || 0)}`}
               className={cn(
                 "animate-in duration-300",
-                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "next" ? "slide-in-from-right-full fade-in" : "",
-                lastSwipeDirectionRef.current.id === msg.id && lastSwipeDirectionRef.current.direction === "prev" ? "slide-in-from-left-full fade-in" : "",
-                (lastSwipeDirectionRef.current.id !== msg.id || lastSwipeDirectionRef.current.direction === "regen") ? "zoom-in-95 fade-in" : ""
+                lastSwipeDirection.id === msg.id && lastSwipeDirection.direction === "next" ? "slide-in-from-right-full fade-in" : "",
+                lastSwipeDirection.id === msg.id && lastSwipeDirection.direction === "prev" ? "slide-in-from-left-full fade-in" : "",
+                (lastSwipeDirection.id !== msg.id || lastSwipeDirection.direction === "regen") ? "zoom-in-95 fade-in" : ""
               )}
             >
               {(msg.contents || []).map((c: any, ci: number) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => {
@@ -1000,7 +1003,7 @@ export function ChatPage() {
       )
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars, candidatesCache])
+  }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars, candidatesCache, lastSwipeDirection])
 
   return (
     <div ref={containerRef} className="fixed top-0 left-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-background">

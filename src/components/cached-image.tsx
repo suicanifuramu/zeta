@@ -2,12 +2,10 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { cacheManager } from "@/lib/cache-db"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
+import { memoryCache, fetchPromises } from "@/lib/image-cache"
 
-// In-memory object URL cache
-export const memoryCache = new Map<string, string>()
-
-// Deduplicate concurrent fetch requests for the same image
-export const fetchPromises = new Map<string, Promise<string>>()
+// Re-export for image-preloader.ts
+export { memoryCache, fetchPromises } from "@/lib/image-cache"
 
 // Global cache promise to prevent Cache API lock contention
 let globalCachePromise: Promise<Cache> | null = null
