@@ -1,6 +1,6 @@
 import React, { Suspense } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useVirtualizer } from "@tanstack/react-virtual"
+import { useMessageVirtualizer } from "@/hooks/useMessageVirtualizer"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
@@ -217,7 +217,6 @@ export function ChatPage() {
 
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const virtualizerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
@@ -233,10 +232,15 @@ export function ChatPage() {
 
   const prevHeightRef = useRef<number>(0)
 
+  // Virtualizer for message list (must be before getViewport)
+  const { virtualizerRef, virtualizer } = useMessageVirtualizer({
+    count: messages.length,
+  })
+
   const getViewport = useCallback(() => {
     // Use virtualizer's scroll element for virtualized list
     return virtualizerRef.current
-  }, [])
+  }, [virtualizerRef])
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
@@ -852,6 +856,7 @@ export function ChatPage() {
     }
   }
 
+  /* eslint-disable react-hooks/refs, react-hooks/exhaustive-deps */
   const renderedMessages = useMemo(() => {
     // Only the last BOT message supports regen/candidate-switch/edit (API limitation)
     const lastBotMsgId = [...messages].reverse().find((m) => m.sender?.type === "BOT" && !m.isIntro)?.id || null
@@ -1027,17 +1032,7 @@ export function ChatPage() {
         </div>
       )
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, deleteMode, selectedMsgId, regenMsgId, regenContents, charAvatars, candidatesCache, lastSwipeDirection])
-
-  // Virtualizer for message list
-  const virtualizer = useVirtualizer({
-    count: messages.length,
-    getScrollElement: () => virtualizerRef.current,
-    estimateSize: () => 120,
-    overscan: 5,
-    scrollMargin: 0,
-  })
 
   return (
     <div ref={containerRef} className="fixed top-0 left-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-background">
