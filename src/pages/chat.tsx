@@ -1091,9 +1091,7 @@ export function ChatPage() {
           </div>
         ) : (
           <div
-            ref={virtualizerRef}
-            className="relative"
-            style={{ height: "100%" }}
+            className="relative min-h-full"
           >
             {/* Top sentinel for loading older messages */}
             <div ref={topSentinelRef} className="flex justify-center py-2">
@@ -1112,6 +1110,8 @@ export function ChatPage() {
               {virtualizer.getVirtualItems().map((virtualRow) => (
                 <div
                   key={messages[virtualRow.index]?.id ?? virtualRow.index}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
                   style={{
                     position: "absolute",
                     top: 0,
