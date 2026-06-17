@@ -26,13 +26,21 @@ export function CharacterDetailSheet({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
-  // Fetch images when sheet opens
+// Debug flag for character detail sheet
+const DEBUG_SHEET = true
+function debugLogSheet(...args: unknown[]) {
+  if (DEBUG_SHEET) console.log("[CharacterDetailSheet]", ...args)
+}
+
+// Fetch images when sheet opens
   useEffect(() => {
     if (!open || !character || !plotId) return
 
     const fetchImages = async () => {
       try {
+        debugLogSheet("Fetching images", { plotId, characterId: character.id })
         const data = await getCharacterImages(plotId, character.id)
+        debugLogSheet("Received images", { images: data.images })
         setImages(data.images)
         setCurrentIndex(0)
       } catch (e) {
@@ -85,15 +93,6 @@ export function CharacterDetailSheet({
                 isExpanded={descriptionExpanded}
                 onToggle={() => setDescriptionExpanded((prev) => !prev)}
               />
-              <button
-                className="body1 mx-4 text-white/50 underline mt-4 block text-center"
-                onClick={() => {
-                  // TODO: Navigate to full character detail
-                  console.log("Navigate to character detail")
-                }}
-              >
-                詳細
-              </button>
             </div>
           </div>
 

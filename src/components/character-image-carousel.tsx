@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { CachedImage } from "@/components/cached-image"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface CharacterImageCarouselProps {
   images: Array<{ imageUrl: string; aspectRatio: number }>
@@ -122,13 +123,14 @@ export function CharacterImageCarousel({
             style={{ width: `${100 / images.length}%` }}
           >
             <div
-              className="w-full h-full flex items-center justify-center touch-none select-none"
+              className="w-full h-full flex items-center justify-center touch-none select-none relative"
               onClick={handleImageClick}
               onDoubleClick={handleDoubleClick}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
+              <Skeleton className="absolute inset-0 w-full h-full" />
               <CachedImage
                 src={images[i].imageUrl}
                 alt=""
