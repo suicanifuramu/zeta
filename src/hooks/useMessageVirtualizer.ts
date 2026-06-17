@@ -6,7 +6,6 @@ interface UseMessageVirtualizerOptions {
   estimateSize?: number
   overscan?: number
   scrollMargin?: number
-  scrollRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export function useMessageVirtualizer({
@@ -14,17 +13,13 @@ export function useMessageVirtualizer({
   estimateSize = 120,
   overscan = 5,
   scrollMargin = 0,
-  scrollRef,
 }: UseMessageVirtualizerOptions) {
   const virtualizerRef = useRef<HTMLDivElement>(null)
-
-  // Use provided scrollRef or fall back to virtualizerRef
-  const scrollElementRef = scrollRef ?? virtualizerRef
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer<HTMLDivElement, Element>({
     count,
-    getScrollElement: () => scrollElementRef.current,
+    getScrollElement: () => virtualizerRef.current,
     estimateSize: () => estimateSize,
     overscan,
     scrollMargin,

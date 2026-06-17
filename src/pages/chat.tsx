@@ -216,8 +216,7 @@ export function ChatPage() {
   }, [])
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
   const touchStateRef = useRef<{ x: number, y: number, isScrolling: boolean, isSwiping: boolean } | null>(null)
@@ -235,13 +234,12 @@ export function ChatPage() {
   // Virtualizer for message list (must be before getViewport)
   const { virtualizerRef, virtualizer } = useMessageVirtualizer({
     count: messages.length,
-    scrollRef,
   })
 
   const getViewport = useCallback(() => {
-    // Use scrollRef (parent scroll container) for virtualized list
-    return scrollRef.current
-  }, [scrollRef])
+    // Use virtualizerRef as the scroll container
+    return virtualizerRef.current
+  }, [virtualizerRef])
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
@@ -367,20 +365,21 @@ export function ChatPage() {
     setHasMoreHistory(true)
     setNeedsInit(false)
 
-    getMessages(roomId, 50)
+    getMessages(roomId, 30)
       .then(async (data) => {
         const msgs = data.messages || []
         if (msgs.length === 0) {
           // New empty room — start init flow
           setNeedsInit(true)
           try {
-            // 1. Get intro messages preview
-            const introData = await getIntroBeforeSelection(roomId)
+            // 1. Get intro messages preview (parallel with room info)
+            const [introData, roomData] = await Promise.all([
+              getIntroBeforeSelection(roomId),
+              getRoom(roomId),
+            ])
             const introMsgs = introData.introMessages || []
-            setMessages(introMsgs) // show intro in chat area
+            setMessages(introMsgs) // show intro in chat area immediately
 
-            // 2. Get room info for plotId
-            const roomData = await getRoom(roomId)
             const pid = roomData?.plot?.id || ""
             setPlotId(pid)
 
@@ -390,7 +389,7 @@ export function ChatPage() {
             chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
             setCharAvatars(avatars)
 
-            // 3. Get user profiles
+            // 3. Get user profiles (parallel with showing intro)
             setProfileLoading(true)
             const profData = await getUserChatProfiles(20, { plotId: pid, roomId })
             setProfileList(profData.userChatProfiles || [])
@@ -1076,7 +1075,11 @@ export function ChatPage() {
       </header>
 
       {/* Messages */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+      <div
+        ref={virtualizerRef}
+        className="min-h-0 flex-1 overflow-auto"
+        style={{ height: "100%" }}
+      >
         {loading ? (
           <div className="flex flex-col gap-3 px-4 py-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -1091,7 +1094,6 @@ export function ChatPage() {
             ref={virtualizerRef}
             className="relative"
             style={{ height: "100%" }}
-            onScroll={() => {}}
           >
             {/* Top sentinel for loading older messages */}
             <div ref={topSentinelRef} className="flex justify-center py-2">
