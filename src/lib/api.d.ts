@@ -14,7 +14,7 @@ import type {
   GenreRankingResponse,
   PlotDetailResponse,
   PlotImage,
-  CharacterImage,
+  CharacterImageResponse,
   SimilarPlotsResponse,
   LikedPlotsResponse,
   ActiveRoomIdResponse,
@@ -64,7 +64,7 @@ export function getRanking(type?: string, limit?: number, filterValues?: string)
 // Plots / rooms
 export function getPlot(plotId: string): Promise<PlotDetailResponse>;
 export function getPlotImages(plotId: string): Promise<PlotImage[]>;
-export function getCharacterImages(plotId: string, characterId: string): Promise<CharacterImage[]>;
+export function getCharacterImages(plotId: string, characterId: string): Promise<CharacterImageResponse>;
 export function getSimilarPlots(plotId: string, limit?: number): Promise<SimilarPlotsResponse>;
 export function getLikedPlots(limit?: number): Promise<LikedPlotsResponse>;
 export function getActiveRoomId(plotId: string): Promise<ActiveRoomIdResponse>;

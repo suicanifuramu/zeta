@@ -17,6 +17,7 @@ import {
 import { ProfileSelectSheet } from "@/components/profile-select-sheet"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { InfoBox } from "@/components/info-box"
+import { CharacterDetailSheet } from "@/components/character-detail-sheet"
 import {
   createIntro, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
   getMessages, getMessagesByCursor, getPlot, getRecommended,
@@ -24,7 +25,7 @@ import {
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
-import type { Message, UserChatProfile, InfoBoxContent, Candidate } from "@/lib/types"
+import type { Message, UserChatProfile, InfoBoxContent, Candidate, Character } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // ── Message Formatter ──
@@ -42,7 +43,7 @@ function formatMessageText(text: string) {
 }
 
 // ── Message Bubble ──
-function MessageBubble({ content, avatarUrl }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string }) {
+function MessageBubble({ content, avatarUrl, onAvatarTap }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string; onAvatarTap?: () => void }) {
   const pos = content.position || "LEFT"
   if (pos === "NARRATOR") {
     return (
@@ -55,7 +56,7 @@ function MessageBubble({ content, avatarUrl }: { content: any /* eslint-disable-
   return (
     <div className={cn("flex gap-2 my-1 animate-msg-in", isRight ? "flex-row-reverse" : "flex-row")}>
       {!isRight && (
-        <Avatar className="size-8 shrink-0">
+        <Avatar className="size-8 shrink-0 cursor-pointer" onClick={onAvatarTap}>
           <AvatarImage src={avatarUrl} />
           <AvatarFallback>{(content.speakerName || "?")[0]}</AvatarFallback>
         </Avatar>
@@ -148,6 +149,11 @@ export function ChatPage() {
   // Plot detail overlay
   const [plotDetailOpen, setPlotDetailOpen] = useState(false)
   const [plotDetailData, setPlotDetailData] = useState<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */(null)
+
+  // Character detail sheet
+  const [characterDetailOpen, setCharacterDetailOpen] = useState(false)
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
+  const [characters, setCharacters] = useState<Character[]>([])
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
   useEffect(() => {
@@ -458,6 +464,7 @@ export function ChatPage() {
       const avatars: Record<string, string> = {}
       chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
       setCharAvatars(avatars)
+      setCharacters(chars)
 
       // Update header from room data to fix stale sessionStorage bug
       const roomPlotName = room?.plot?.name || room?.title
@@ -482,6 +489,7 @@ export function ChatPage() {
   const handleProfileSelect = async (profile: UserChatProfile) => {
     if (!roomId) return
     try {
+      //  {
       // 4. Select profile
       await selectUserChatProfile(profile.id, { plotId, roomId })
       // 5. Create intro (POST)
@@ -497,6 +505,14 @@ export function ChatPage() {
       toast.error(`チャット開始失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
+
+  // Handle avatar tap to open character detail sheet
+  const handleAvatarTap = useCallback(async (characterName: string) => {
+    const character = characters.find(c => c.name === characterName)
+    if (!character) return
+    setSelectedCharacter(character)
+    setCharacterDetailOpen(true)
+  }, [characters])
 
   // Send message
   const sendMessage = async () => {
@@ -943,7 +959,7 @@ export function ChatPage() {
               if (c.type === "INFO_BOX") {
                 return <InfoBox key={`regen-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
               }
-              return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
+              return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} />
             })
           ) : isRegening && regenContents.length === 0 ? (
             <StreamingDots />
@@ -961,7 +977,7 @@ export function ChatPage() {
                 if (c.type === "INFO_BOX") {
                   return <InfoBox key={ci} data={c as InfoBoxContent} charAvatars={charAvatars} />
                 }
-                return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} />
+                return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} onAvatarTap={() => c.position !== "RIGHT" && handleAvatarTap(c.speakerName)} />
               })}
             </div>
           )}
@@ -1078,7 +1094,7 @@ export function ChatPage() {
                     if (c.type === "INFO_BOX") {
                       return <InfoBox key={`stream-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
                     }
-                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} />
+                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} />
                   })
             )}
           </div>
@@ -1247,6 +1263,14 @@ export function ChatPage() {
         plot={plotDetailData} 
         open={plotDetailOpen} 
         onOpenChange={setPlotDetailOpen} 
+      />
+
+      {/* Character Detail Sheet */}
+      <CharacterDetailSheet
+        character={selectedCharacter}
+        plotId={plotId}
+        open={characterDetailOpen}
+        onOpenChange={setCharacterDetailOpen}
       />
     </div>
   )

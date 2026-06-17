@@ -18,6 +18,20 @@ export interface Character {
   description?: string
 }
 
+export interface CharacterImageResponse {
+  images: Array<{
+    imageUrl: string
+    aspectRatio: number
+  }>
+}
+
+export interface CharacterDetail {
+  id: string
+  name: string
+  description: string
+  imageUrl: string
+}
+
 export interface Room {
   id: string
   lastMessageTime?: string
