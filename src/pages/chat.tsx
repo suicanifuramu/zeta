@@ -235,12 +235,13 @@ export function ChatPage() {
   // Virtualizer for message list (must be before getViewport)
   const { virtualizerRef, virtualizer } = useMessageVirtualizer({
     count: messages.length,
+    scrollRef,
   })
 
   const getViewport = useCallback(() => {
-    // Use virtualizer's scroll element for virtualized list
-    return virtualizerRef.current
-  }, [virtualizerRef])
+    // Use scrollRef (parent scroll container) for virtualized list
+    return scrollRef.current
+  }, [scrollRef])
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
