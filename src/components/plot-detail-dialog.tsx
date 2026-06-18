@@ -327,8 +327,10 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh] gap-0 overflow-y-auto p-0">
-        {content}
+      <DrawerContent className="max-h-[85vh] gap-0 p-0 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto overscroll-contain touch-scrollable">
+          {content}
+        </div>
       </DrawerContent>
     </Drawer>
   )
