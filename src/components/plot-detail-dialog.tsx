@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { BookOpen, MessageCircle, ScrollText, Users } from "lucide-react"
+import { useEffect, useState, useRef, useCallback } from "react"
+import { BookOpen, MessageCircle, ScrollText, Users, X } from "lucide-react"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CachedImage } from "@/components/cached-image"
 import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import { getPlot } from "@/lib/api"
 
@@ -101,21 +100,30 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
     })
   }
 
+  const [showPlotImage, setShowPlotImage] = useState(false)
+  const heroRef = useRef<HTMLDivElement>(null)
+  const toggleImage = useCallback(() => {
+    if (showPlotImage) {
+      heroRef.current?.scrollIntoView({ behavior: "instant", block: "start" })
+    }
+    setShowPlotImage((prev) => !prev)
+  }, [showPlotImage])
   const isDesktop = useMediaQuery("(min-width: 768px)")
-  const ScrollContainer = isDesktop ? ScrollArea : "div"
-  const scrollProps = isDesktop ? { className: "max-h-[50vh]" } : { className: "max-h-[60vh] overflow-y-auto overscroll-contain touch-scrollable" }
-
   const content = (
     <>
       {/* Hero image */}
         {heroImg ? (
-          <div className="relative h-52 w-full overflow-hidden sm:h-64">
+          <div
+            ref={heroRef}
+            className={`relative w-full cursor-pointer ${showPlotImage ? "" : "h-52 sm:h-64 overflow-hidden"}`}
+            onClick={toggleImage}
+          >
             <CachedImage
               src={heroImg}
               alt={plotName}
-              className="size-full object-cover"
+              className={showPlotImage ? "w-full h-auto max-w-none" : "size-full object-cover"}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
             <div className="absolute bottom-3 left-4 right-4">
               <h2 className="text-lg font-bold leading-tight text-white drop-shadow-lg line-clamp-2">
                 {plotName}
@@ -135,8 +143,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
           </div>
         )}
 
-        <ScrollContainer {...scrollProps}>
-          <div className="flex flex-col gap-4 px-5 py-4">
+        <div className="flex flex-col gap-4 px-5 py-4">
             {/* Stats + interaction count */}
             {interactionCount > 0 && (
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -289,7 +296,6 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
               </>
             )}
           </div>
-        </ScrollContainer>
 
         {/* Action footer */}
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
@@ -312,7 +318,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogContent className="max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg max-h-[85vh]">
           {content}
         </DialogContent>
       </Dialog>
@@ -321,7 +327,7 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh] gap-0 overflow-hidden p-0">
+      <DrawerContent className="max-h-[85vh] gap-0 overflow-y-auto p-0">
         {content}
       </DrawerContent>
     </Drawer>
