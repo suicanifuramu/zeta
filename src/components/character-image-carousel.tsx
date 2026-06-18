@@ -57,6 +57,15 @@ export function CharacterImageCarousel({
     }
   }, [index])
 
+  const handleImageLoad = useCallback((i: number) => {
+    setLoadedImages((prev) => {
+      if (prev.has(i)) return prev
+      const next = new Set(prev)
+      next.add(i)
+      return next
+    })
+  }, [])
+
   const handleTransitionEnd = useCallback(() => {
     if (!transitionRef.current) return
     transitionRef.current = false
