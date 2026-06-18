@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { CachedImage } from "@/components/cached-image"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -16,6 +16,7 @@ export function CharacterImageCarousel({
   onIndexChange,
 }: CharacterImageCarouselProps) {
   const [scale, setScale] = useState(1)
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
   const touchState = useRef<{
@@ -28,13 +29,24 @@ export function CharacterImageCarousel({
   const minScale = 1
   const maxScale = 4
 
+  useEffect(() => {
+    setLoadedImages(new Set())
+  }, [images])
+
+  const handleImageLoad = useCallback((i: number) => {
+    setLoadedImages((prev) => {
+      if (prev.has(i)) return prev
+      const next = new Set(prev)
+      next.add(i)
+      return next
+    })
+  }, [])
+
   const goToIndex = useCallback((newIndex: number) => {
     const clamped = Math.max(0, Math.min(newIndex, images.length - 1))
-    if (clamped !== index) {
-      onIndexChange?.(clamped)
-    }
+    onIndexChange?.(clamped)
     setScale(1)
-  }, [images.length, index, onIndexChange])
+  }, [images.length, onIndexChange])
 
   const goToPrev = useCallback(() => {
     if (index > 0) goToIndex(index - 1)
@@ -170,7 +182,7 @@ export function CharacterImageCarousel({
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <Skeleton className="absolute inset-0 w-full h-full" />
+              {!loadedImages.has(i) && <Skeleton className="absolute inset-0 w-full h-full" />}
               <CachedImage
                 src={images[i].imageUrl}
                 alt=""
@@ -180,6 +192,7 @@ export function CharacterImageCarousel({
                   transformOrigin: "center center",
                   transition: "transform 0.1s ease-out",
                 }}
+                onLoad={() => handleImageLoad(i)}
               />
             </div>
           </div>
