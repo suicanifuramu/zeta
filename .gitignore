@@ -42,3 +42,4 @@ out/
 
 # Scratchpads / Temporary files
 *.txt
+.mcp.json

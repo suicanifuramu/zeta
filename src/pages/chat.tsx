@@ -465,6 +465,7 @@ export function ChatPage() {
       chars.forEach((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => { if (c.name && c.imageUrl) avatars[c.name] = c.imageUrl })
       setCharAvatars(avatars)
       setCharacters(chars)
+      setPlotId(room?.plot?.id || "")
 
       // Update header from room data to fix stale sessionStorage bug
       const roomPlotName = room?.plot?.name || room?.title
