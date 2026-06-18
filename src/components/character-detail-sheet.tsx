@@ -25,7 +25,7 @@ export function CharacterDetailSheet({
 }: CharacterDetailSheetProps) {
   const [images, setImages] = useState<Array<{ imageUrl: string; aspectRatio: number }>>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [showFullDesc, setShowFullDesc] = useState(false)
 
   useEffect(() => {
     if (!open || !character || !plotId) return
@@ -44,6 +44,9 @@ export function CharacterDetailSheet({
 
   if (!character || !open) return null
 
+  const desc = character.description || ""
+  const showReadMore = desc.length > 100 || desc.includes("\n")
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
       <DrawerContent className="max-h-[85vh] flex flex-col">
@@ -60,30 +63,43 @@ export function CharacterDetailSheet({
         </div>
 
         <div className="relative flex-1 overflow-y-auto">
-          <div className="relative aspect-square bg-muted">
-            <CharacterImageCarousel
-              images={images}
-              initialIndex={0}
-              onIndexChange={setCurrentIndex}
-            />
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-popover/95 to-transparent pointer-events-none" />
-            <div className="px-4 py-4 pb-24">
-              <CharacterDescription
-                description={character.description || ""}
-                isExpanded={descriptionExpanded}
-                onToggle={() => setDescriptionExpanded((prev) => !prev)}
-              />
+          {showFullDesc ? (
+            <div className="absolute inset-0 z-20 bg-popover overflow-y-auto">
+              <div className="sticky top-0 flex items-center justify-between px-4 py-3 border-b border-border bg-popover/95 backdrop-blur z-10">
+                <span className="text-sm font-medium">{character.name}</span>
+                <Button variant="ghost" size="icon" onClick={() => setShowFullDesc(false)} aria-label="閉じる">
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                {desc}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="relative aspect-square bg-muted">
+                <CharacterImageCarousel
+                  images={images}
+                  index={currentIndex}
+                  onIndexChange={setCurrentIndex}
+                />
+              </div>
 
-          <CharacterThumbnailStrip
-            images={images}
-            currentIndex={currentIndex}
-            onSelect={setCurrentIndex}
-          />
+              <div className="px-4 py-4 pb-24">
+                <CharacterDescription
+                  description={desc}
+                  showReadMore={showReadMore}
+                  onReadMore={() => setShowFullDesc(true)}
+                />
+              </div>
+
+              <CharacterThumbnailStrip
+                images={images}
+                currentIndex={currentIndex}
+                onSelect={setCurrentIndex}
+              />
+            </>
+          )}
         </div>
       </DrawerContent>
     </Drawer>
@@ -92,35 +108,34 @@ export function CharacterDetailSheet({
 
 function CharacterDescription({
   description,
-  isExpanded,
-  onToggle,
+  showReadMore,
+  onReadMore,
 }: {
   description: string
-  isExpanded: boolean
-  onToggle: () => void
+  showReadMore: boolean
+  onReadMore: () => void
 }) {
   if (!description) return null
 
   return (
-    <div className="relative">
-      <div className="px-4">
-        <div
-          className={cn(
-            "text-sm whitespace-pre-wrap break-all text-left text-muted-foreground",
-            isExpanded ? "" : "line-clamp-5"
-          )}
-        >
-          {description}
-        </div>
+    <div>
+      <div
+        className={cn(
+          "text-sm whitespace-pre-wrap break-all text-left text-muted-foreground",
+          "line-clamp-5"
+        )}
+      >
+        {description}
+      </div>
+      {showReadMore && (
         <button
           type="button"
-          onClick={onToggle}
+          onClick={onReadMore}
           className="text-sm text-muted-foreground/50 underline mt-2 block text-center"
         >
-          {isExpanded ? "閉じる" : "続きを読む"}
+          続きを読む
         </button>
-      </div>
-      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-popover/95 to-transparent pointer-events-none" />
+      )}
     </div>
   )
 }

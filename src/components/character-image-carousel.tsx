@@ -1,46 +1,40 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useRef } from "react"
 import { CachedImage } from "@/components/cached-image"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface CharacterImageCarouselProps {
   images: Array<{ imageUrl: string; aspectRatio: number }>
-  initialIndex?: number
+  index: number
   onIndexChange?: (index: number) => void
 }
 
 export function CharacterImageCarousel({
   images,
-  initialIndex = 0,
+  index,
   onIndexChange,
 }: CharacterImageCarouselProps) {
-  const [index, setIndex] = useState(initialIndex)
   const [scale, setScale] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
-  const imageRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  // Touch/swipe state
   const touchState = useRef<{
     startX: number
     startY: number
-    lastX: number
     isSwiping: boolean
     isPanning: boolean
-    swiped: boolean
   } | null>(null)
 
   const minScale = 1
   const maxScale = 4
 
-  useEffect(() => {
-    if (onIndexChange) onIndexChange(index)
-  }, [index, onIndexChange])
-
   const goToIndex = useCallback((newIndex: number) => {
-    setIndex(Math.max(0, Math.min(newIndex, images.length - 1)))
+    const clamped = Math.max(0, Math.min(newIndex, images.length - 1))
+    if (clamped !== index) {
+      onIndexChange?.(clamped)
+    }
     setScale(1)
-  }, [images.length])
+  }, [images.length, index, onIndexChange])
 
   const goToPrev = useCallback(() => {
     if (index > 0) goToIndex(index - 1)
@@ -51,12 +45,8 @@ export function CharacterImageCarousel({
   }, [index, images.length, goToIndex])
 
   const handleDoubleClick = useCallback(() => {
-    if (scale > 1) {
-      setScale(1)
-    } else {
-      setScale(2)
-    }
-  }, [scale])
+    setScale((prev) => (prev > 1 ? 1 : 2))
+  }, [])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -69,16 +59,13 @@ export function CharacterImageCarousel({
   }, [])
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      const t = e.touches[0]
-      touchState.current = {
-        startX: t.clientX,
-        startY: t.clientY,
-        lastX: t.clientX,
-        isSwiping: false,
-        isPanning: false,
-        swiped: false,
-      }
+    if (e.touches.length !== 1) return
+    const t = e.touches[0]
+    touchState.current = {
+      startX: t.clientX,
+      startY: t.clientY,
+      isSwiping: false,
+      isPanning: false,
     }
   }, [])
 
@@ -112,7 +99,6 @@ export function CharacterImageCarousel({
 
     if (s.isPanning && scale > 1) {
       e.preventDefault()
-      s.lastX = t.clientX
     }
   }, [index, scale])
 
@@ -121,23 +107,33 @@ export function CharacterImageCarousel({
     if (!s) return
 
     if (s.isSwiping && scale <= 1) {
-      const diffX = e.changedTouches[0].clientX - s.startX
-      if (Math.abs(diffX) > 60) {
-        if (diffX > 0) {
-          goToPrev()
-        } else {
-          goToNext()
-        }
-      }
       const el = containerRef.current?.firstElementChild as HTMLElement | null
-      if (el) {
-        el.style.transition = ''
-        el.style.transform = ''
+      const diffX = e.changedTouches[0].clientX - s.startX
+
+      if (Math.abs(diffX) > 60) {
+        const target = diffX > 0 ? index - 1 : index + 1
+        if (target >= 0 && target < images.length) {
+          if (el) {
+            el.style.transition = 'transform 0.3s ease-out'
+            el.style.transform = `translateX(-${target * 100}%)`
+          }
+          goToIndex(target)
+        } else {
+          if (el) {
+            el.style.transition = 'transform 0.3s ease-out'
+            el.style.transform = `translateX(-${index * 100}%)`
+          }
+        }
+      } else {
+        if (el) {
+          el.style.transition = 'transform 0.3s ease-out'
+          el.style.transform = `translateX(-${index * 100}%)`
+        }
       }
     }
 
     touchState.current = null
-  }, [scale, goToPrev, goToNext])
+  }, [scale, index, images.length, goToIndex])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft") goToPrev()
@@ -164,7 +160,6 @@ export function CharacterImageCarousel({
         {images.map((img, i) => (
           <div
             key={i}
-            ref={(el) => { imageRefs.current[i] = el }}
             className="w-full h-full flex items-center justify-center"
             style={{ width: `${100 / images.length}%` }}
           >
