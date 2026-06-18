@@ -100,15 +100,15 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
     })
   }
 
+  const isDesktop = useMediaQuery("(min-width: 768px)")
   const [showPlotImage, setShowPlotImage] = useState(false)
   const heroRef = useRef<HTMLDivElement>(null)
   const toggleImage = useCallback(() => {
-    if (showPlotImage) {
+    if (showPlotImage && isDesktop) {
       heroRef.current?.scrollIntoView({ behavior: "instant", block: "start" })
     }
     setShowPlotImage((prev) => !prev)
-  }, [showPlotImage])
-  const isDesktop = useMediaQuery("(min-width: 768px)")
+  }, [showPlotImage, isDesktop])
   const content = (
     <>
       {/* Hero image */}
@@ -327,8 +327,8 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh] gap-0 p-0 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto overscroll-contain touch-scrollable">
+      <DrawerContent className="max-h-[85vh] gap-0 p-0 overflow-hidden">
+        <div className="overflow-y-auto overscroll-contain touch-scrollable max-h-[85vh]">
           {content}
         </div>
       </DrawerContent>
