@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { X } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -51,6 +51,13 @@ export function CharacterDetailSheet({
   }, [open, character, plotId])
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (showFullDesc) {
+      scrollRef.current?.scrollTo(0, 0)
+    }
+  }, [showFullDesc])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (!newOpen && showFullDesc) {
@@ -75,7 +82,7 @@ export function CharacterDetailSheet({
         </Button>
       </div>
 
-      <div className="relative flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="relative flex-1 overflow-y-auto">
         {showFullDesc ? (
           <div className="px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground bg-popover/95 backdrop-blur min-h-full">
             {desc}
