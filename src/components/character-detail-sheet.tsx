@@ -67,50 +67,43 @@ export function CharacterDetailSheet({
 
   const detailContent = (
     <>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-popover/95 backdrop-blur shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 bg-popover/95 backdrop-blur shrink-0">
         <div className="flex-1" />
         <span className="text-base font-medium text-center">{character.name}</span>
-        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+        <Button variant="ghost" size="icon" onClick={() => showFullDesc ? setShowFullDesc(false) : onOpenChange(false)} className="text-muted-foreground hover:text-foreground" aria-label="Close">
           <X className="size-4" />
         </Button>
       </div>
 
       <div className="relative flex-1 overflow-y-auto">
-        <div className={showFullDesc ? "opacity-30 pointer-events-none select-none" : ""}>
-          <div className="relative aspect-square bg-muted">
-            <CharacterImageCarousel
-              images={images}
-              index={currentIndex}
-              onIndexChange={wrappedSetCurrentIndex}
-            />
+        {showFullDesc ? (
+          <div className="px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground bg-popover/95 backdrop-blur min-h-full">
+            {desc}
           </div>
-
-          <div className="px-4 py-4">
-            <CharacterDescription
-              description={desc}
-              showReadMore={showFullDesc ? false : showReadMore}
-              onReadMore={() => setShowFullDesc(true)}
-            />
-          </div>
-
-          <CharacterThumbnailStrip
-            images={images}
-            currentIndex={currentIndex}
-            onSelect={wrappedSetCurrentIndex}
-          />
-        </div>
-
-        {showFullDesc && (
-          <div className="absolute inset-0 z-20 overflow-y-auto">
-            <div className="min-h-full bg-popover/80 backdrop-blur-sm">
-              <div className="relative px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground">
-                <Button variant="ghost" size="icon" onClick={() => setShowFullDesc(false)} className="absolute top-2 right-2 z-30 text-muted-foreground hover:text-foreground" aria-label="閉じる">
-                  <X className="size-4" />
-                </Button>
-                {desc}
-              </div>
+        ) : (
+          <>
+            <div className="relative aspect-square bg-muted">
+              <CharacterImageCarousel
+                images={images}
+                index={currentIndex}
+                onIndexChange={wrappedSetCurrentIndex}
+              />
             </div>
-          </div>
+
+            <div className="px-4 py-4">
+              <CharacterDescription
+                description={desc}
+                showReadMore={showReadMore}
+                onReadMore={() => setShowFullDesc(true)}
+              />
+            </div>
+
+            <CharacterThumbnailStrip
+              images={images}
+              currentIndex={currentIndex}
+              onSelect={wrappedSetCurrentIndex}
+            />
+          </>
         )}
       </div>
     </>

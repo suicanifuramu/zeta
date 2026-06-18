@@ -18,7 +18,7 @@ export function CharacterImageCarousel({
   const [scale, setScale] = useState(1)
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
-
+  const transitionRef = useRef(false)
   const touchState = useRef<{
     startX: number
     startY: number
@@ -29,37 +29,72 @@ export function CharacterImageCarousel({
   const minScale = 1
   const maxScale = 4
 
+  const total = images.length
+  const displayImages = total > 1
+    ? [images[total - 1], ...images, images[0]]
+    : images
+
+  const displayCount = displayImages.length
+
+  const realToDisplay = (realIdx: number) => realIdx + 1
+  const displayToReal = (displayIdx: number) => {
+    if (displayIdx === 0) return total - 1
+    if (displayIdx === displayCount - 1) return 0
+    return displayIdx - 1
+  }
+
+  const [displayIndex, setDisplayIndex] = useState(() => realToDisplay(index))
+  const displayIndexRef = useRef(displayIndex)
+  displayIndexRef.current = displayIndex
+
   useEffect(() => {
     setLoadedImages(new Set())
   }, [images])
 
-  const handleImageLoad = useCallback((i: number) => {
-    setLoadedImages((prev) => {
-      if (prev.has(i)) return prev
-      const next = new Set(prev)
-      next.add(i)
-      return next
-    })
-  }, [])
+  useEffect(() => {
+    if (!transitionRef.current) {
+      setDisplayIndex(realToDisplay(index))
+    }
+  }, [index])
+
+  const handleTransitionEnd = useCallback(() => {
+    if (!transitionRef.current) return
+    transitionRef.current = false
+    const di = displayIndexRef.current
+    const real = displayToReal(di)
+    if (di === 0 || di === displayCount - 1) {
+      setDisplayIndex(realToDisplay(real))
+      onIndexChange?.(real)
+    }
+  }, [displayCount, onIndexChange])
+
+  const snapToReal = useCallback((realIdx: number) => {
+    transitionRef.current = false
+    setDisplayIndex(realToDisplay(realIdx))
+    onIndexChange?.(realIdx)
+    setScale(1)
+  }, [onIndexChange])
 
   const goToIndex = useCallback((newIndex: number) => {
-    const clamped = Math.max(0, Math.min(newIndex, images.length - 1))
-    console.log("[Carousel] goToIndex", { newIndex, clamped, imagesLength: images.length, indexProp: index })
-    onIndexChange?.(clamped)
-    setScale(1)
-  }, [images.length, onIndexChange, index])
+    const clamped = Math.max(0, Math.min(newIndex, total - 1))
+    snapToReal(clamped)
+  }, [total, snapToReal])
 
   const goToPrev = useCallback(() => {
-    const prev = index <= 0 ? images.length - 1 : index - 1
-    console.log("[Carousel] goToPrev", { currentIndex: index, imagesLength: images.length, prev })
-    goToIndex(prev)
-  }, [index, images.length, goToIndex])
+    if (transitionRef.current) return
+    if (displayIndexRef.current <= 0) return
+    transitionRef.current = true
+    setDisplayIndex((prev) => prev - 1)
+    setScale(1)
+  }, [])
 
   const goToNext = useCallback(() => {
-    const next = index >= images.length - 1 ? 0 : index + 1
-    console.log("[Carousel] goToNext", { currentIndex: index, imagesLength: images.length, next })
-    goToIndex(next)
-  }, [index, images.length, goToIndex])
+    if (transitionRef.current) return
+    if (displayIndexRef.current >= displayCount - 1) return
+    transitionRef.current = true
+    setDisplayIndex((prev) => prev + 1)
+    setScale(1)
+  }, [displayCount])
 
   const handleDoubleClick = useCallback(() => {
     setScale((prev) => (prev > 1 ? 1 : 2))
@@ -110,14 +145,14 @@ export function CharacterImageCarousel({
       if (el) {
         const offset = t.clientX - s.startX
         el.style.transition = 'none'
-        el.style.transform = `translateX(calc(-${index * 100 / images.length}% + ${offset}px))`
+        el.style.transform = `translateX(calc(-${displayIndexRef.current * 100 / displayCount}% + ${offset}px))`
       }
     }
 
     if (s.isPanning && scale > 1) {
       e.preventDefault()
     }
-  }, [index, scale, images.length])
+  }, [scale, displayCount])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const s = touchState.current
@@ -126,38 +161,43 @@ export function CharacterImageCarousel({
     if (s.isSwiping && scale <= 1) {
       const el = containerRef.current?.firstElementChild as HTMLElement | null
       const diffX = e.changedTouches[0].clientX - s.startX
-
-      console.log("[Carousel] touchEnd swipe", { diffX, currentIndex: index, imagesLength: images.length, threshold: Math.abs(diffX) > 60 })
+      const di = displayIndexRef.current
 
       if (Math.abs(diffX) > 60) {
-        let target = diffX > 0 ? index - 1 : index + 1
-        if (target < 0) target = images.length - 1
-        if (target >= images.length) target = 0
-        console.log("[Carousel] touchEnd target", { target, fromIndex: index })
-        if (el) {
-          el.style.transition = 'transform 0.3s ease-out'
-          el.style.transform = `translateX(-${target * 100 / images.length}%)`
-        }
-        if (target !== index) {
-          goToIndex(target)
+        if (diffX > 0) {
+          if (di > 0) {
+            if (el) {
+              el.style.transition = 'transform 0.3s ease-out'
+              el.style.transform = `translateX(-${(di - 1) * 100 / displayCount}%)`
+            }
+            goToPrev()
+          }
+        } else {
+          if (di < displayCount - 1) {
+            if (el) {
+              el.style.transition = 'transform 0.3s ease-out'
+              el.style.transform = `translateX(-${(di + 1) * 100 / displayCount}%)`
+            }
+            goToNext()
+          }
         }
       } else {
         if (el) {
           el.style.transition = 'transform 0.3s ease-out'
-          el.style.transform = `translateX(-${index * 100 / images.length}%)`
+          el.style.transform = `translateX(-${di * 100 / displayCount}%)`
         }
       }
     }
 
     touchState.current = null
-  }, [scale, index, images.length, goToIndex])
+  }, [scale, displayCount, goToPrev, goToNext])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft") goToPrev()
     else if (e.key === "ArrowRight") goToNext()
   }, [goToPrev, goToNext])
 
-  if (images.length === 0) return null
+  if (total === 0) return null
 
   return (
     <div
@@ -168,43 +208,48 @@ export function CharacterImageCarousel({
       tabIndex={0}
     >
       <div
-        className="flex h-full transition-transform duration-300 ease-out"
+        className="flex h-full"
         style={{
-          transform: `translateX(-${index * 100 / images.length}%)`,
-          width: `${images.length * 100}%`,
+          transform: `translateX(-${displayIndex * 100 / displayCount}%)`,
+          width: `${displayCount * 100}%`,
+          transition: transitionRef.current ? 'transform 0.3s ease-out' : 'none',
         }}
+        onTransitionEnd={handleTransitionEnd}
       >
-        {images.map((img, i) => (
-          <div
-            key={i}
-            className="w-full h-full flex items-center justify-center"
-            style={{ width: `${100 / images.length}%` }}
-          >
+        {displayImages.map((img, i) => {
+          const realIndex = i === 0 ? total - 1 : i === displayCount - 1 ? 0 : i - 1
+          return (
             <div
-              className="w-full h-full flex items-center justify-center touch-none select-none relative"
-              onDoubleClick={handleDoubleClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              key={i}
+              className="w-full h-full flex items-center justify-center"
+              style={{ width: `${100 / displayCount}%` }}
             >
-              {!loadedImages.has(i) && <Skeleton className="absolute inset-0 w-full h-full" />}
-              <CachedImage
-                src={images[i].imageUrl}
-                alt=""
-                className="max-w-full max-h-full object-contain"
-                style={{
-                  transform: `scale(${Math.max(1, scale)})`,
-                  transformOrigin: "center center",
-                  transition: "transform 0.1s ease-out",
-                }}
-                onLoad={() => handleImageLoad(i)}
-              />
+              <div
+                className="w-full h-full flex items-center justify-center touch-none select-none relative"
+                onDoubleClick={handleDoubleClick}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                {!loadedImages.has(realIndex) && <Skeleton className="absolute inset-0 w-full h-full" />}
+                <CachedImage
+                  src={img.imageUrl}
+                  alt=""
+                  className="max-w-full max-h-full object-contain"
+                  style={{
+                    transform: `scale(${Math.max(1, scale)})`,
+                    transformOrigin: "center center",
+                    transition: "transform 0.1s ease-out",
+                  }}
+                  onLoad={() => handleImageLoad(realIndex)}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {images.length > 1 && (
+      {total > 1 && (
         <>
           <button
             type="button"
