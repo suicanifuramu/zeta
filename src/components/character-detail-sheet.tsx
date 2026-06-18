@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { X } from "lucide-react"
-import { Drawer, DrawerClose, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
@@ -48,65 +50,88 @@ export function CharacterDetailSheet({
     fetchImages()
   }, [open, character, plotId])
 
+  const isDesktop = useMediaQuery("(min-width: 768px)")
+
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen && showFullDesc) {
+      setShowFullDesc(false)
+      return
+    }
+    onOpenChange(newOpen)
+  }, [showFullDesc, onOpenChange])
+
   if (!character || !open) return null
 
   const desc = character.description || ""
   const showReadMore = desc.length > 100 || desc.includes("\n")
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-popover/95 backdrop-blur sticky top-0 z-10">
-          <div className="flex-1" />
-          <DrawerTitle className="text-base font-medium text-center">
-            {character.name}
-          </DrawerTitle>
-          <DrawerClose asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" aria-label="Close">
-              <X className="size-4" />
-            </Button>
-          </DrawerClose>
+  const detailContent = (
+    <>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-popover/95 backdrop-blur shrink-0">
+        <div className="flex-1" />
+        <span className="text-base font-medium text-center">{character.name}</span>
+        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <div className="relative flex-1 overflow-y-auto">
+        <div className={showFullDesc ? "opacity-30 pointer-events-none select-none" : ""}>
+          <div className="relative aspect-square bg-muted">
+            <CharacterImageCarousel
+              images={images}
+              index={currentIndex}
+              onIndexChange={wrappedSetCurrentIndex}
+            />
+          </div>
+
+          <div className="px-4 py-4">
+            <CharacterDescription
+              description={desc}
+              showReadMore={showFullDesc ? false : showReadMore}
+              onReadMore={() => setShowFullDesc(true)}
+            />
+          </div>
+
+          <CharacterThumbnailStrip
+            images={images}
+            currentIndex={currentIndex}
+            onSelect={wrappedSetCurrentIndex}
+          />
         </div>
 
-        <div className="relative flex-1 overflow-y-auto">
-          {showFullDesc ? (
-            <div className="absolute inset-0 z-20 bg-popover overflow-y-auto">
-              <div className="sticky top-0 flex items-center justify-between px-4 py-3 border-b border-border bg-popover/95 backdrop-blur z-10">
-                <span className="text-sm font-medium">{character.name}</span>
-                <Button variant="ghost" size="icon" onClick={() => setShowFullDesc(false)} aria-label="閉じる">
+        {showFullDesc && (
+          <div className="absolute inset-0 z-20 overflow-y-auto">
+            <div className="min-h-full bg-popover/80 backdrop-blur-sm">
+              <div className="relative px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                <Button variant="ghost" size="icon" onClick={() => setShowFullDesc(false)} className="absolute top-2 right-2 z-30 text-muted-foreground hover:text-foreground" aria-label="閉じる">
                   <X className="size-4" />
                 </Button>
-              </div>
-              <div className="px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground">
                 {desc}
               </div>
             </div>
-          ) : (
-            <>
-              <div className="relative aspect-square bg-muted">
-                <CharacterImageCarousel
-                  images={images}
-                  index={currentIndex}
-                  onIndexChange={wrappedSetCurrentIndex}
-                />
-              </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
 
-              <div className="px-4 py-4 pb-24">
-                <CharacterDescription
-                  description={desc}
-                  showReadMore={showReadMore}
-                  onReadMore={() => setShowFullDesc(true)}
-                />
-              </div>
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0 max-h-[85vh] flex flex-col" showCloseButton={false}>
+          <DialogTitle className="sr-only">{character.name}</DialogTitle>
+          {detailContent}
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
-              <CharacterThumbnailStrip
-                images={images}
-                currentIndex={currentIndex}
-                onSelect={wrappedSetCurrentIndex}
-              />
-            </>
-          )}
-        </div>
+  return (
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom">
+      <DrawerContent className="max-h-[85vh] flex flex-col">
+        <DrawerTitle className="sr-only">{character.name}</DrawerTitle>
+        {detailContent}
       </DrawerContent>
     </Drawer>
   )

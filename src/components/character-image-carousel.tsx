@@ -50,14 +50,15 @@ export function CharacterImageCarousel({
   }, [images.length, onIndexChange, index])
 
   const goToPrev = useCallback(() => {
-    console.log("[Carousel] goToPrev", { currentIndex: index, imagesLength: images.length })
-    if (index > 0) goToIndex(index - 1)
-  }, [index, goToIndex])
+    const prev = index <= 0 ? images.length - 1 : index - 1
+    console.log("[Carousel] goToPrev", { currentIndex: index, imagesLength: images.length, prev })
+    goToIndex(prev)
+  }, [index, images.length, goToIndex])
 
   const goToNext = useCallback(() => {
-    const canGo = index < images.length - 1
-    console.log("[Carousel] goToNext", { currentIndex: index, imagesLength: images.length, canGoNext: canGo })
-    if (canGo) goToIndex(index + 1)
+    const next = index >= images.length - 1 ? 0 : index + 1
+    console.log("[Carousel] goToNext", { currentIndex: index, imagesLength: images.length, next })
+    goToIndex(next)
   }, [index, images.length, goToIndex])
 
   const handleDoubleClick = useCallback(() => {
@@ -129,19 +130,16 @@ export function CharacterImageCarousel({
       console.log("[Carousel] touchEnd swipe", { diffX, currentIndex: index, imagesLength: images.length, threshold: Math.abs(diffX) > 60 })
 
       if (Math.abs(diffX) > 60) {
-        const target = diffX > 0 ? index - 1 : index + 1
-        console.log("[Carousel] touchEnd target", { target, inBounds: target >= 0 && target < images.length })
-        if (target >= 0 && target < images.length) {
-          if (el) {
-            el.style.transition = 'transform 0.3s ease-out'
-            el.style.transform = `translateX(-${target * 100 / images.length}%)`
-          }
+        let target = diffX > 0 ? index - 1 : index + 1
+        if (target < 0) target = images.length - 1
+        if (target >= images.length) target = 0
+        console.log("[Carousel] touchEnd target", { target, fromIndex: index })
+        if (el) {
+          el.style.transition = 'transform 0.3s ease-out'
+          el.style.transform = `translateX(-${target * 100 / images.length}%)`
+        }
+        if (target !== index) {
           goToIndex(target)
-        } else {
-          if (el) {
-            el.style.transition = 'transform 0.3s ease-out'
-            el.style.transform = `translateX(-${index * 100 / images.length}%)`
-          }
         }
       } else {
         if (el) {
