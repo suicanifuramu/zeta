@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react"
-import { BookOpen, MessageCircle, ScrollText, Users, X } from "lucide-react"
+import { BookOpen, MessageCircle, ScrollText, Users } from "lucide-react"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
