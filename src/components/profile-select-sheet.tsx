@@ -1,10 +1,10 @@
 import { useState } from "react"
-import { Check } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
+import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
 
 interface ProfileSelectSheetProps {
@@ -41,10 +41,17 @@ export function ProfileSelectSheet({ profiles, open, onSelect, loading }: Profil
     <Drawer open={open} onOpenChange={() => {}}>
       <DrawerContent className="max-h-[85vh]">
         <div className="mx-auto w-full max-w-lg">
-          <DrawerHeader className="text-left px-5 pb-2">
-            <DrawerTitle>プロフィールを選択</DrawerTitle>
-            <DrawerDescription>チャットで使用するプロフィールを選んでください</DrawerDescription>
-          </DrawerHeader>
+          <div className="flex items-start justify-between px-5 pt-4 pb-2">
+            <DrawerHeader className="text-left p-0">
+              <DrawerTitle>プロフィールを選択</DrawerTitle>
+              <DrawerDescription>チャットで使用するプロフィールを選んでください</DrawerDescription>
+            </DrawerHeader>
+            <DrawerClose asChild>
+              <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground hover:text-foreground" aria-label="閉じる">
+                <X className="size-4" />
+              </Button>
+            </DrawerClose>
+          </div>
 
           {/* Native scroll — no Radix ScrollArea overhead */}
           <div className="max-h-[40vh] overflow-y-auto overscroll-contain px-5 touch-scrollable">

@@ -17,10 +17,18 @@ export function CharacterImageCarousel({
 }: CharacterImageCarouselProps) {
   const [index, setIndex] = useState(initialIndex)
   const [scale, setScale] = useState(1)
-  const [isDragging, setIsDragging] = useState(false)
-  const dragStartRef = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Touch/swipe state
+  const touchState = useRef<{
+    startX: number
+    startY: number
+    lastX: number
+    isSwiping: boolean
+    isPanning: boolean
+    swiped: boolean
+  } | null>(null)
 
   const minScale = 1
   const maxScale = 4
@@ -62,41 +70,79 @@ export function CharacterImageCarousel({
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      setIsDragging(true)
-      dragStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
+      const t = e.touches[0]
+      touchState.current = {
+        startX: t.clientX,
+        startY: t.clientY,
+        lastX: t.clientX,
+        isSwiping: false,
+        isPanning: false,
+        swiped: false,
       }
-    } else if (e.touches.length === 2) {
-      setIsDragging(false)
     }
   }, [])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging || scale <= 1) return
-    if (e.touches.length === 1) {
-      e.preventDefault()
-      dragStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
+    const s = touchState.current
+    if (!s || e.touches.length !== 1) return
+
+    const t = e.touches[0]
+    const diffX = t.clientX - s.startX
+    const diffY = t.clientY - s.startY
+
+    if (!s.isSwiping && !s.isPanning) {
+      if (Math.abs(diffY) > Math.abs(diffX) + 10) {
+        s.isPanning = true
+        return
+      }
+      if (Math.abs(diffX) > 10) {
+        s.isSwiping = true
       }
     }
-  }, [isDragging])
 
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false)
-  }, [])
+    if (s.isSwiping && scale <= 1) {
+      e.preventDefault()
+      const el = containerRef.current?.firstElementChild as HTMLElement | null
+      if (el) {
+        const offset = t.clientX - s.startX
+        el.style.transition = 'none'
+        el.style.transform = `translateX(calc(-${index * 100}% + ${offset}px))`
+      }
+    }
+
+    if (s.isPanning && scale > 1) {
+      e.preventDefault()
+      s.lastX = t.clientX
+    }
+  }, [index, scale])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const s = touchState.current
+    if (!s) return
+
+    if (s.isSwiping && scale <= 1) {
+      const diffX = e.changedTouches[0].clientX - s.startX
+      if (Math.abs(diffX) > 60) {
+        if (diffX > 0) {
+          goToPrev()
+        } else {
+          goToNext()
+        }
+      }
+      const el = containerRef.current?.firstElementChild as HTMLElement | null
+      if (el) {
+        el.style.transition = ''
+        el.style.transform = ''
+      }
+    }
+
+    touchState.current = null
+  }, [scale, goToPrev, goToNext])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft") goToPrev()
     else if (e.key === "ArrowRight") goToNext()
   }, [goToPrev, goToNext])
-
-  const handleImageClick = useCallback(() => {
-    if (scale > 1) {
-      setScale(1)
-    }
-  }, [scale])
 
   if (images.length === 0) return null
 
@@ -118,13 +164,12 @@ export function CharacterImageCarousel({
         {images.map((img, i) => (
           <div
             key={i}
-            ref={(el) => { imageRefs.current[i] = el; }}
+            ref={(el) => { imageRefs.current[i] = el }}
             className="w-full h-full flex items-center justify-center"
             style={{ width: `${100 / images.length}%` }}
           >
             <div
               className="w-full h-full flex items-center justify-center touch-none select-none relative"
-              onClick={handleImageClick}
               onDoubleClick={handleDoubleClick}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}

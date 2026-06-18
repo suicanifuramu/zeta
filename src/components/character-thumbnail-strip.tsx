@@ -25,13 +25,13 @@ export function CharacterThumbnailStrip({
             type="button"
             onClick={() => onSelect(i)}
             className={cn(
-              "relative flex flex-col items-center justify-center overflow-hidden rounded-6 bg-gray-main transition-all duration-100 ease-out",
+              "relative flex flex-col items-center justify-center overflow-hidden rounded-6 bg-background transition-all duration-100 ease-out",
               i === currentIndex
-                ? "border-2 border-white"
-                : "border border-transparent opacity-70 hover:opacity-100"
+                ? "ring-2 ring-primary"
+                : "ring-1 ring-transparent opacity-70 hover:opacity-100"
             )}
             style={{ height: 56, width: 56, flexShrink: 0 }}
-            aria-label={`Image ${i + 1}`}
+            aria-label={`キャラクター画像 ${i + 1}/${images.length}`}
             aria-current={i === currentIndex ? "true" : "false"}
           >
             <CachedImage
@@ -40,7 +40,7 @@ export function CharacterThumbnailStrip({
               className="aspect-square object-cover w-full h-full"
             />
             {i === currentIndex && (
-              <div className="absolute inset-0 border-2 border-white rounded-6 pointer-events-none" />
+              <div className="absolute inset-0 ring-2 ring-primary rounded-6 pointer-events-none" />
             )}
           </button>
         ))}
