@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { X } from "lucide-react"
 import { Drawer, DrawerClose, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
@@ -27,12 +27,18 @@ export function CharacterDetailSheet({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showFullDesc, setShowFullDesc] = useState(false)
 
+  const wrappedSetCurrentIndex = useCallback((index: number) => {
+    console.log("[DetailSheet] setCurrentIndex called with", index, "| prev:", currentIndex)
+    setCurrentIndex(index)
+  }, [currentIndex])
+
   useEffect(() => {
     if (!open || !character || !plotId) return
 
     const fetchImages = async () => {
       try {
         const data = await getCharacterImages(plotId, character.id)
+        console.log("[DetailSheet] images loaded", { count: data.images?.length })
         setImages(data.images)
         setCurrentIndex(0)
       } catch (e) {
@@ -81,7 +87,7 @@ export function CharacterDetailSheet({
                 <CharacterImageCarousel
                   images={images}
                   index={currentIndex}
-                  onIndexChange={setCurrentIndex}
+                  onIndexChange={wrappedSetCurrentIndex}
                 />
               </div>
 
@@ -96,7 +102,7 @@ export function CharacterDetailSheet({
               <CharacterThumbnailStrip
                 images={images}
                 currentIndex={currentIndex}
-                onSelect={setCurrentIndex}
+                onSelect={wrappedSetCurrentIndex}
               />
             </>
           )}

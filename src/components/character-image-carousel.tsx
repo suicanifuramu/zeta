@@ -44,16 +44,20 @@ export function CharacterImageCarousel({
 
   const goToIndex = useCallback((newIndex: number) => {
     const clamped = Math.max(0, Math.min(newIndex, images.length - 1))
+    console.log("[Carousel] goToIndex", { newIndex, clamped, imagesLength: images.length, indexProp: index })
     onIndexChange?.(clamped)
     setScale(1)
-  }, [images.length, onIndexChange])
+  }, [images.length, onIndexChange, index])
 
   const goToPrev = useCallback(() => {
+    console.log("[Carousel] goToPrev", { currentIndex: index, imagesLength: images.length })
     if (index > 0) goToIndex(index - 1)
   }, [index, goToIndex])
 
   const goToNext = useCallback(() => {
-    if (index < images.length - 1) goToIndex(index + 1)
+    const canGo = index < images.length - 1
+    console.log("[Carousel] goToNext", { currentIndex: index, imagesLength: images.length, canGoNext: canGo })
+    if (canGo) goToIndex(index + 1)
   }, [index, images.length, goToIndex])
 
   const handleDoubleClick = useCallback(() => {
@@ -105,14 +109,14 @@ export function CharacterImageCarousel({
       if (el) {
         const offset = t.clientX - s.startX
         el.style.transition = 'none'
-        el.style.transform = `translateX(calc(-${index * 100}% + ${offset}px))`
+        el.style.transform = `translateX(calc(-${index * 100 / images.length}% + ${offset}px))`
       }
     }
 
     if (s.isPanning && scale > 1) {
       e.preventDefault()
     }
-  }, [index, scale])
+  }, [index, scale, images.length])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const s = touchState.current
@@ -122,24 +126,27 @@ export function CharacterImageCarousel({
       const el = containerRef.current?.firstElementChild as HTMLElement | null
       const diffX = e.changedTouches[0].clientX - s.startX
 
+      console.log("[Carousel] touchEnd swipe", { diffX, currentIndex: index, imagesLength: images.length, threshold: Math.abs(diffX) > 60 })
+
       if (Math.abs(diffX) > 60) {
         const target = diffX > 0 ? index - 1 : index + 1
+        console.log("[Carousel] touchEnd target", { target, inBounds: target >= 0 && target < images.length })
         if (target >= 0 && target < images.length) {
           if (el) {
             el.style.transition = 'transform 0.3s ease-out'
-            el.style.transform = `translateX(-${target * 100}%)`
+            el.style.transform = `translateX(-${target * 100 / images.length}%)`
           }
           goToIndex(target)
         } else {
           if (el) {
             el.style.transition = 'transform 0.3s ease-out'
-            el.style.transform = `translateX(-${index * 100}%)`
+            el.style.transform = `translateX(-${index * 100 / images.length}%)`
           }
         }
       } else {
         if (el) {
           el.style.transition = 'transform 0.3s ease-out'
-          el.style.transform = `translateX(-${index * 100}%)`
+          el.style.transform = `translateX(-${index * 100 / images.length}%)`
         }
       }
     }
@@ -165,7 +172,7 @@ export function CharacterImageCarousel({
       <div
         className="flex h-full transition-transform duration-300 ease-out"
         style={{
-          transform: `translateX(-${index * 100}%)`,
+          transform: `translateX(-${index * 100 / images.length}%)`,
           width: `${images.length * 100}%`,
         }}
       >
