@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { cacheManager } from "@/lib/cache-db"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
-import { memoryCache, fetchPromises } from "@/lib/image-cache"
+import { memoryCache, fetchPromises, subscribeToCacheClear } from "@/lib/image-cache"
 
 // Debug flag - set to true to enable detailed logging
 const DEBUG = true
@@ -31,6 +31,11 @@ let cleanupInitialized = false
 export function CachedImage({ src, alt, className, onError, onLoad, ...props }: CachedImageProps) {
   const [cachedSrc, setCachedSrc] = useState<string | undefined>(src ? (memoryCache.get(src) || src) : undefined)
   const [loaded, setLoaded] = useState(false)
+  const [cacheTick, setCacheTick] = useState(0)
+
+  useEffect(() => {
+    return subscribeToCacheClear(() => setCacheTick((t) => t + 1))
+  }, [])
 
   useEffect(() => {
     if (!cleanupInitialized) {
@@ -41,7 +46,7 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
   }, [])
 
   useEffect(() => {
-    debugLog("Effect triggered", { src })
+    debugLog("Effect triggered", { src, cacheTick })
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(false)
     if (!src) {
@@ -54,6 +59,9 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
       cacheManager.recordAccess(src).catch(() => {})
       return
     }
+
+    // Fallback to original src while re-fetching (e.g. after cache clear)
+    setCachedSrc(src)
 
     let isMounted = true
 
@@ -119,7 +127,7 @@ export function CachedImage({ src, alt, className, onError, onLoad, ...props }: 
     load()
 
     return () => { isMounted = false }
-  }, [src])
+  }, [src, cacheTick])
 
   useEffect(() => {
     if (cachedSrc && cachedSrc !== src && src) {

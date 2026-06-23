@@ -102,18 +102,7 @@ export function runStartupCleanup(): void {
 }
 
 export async function clearAllCache(): Promise<{ deletedCount: number }> {
-  clearMemoryCache();
-
-  let deletedCount = 0;
-
-  try {
-    const cache = await caches.open("plot-images");
-    const keys = await cache.keys();
-    await Promise.all(keys.map((req) => cache.delete(req)));
-    deletedCount = keys.length;
-  } catch (e) {
-    console.warn("[CacheCleanup] Cache API clear failed:", e);
-  }
+  const deletedCount = clearMemoryCache();
 
   try {
     await clearAllUrls();
@@ -121,6 +110,6 @@ export async function clearAllCache(): Promise<{ deletedCount: number }> {
     console.warn("[CacheCleanup] IndexedDB clear failed:", e);
   }
 
-  console.log(`[CacheCleanup] All cache cleared: ${deletedCount} items`);
+  console.log(`[CacheCleanup] Memory cache cleared: ${deletedCount} items (Cache API kept intact)`);
   return { deletedCount };
 }
