@@ -1,8 +1,9 @@
-import { cacheManager } from "./cache-db";
+import { cacheManager, clearAllUrls } from "./cache-db";
+import { clearMemoryCache } from "./image-cache";
 import type { CleanupResult } from "./cache-types";
 
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 let isCleanupRunning = false;
@@ -98,4 +99,28 @@ export function runStartupCleanup(): void {
   setTimeout(() => {
     runCleanup().catch((e) => console.warn("[CacheCleanup] Startup run failed:", e));
   }, 1000);
+}
+
+export async function clearAllCache(): Promise<{ deletedCount: number }> {
+  clearMemoryCache();
+
+  let deletedCount = 0;
+
+  try {
+    const cache = await caches.open("plot-images");
+    const keys = await cache.keys();
+    await Promise.all(keys.map((req) => cache.delete(req)));
+    deletedCount = keys.length;
+  } catch (e) {
+    console.warn("[CacheCleanup] Cache API clear failed:", e);
+  }
+
+  try {
+    await clearAllUrls();
+  } catch (e) {
+    console.warn("[CacheCleanup] IndexedDB clear failed:", e);
+  }
+
+  console.log(`[CacheCleanup] All cache cleared: ${deletedCount} items`);
+  return { deletedCount };
 }

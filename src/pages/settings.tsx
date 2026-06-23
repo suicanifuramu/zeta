@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
+import { clearAllCache } from "@/lib/cache-cleanup"
 import {
   clearSession, getAuthState, getDeviceId,
   getRefreshToken, importTokens, refreshSession, setDeviceId,
@@ -49,6 +50,14 @@ export function SettingsPage() {
 
   // Quiz
   const [quizStatus, setQuizStatus] = useState("確認中...")
+
+  // Cache
+  const [cacheCount, setCacheCount] = useState(0)
+  const [cacheDeleting, setCacheDeleting] = useState(false)
+
+  useEffect(() => {
+    caches.open("plot-images").then((c) => c.keys().then((k) => setCacheCount(k.length))).catch(() => {})
+  }, [])
 
   useEffect(() => {
     import("@/lib/quiz-client").then(async (mod) => {
@@ -300,6 +309,39 @@ export function SettingsPage() {
           <CardContent>
             <p className="text-sm text-muted-foreground">Zeta Chat Client v2.0.0 — React + shadcn/ui</p>
             <p className="text-sm text-muted-foreground">API: api.zeta-ai.io</p>
+          </CardContent>
+        </Card>
+
+        {/* Cache Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>キャッシュ管理</CardTitle>
+            <CardDescription>画像キャッシュのクリア</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              キャッシュされた画像: <span className="font-medium tabular-nums">{cacheCount}</span> 件
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={cacheDeleting || cacheCount === 0}
+              onClick={async () => {
+                setCacheDeleting(true)
+                try {
+                  const { deletedCount } = await clearAllCache()
+                  setCacheCount(0)
+                  toast.success(`${deletedCount} 件のキャッシュを削除しました`)
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : String(e))
+                } finally {
+                  setCacheDeleting(false)
+                }
+              }}
+            >
+              {cacheDeleting && <Spinner className="mr-1 size-3" />}
+              画像キャッシュを削除
+            </Button>
           </CardContent>
         </Card>
       </div>

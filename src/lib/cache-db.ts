@@ -99,6 +99,37 @@ export async function deleteUrls(urls: string[]): Promise<void> {
   }
 }
 
+export async function getAllUrls(): Promise<string[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAllKeys();
+      request.onsuccess = () => resolve(request.result as string[]);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (e) {
+    console.warn("[CacheDB] getAllUrls failed:", e);
+    return [];
+  }
+}
+
+export async function clearAllUrls(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn("[CacheDB] clearAllUrls failed:", e);
+  }
+}
+
 export const cacheManager: CacheManager = {
   recordAccess,
   getExpiredUrls,
