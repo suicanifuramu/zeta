@@ -275,7 +275,17 @@ export interface ActiveRoomIdResponse {
 
 export interface CreateRoomResponse {
   id: string
-  roomId?: string
+  createdAt: string
+  lastMessage: {
+    id: string
+    sender: { id: string; type: string }
+    contents: unknown[]
+    messageTime: string
+  }
+  isActive: boolean
+  title: string | null
+  unreadCount: number
+  plot: PlotDetailResponse
 }
 
 export interface RoomDetailResponse extends Room {

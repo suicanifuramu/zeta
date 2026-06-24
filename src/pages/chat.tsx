@@ -21,12 +21,13 @@ import { InfoBox } from "@/components/info-box"
 import { CharacterDetailSheet } from "@/components/character-detail-sheet"
 import { MyProfileSheet } from "@/components/my-profile-sheet"
 import {
-  createIntro, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
+  createIntro, createRoom, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
   getMessages, getMessagesByCursor, getPlot, getRecommended,
   getRecommendQuota, getRoom, getRoomModelSetting,
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, selectPlotChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
+import { useLongPress } from "@/hooks/use-long-press"
 import { preloadImages } from "@/lib/image-preloader"
 import type { Message, UserChatProfile, PlotChatProfile, InfoBoxContent, Candidate, Character } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -166,6 +167,9 @@ export function ChatPage() {
   // My profile sheet
   const [myProfileSheetOpen, setMyProfileSheetOpen] = useState(false)
   const myProfileKeyRef = useRef(0)
+
+  // Room reset confirmation
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
   useEffect(() => {
@@ -861,6 +865,21 @@ export function ChatPage() {
     }
   }
 
+  const handleRoomReset = useCallback(async () => {
+    if (!plotId) return
+    try {
+      const newRoom = await createRoom(plotId)
+      toast.success("ルームをリセットしました")
+      navigate(`/chat/${newRoom.id}`)
+    } catch (e: unknown) {
+      toast.error(`ルームリセット失敗: ${(e instanceof Error ? e.message : String(e))}`)
+    }
+  }, [plotId, navigate])
+
+  const longPressHandlers = useLongPress(() => setResetConfirmOpen(true), () => {
+    if (deleteMode) exitDeleteMode(); else enterDeleteMode()
+  })
+
   const exitDeleteMode = () => {
     setDeleteMode(false)
     setSelectedMsgId(null)
@@ -1108,7 +1127,7 @@ export function ChatPage() {
           <p className="truncate text-sm font-semibold">{plotName}</p>
           <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => { if (deleteMode) exitDeleteMode(); else enterDeleteMode() }} aria-label="削除モード" className={cn(deleteMode && "text-destructive")}>
+        <Button variant="ghost" size="icon" aria-label="削除モード" className={cn(deleteMode && "text-destructive", "select-none")} {...longPressHandlers}>
           <Trash2 className="size-4" />
         </Button>
         <AlertDialog>
@@ -1126,6 +1145,18 @@ export function ChatPage() {
                 try { await deleteRoom(roomId!); toast.success("退出しました"); navigate("/rooms") }
                 catch (e: unknown) { toast.error(`退出失敗: ${(e instanceof Error ? e.message : String(e))}`) }
               }}>退出</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ルームをリセット</AlertDialogTitle>
+              <AlertDialogDescription>新しいルームを作成して会話をリセットしますか？</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>キャンセル</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRoomReset}>リセット</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
