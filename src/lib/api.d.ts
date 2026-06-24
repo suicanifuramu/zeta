@@ -124,6 +124,7 @@ export function checkUserChatProfileAbuse(data: { name: string; description?: st
 export function updateUserChatProfile(profileId: string, data: { name: string; description?: string }): Promise<UserChatProfile>;
 export function deleteUserChatProfile(profileId: string): Promise<void>;
 export function selectUserChatProfile(profileId: string, options?: { plotId?: string; roomId?: string }): Promise<SelectProfileResponse>;
+export function setDefaultUserChatProfile(profileId: string): Promise<Record<string, unknown>>;
 
 // Quiz
 export function getQuiz(): Promise<QuizData>;

@@ -15,7 +15,7 @@ import {
 } from "@/lib/auth"
 import {
   checkUserChatProfileAbuse, createUserChatProfile, deleteUserChatProfile,
-  getSessionOverview, getUserChatProfiles, selectUserChatProfile, updateUserChatProfile,
+  getSessionOverview, getUserChatProfiles, setDefaultUserChatProfile, updateUserChatProfile,
 } from "@/lib/api"
 import type { UserChatProfile, SessionOverview } from "@/lib/types"
 
@@ -236,7 +236,7 @@ export function SettingsPage() {
                     <div className="flex shrink-0 flex-col gap-1">
                       {!p.selected && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={async () => {
-                          try { await selectUserChatProfile(p.id); toast.success("選択しました"); await loadProfiles() }
+                          try { await setDefaultUserChatProfile(p.id); toast.success("デフォルトに設定しました"); await loadProfiles() }
                           catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
                         }}>選択</Button>
                       )}

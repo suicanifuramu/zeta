@@ -324,6 +324,10 @@ export function selectUserChatProfile(profileId, { plotId, roomId } = {}) {
   return put(`/v1/user-chat-profiles/${profileId}/selected`, { plotId, roomId });
 }
 
+export function setDefaultUserChatProfile(profileId) {
+  return put(`/v1/user-chat-profiles/${profileId}/default`, {});
+}
+
 // Quiz
 export function getQuiz() {
   return get('/v1/daily-quizzes');

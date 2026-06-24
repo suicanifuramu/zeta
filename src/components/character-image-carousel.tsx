@@ -84,7 +84,7 @@ export function CharacterImageCarousel({
         return realToDisplay(real)
       })
     }
-  }, [displayIndex, displayCount, displayToReal, onIndexChange])
+  }, [displayIndex, displayCount, displayToReal, realToDisplay, onIndexChange])
 
   const goToPrev = useCallback(() => {
     if (isTransitioning) return
