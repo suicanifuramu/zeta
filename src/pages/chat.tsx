@@ -484,6 +484,15 @@ export function ChatPage() {
       if (roomPlotImg) {
         setPlotImg(roomPlotImg)
         sessionStorage.setItem("chat_plot_img", roomPlotImg)
+      } else if (room?.plot?.id) {
+        // Fallback: try initialRoomImageUrl for plots without imageUrl
+        getPlot(room.plot.id).then((detail: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => {
+          const bgImg = detail?.initialRoomImageUrl
+          if (bgImg) {
+            setPlotImg(bgImg)
+            sessionStorage.setItem("chat_plot_img", bgImg)
+          }
+        }).catch(() => {})
       }
     }).catch(() => {})
 
