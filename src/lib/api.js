@@ -328,6 +328,10 @@ export function setDefaultUserChatProfile(profileId) {
   return put(`/v1/user-chat-profiles/${profileId}/default`, {});
 }
 
+export function selectPlotChatProfile({ plotChatProfileId, plotId, name, profileImageUrl, summary, description }) {
+  return post('/v1/user-plot-chat-profiles/selected', { plotChatProfileId, plotId, name, profileImageUrl, summary, description });
+}
+
 // Quiz
 export function getQuiz() {
   return get('/v1/daily-quizzes');

@@ -24,11 +24,12 @@ import {
   getMessages, getMessagesByCursor, getPlot, getRecommended,
   getRecommendQuota, getRoom, getRoomModelSetting,
   getUserChatProfiles, refreshRecommended, regenMessageStream,
-  selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
+  selectCandidate, selectUserChatProfile, selectPlotChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
 import { preloadImages } from "@/lib/image-preloader"
-import type { Message, UserChatProfile, InfoBoxContent, Candidate, Character } from "@/lib/types"
+import type { Message, UserChatProfile, PlotChatProfile, InfoBoxContent, Candidate, Character } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import type { PlotProfileItem } from "@/components/profile-select-sheet"
 
 // ── Message Formatter ──
 function formatMessageText(text: string) {
@@ -147,6 +148,7 @@ export function ChatPage() {
   const [profileList, setProfileList] = useState<any[]> /* eslint-disable-line @typescript-eslint/no-explicit-any */([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [plotId, setPlotId] = useState<string>("") // for profile selection
+  const [plotChatProfiles, setPlotChatProfiles] = useState<PlotProfileItem[]>([])
 
   // Plot detail overlay
   const [plotDetailOpen, setPlotDetailOpen] = useState(false)
@@ -378,6 +380,25 @@ export function ChatPage() {
             const profData = await getUserChatProfiles(20, { plotId: pid, roomId })
             setProfileList(profData.userChatProfiles || [])
             setProfileLoading(false)
+
+            // 4. Get plot chat profiles
+            let resolvedPlotProfiles: PlotProfileItem[] = []
+            try {
+              const plotDetail = await getPlot(pid)
+              const rawProfiles: PlotChatProfile[] = plotDetail.chatProfiles || []
+              if (rawProfiles.length > 0) {
+                const defaultProfile = (profData.userChatProfiles || []).find((p: UserChatProfile) => p.isDefault || p.selected)
+                resolvedPlotProfiles = rawProfiles.map((cp) => ({
+                  id: cp.id,
+                  name: cp.name === "{{user}}" && defaultProfile ? defaultProfile.name : cp.name,
+                  description: cp.description,
+                  summary: cp.summary,
+                  profileImageUrl: cp.imageUrl,
+                }))
+              }
+            } catch { /* ignore — plot chat profiles are optional */ }
+            setPlotChatProfiles(resolvedPlotProfiles)
+
             setProfileSheetOpen(true)
           } catch (e: unknown) {
             toast.error(`初期化失敗: ${(e instanceof Error ? e.message : String(e))}`)
@@ -503,6 +524,30 @@ export function ChatPage() {
       // 5. Create intro (POST)
       await createIntro(roomId)
       // 6. Reload messages
+      const data = await getMessages(roomId, 50)
+      setMessages(data.messages || [])
+      setNeedsInit(false)
+      setProfileSheetOpen(false)
+      toast.success(`「${profile.name}」で開始しました`)
+      scrollToBottom()
+    } catch (e: unknown) {
+      toast.error(`チャット開始失敗: ${(e instanceof Error ? e.message : String(e))}`)
+    }
+  }
+
+  // Handle plot chat profile selection for new room
+  const handlePlotProfileSelect = async (profile: PlotProfileItem) => {
+    if (!roomId || !plotId) return
+    try {
+      await selectPlotChatProfile({
+        plotChatProfileId: profile.id,
+        plotId,
+        name: profile.name,
+        profileImageUrl: profile.profileImageUrl || "",
+        summary: profile.summary || "",
+        description: profile.description || "",
+      })
+      await createIntro(roomId)
       const data = await getMessages(roomId, 50)
       setMessages(data.messages || [])
       setNeedsInit(false)
@@ -1259,8 +1304,10 @@ export function ChatPage() {
       {/* Profile selection bottom sheet (new room only) */}
       <ProfileSelectSheet
         profiles={profileList}
+        plotProfiles={plotChatProfiles}
         open={profileSheetOpen}
         onSelect={handleProfileSelect}
+        onPlotSelect={handlePlotProfileSelect}
         loading={profileLoading}
       />
 

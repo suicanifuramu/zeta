@@ -51,6 +51,7 @@ declare module "@/lib/api" {
   export const updateUserChatProfile: (profileId: string, data: { name: string; description: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export const deleteUserChatProfile: (profileId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export const selectUserChatProfile: (profileId: string, opts?: { plotId?: string; roomId?: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+  export const selectPlotChatProfile: (data: { plotChatProfileId: string; plotId: string; name: string; profileImageUrl?: string; summary: string; description: string }) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export const setDefaultUserChatProfile: (profileId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export const getQuiz: () => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;
   export const joinQuiz: (quizId: string, plotId: string) => Promise<any> /* eslint-disable-line @typescript-eslint/no-explicit-any */;

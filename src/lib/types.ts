@@ -88,6 +88,16 @@ export interface UserChatProfile {
   selected?: boolean
 }
 
+export interface PlotChatProfile {
+  id: string
+  plotId: string
+  name: string
+  imageUrl?: string
+  summary?: string
+  description?: string
+  isUsingDefaultName?: boolean
+}
+
 export interface SessionOverview {
   coin?: { balance?: number }
   subscription?: { type?: string }
@@ -232,6 +242,7 @@ export interface PlotDetailResponse extends Plot {
       description: string;
     }>;
   };
+  chatProfiles?: PlotChatProfile[];
 }
 
 export interface PlotImage {
@@ -421,6 +432,10 @@ export interface AbuseCheckResponse {
 export interface SelectProfileResponse {
   success: boolean
   profile?: UserChatProfile
+}
+
+export interface SelectPlotChatProfileResponse {
+  success: boolean
 }
 
 // Quiz
