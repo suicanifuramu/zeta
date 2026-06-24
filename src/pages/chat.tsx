@@ -168,7 +168,8 @@ export function ChatPage() {
   const [myProfileSheetOpen, setMyProfileSheetOpen] = useState(false)
   const myProfileKeyRef = useRef(0)
 
-  // Room reset confirmation
+  // Dialogs
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
@@ -1130,9 +1131,9 @@ export function ChatPage() {
         <Button variant="ghost" size="icon" aria-label="削除モード" className={cn(deleteMode && "text-destructive", "select-none")} {...longPressHandlers}>
           <Trash2 className="size-4" />
         </Button>
-        <AlertDialog>
+        <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">退出</Button>
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setExitConfirmOpen(true)}>退出</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -1152,7 +1153,7 @@ export function ChatPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>ルームをリセット</AlertDialogTitle>
-              <AlertDialogDescription>新しいルームを作成して会話をリセットしますか？</AlertDialogDescription>
+              <AlertDialogDescription className="break-keep">新しいルームを作成して会話をリセットしますか？</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>キャンセル</AlertDialogCancel>
