@@ -65,6 +65,11 @@ export function PlotDetailDialog({ plot, open, onOpenChange, onStartChat }: Plot
   const aboutContents: any  [] = (d.isAboutPublic || d.about) ? (aboutObj?.contents as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[] || []) : []
   const aboutCharacters: any  [] = (aboutObj?.characters as any /* eslint-disable-line @typescript-eslint/no-explicit-any */[]) || []
 
+  // Fallback: use longDescription as about content when about section is missing
+  if (aboutContents.length === 0 && d.longDescription) {
+    aboutContents.push({ type: "text", content: d.longDescription })
+  }
+
   // Build lookup from about.characters by characterId for description fallback
   const aboutCharMap: Record<string, string> = {}
   for (const ac of aboutCharacters) {
