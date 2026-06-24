@@ -876,10 +876,6 @@ export function ChatPage() {
     }
   }, [plotId, navigate])
 
-  const longPressHandlers = useLongPress(() => setResetConfirmOpen(true), () => {
-    if (deleteMode) exitDeleteMode(); else enterDeleteMode()
-  })
-
   const exitDeleteMode = () => {
     setDeleteMode(false)
     setSelectedMsgId(null)
@@ -895,6 +891,10 @@ export function ChatPage() {
       toast.error(`履歴の同期に失敗しました: ${(e instanceof Error ? e.message : String(e))}`)
     }
   }
+
+  const longPressHandlers = useLongPress(() => setResetConfirmOpen(true), () => {
+    if (deleteMode) exitDeleteMode(); else enterDeleteMode()
+  })
 
   const insertAsterisk = () => {
     const el = inputRef.current
