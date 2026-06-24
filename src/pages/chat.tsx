@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
@@ -173,7 +173,7 @@ export function ChatPage() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.add("chat-locked")
     document.body.classList.add("chat-locked")
 
@@ -197,12 +197,14 @@ export function ChatPage() {
 
       if (e.cancelable) e.preventDefault()
     }
+    preventTouchMoveRef.current = preventTouchMove
     document.addEventListener("touchmove", preventTouchMove, { passive: false })
 
     return () => {
       document.documentElement.classList.remove("chat-locked")
       document.body.classList.remove("chat-locked")
       document.removeEventListener("touchmove", preventTouchMove)
+      preventTouchMoveRef.current = null
       void document.body.offsetHeight
       window.scrollTo(0, 0)
     }
@@ -224,6 +226,7 @@ export function ChatPage() {
 
 
   const prevHeightRef = useRef<number>(0)
+  const preventTouchMoveRef = useRef<((e: TouchEvent) => void) | null>(null)
 
   const getViewport = useCallback(() => {
     const el = scrollRef.current
@@ -342,6 +345,10 @@ export function ChatPage() {
     return () => {
       window.visualViewport?.removeEventListener("resize", updateViewportHeight)
       window.visualViewport?.removeEventListener("scroll", updateViewportHeight)
+      if (containerRef.current) {
+        containerRef.current.style.height = ""
+        containerRef.current.style.transform = ""
+      }
     }
   }, [scrollToBottom])
 
@@ -854,8 +861,20 @@ export function ChatPage() {
     }
   }
 
+  const releaseBodyLock = useCallback(() => {
+    document.documentElement.classList.remove("chat-locked")
+    document.body.classList.remove("chat-locked")
+    if (preventTouchMoveRef.current) {
+      document.removeEventListener("touchmove", preventTouchMoveRef.current)
+      preventTouchMoveRef.current = null
+    }
+    void document.body.offsetHeight
+    window.scrollTo(0, 0)
+  }, [])
+
   const handleRoomReset = useCallback(async () => {
     if (!plotId) return
+    releaseBodyLock()
     try {
       const newRoom = await createRoom(plotId)
       toast.success("ルームをリセットしました")
@@ -863,7 +882,7 @@ export function ChatPage() {
     } catch (e: unknown) {
       toast.error(`ルームリセット失敗: ${(e instanceof Error ? e.message : String(e))}`)
     }
-  }, [plotId, navigate])
+  }, [plotId, navigate, releaseBodyLock])
 
   const exitDeleteMode = () => {
     setDeleteMode(false)
@@ -1131,6 +1150,7 @@ export function ChatPage() {
             <AlertDialogFooter>
               <AlertDialogCancel>キャンセル</AlertDialogCancel>
               <AlertDialogAction onClick={async () => {
+                releaseBodyLock()
                 try { await deleteRoom(roomId!); toast.success("退出しました"); navigate("/rooms") }
                 catch (e: unknown) { toast.error(`退出失敗: ${(e instanceof Error ? e.message : String(e))}`) }
               }}>退出</AlertDialogAction>
