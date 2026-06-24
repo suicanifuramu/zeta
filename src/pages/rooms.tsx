@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
@@ -83,7 +84,7 @@ export function RoomsPage() {
                     onClick={() => handleClick(room)}
                   >
                     <Avatar className="size-12 flex-shrink-0">
-                      <AvatarImage src={plot.imageUrl} alt={plot.name} />
+                      <CachedAvatarImage src={plot.imageUrl} alt={plot.name} />
                       <AvatarFallback>{(plot.name || "?")[0]}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">

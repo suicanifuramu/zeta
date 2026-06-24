@@ -2,6 +2,7 @@
 // The full modal flow is handled by NewChatDialog component.
 import { toast } from "sonner"
 import { createRoom, getActiveRoomId, getPlot } from "@/lib/api"
+import { preloadImages } from "@/lib/image-preloader"
 
 export async function startNewChat(plotId: string, navigate: (path: string) => void) {
   try {
@@ -10,6 +11,11 @@ export async function startNewChat(plotId: string, navigate: (path: string) => v
       if (plot?.name) sessionStorage.setItem("chat_plot_name", plot.name)
       const img = plot?.imageUrl || plot?.initialRoomImageUrl || ""
       sessionStorage.setItem("chat_plot_img", img)
+
+      const imageUrls = [plot?.imageUrl, plot?.initialRoomImageUrl].filter(Boolean)
+      if (imageUrls.length > 0) {
+        preloadImages(imageUrls, { priority: "high" }).catch(() => {})
+      }
     }).catch(() => {})
 
     let roomId: string | undefined

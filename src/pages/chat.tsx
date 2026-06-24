@@ -5,7 +5,8 @@ import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, 
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +26,7 @@ import {
   getUserChatProfiles, refreshRecommended, regenMessageStream,
   selectCandidate, selectUserChatProfile, sendMessageStream, editMessage,
 } from "@/lib/api"
+import { preloadImages } from "@/lib/image-preloader"
 import type { Message, UserChatProfile, InfoBoxContent, Candidate, Character } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -57,7 +59,7 @@ function MessageBubble({ content, avatarUrl, onAvatarTap }: { content: any /* es
     <div className={cn("flex gap-2 my-1 animate-msg-in", isRight ? "flex-row-reverse" : "flex-row")}>
       {!isRight && (
         <Avatar className="size-8 shrink-0 cursor-pointer" onClick={onAvatarTap}>
-          <AvatarImage src={avatarUrl} />
+          <CachedAvatarImage src={avatarUrl} />
           <AvatarFallback>{(content.speakerName || "?")[0]}</AvatarFallback>
         </Avatar>
       )}
@@ -466,6 +468,11 @@ export function ChatPage() {
       setCharAvatars(avatars)
       setCharacters(chars)
       setPlotId(room?.plot?.id || "")
+
+      const charImageUrls = chars.map((c: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => c.imageUrl).filter(Boolean)
+      if (charImageUrls.length > 0) {
+        preloadImages(charImageUrls, { priority: "high" }).catch(() => {})
+      }
 
       // Update header from room data to fix stale sessionStorage bug
       const roomPlotName = room?.plot?.name || room?.title
@@ -1036,7 +1043,7 @@ export function ChatPage() {
         </Button>
         {plotImg && (
           <Avatar className="size-9">
-            <AvatarImage src={plotImg} />
+            <CachedAvatarImage src={plotImg} />
             <AvatarFallback>{plotName[0]}</AvatarFallback>
           </Avatar>
         )}

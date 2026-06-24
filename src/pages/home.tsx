@@ -9,7 +9,6 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getHomePlots, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
-import { preloadImagesAsync } from "@/lib/image-preloader"
 import type { Plot } from "@/lib/types"
 
 let cachedPlots: Plot[] | null = null
@@ -52,13 +51,6 @@ export function HomePage() {
       const nextCursor = data.nextCursor || data.cursor || null
       cursorRef.current = nextCursor
       cachedCursor = nextCursor
-
-      const imageUrls = newPlots
-        .map((p: Plot) => p.imageUrl)
-        .filter((u: string | undefined): u is string => typeof u === "string")
-      if (imageUrls.length > 0) {
-        preloadImagesAsync(imageUrls, { concurrency: 6, priority: "low" })
-      }
 
       if (newPlots.length === 0 && !nextCursor) {
         setHasMore(false)
@@ -163,7 +155,7 @@ export function HomePage() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-5">
           {plots.map((plot, i) => (
             <div key={plot.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}>
-              <PlotCard plot={plot} onClick={() => handlePlotClick(plot)} />
+              <PlotCard plot={plot} cached={false} onClick={() => handlePlotClick(plot)} />
             </div>
           ))}
         </div>

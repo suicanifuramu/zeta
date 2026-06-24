@@ -18,6 +18,7 @@ interface PlotCardProps {
   }
   onClick?: () => void
   className?: string
+  cached?: boolean
 }
 
 function formatCount(n: number) {
@@ -26,7 +27,7 @@ function formatCount(n: number) {
   return String(n)
 }
 
-export function PlotCard({ plot, onClick, className }: PlotCardProps) {
+export function PlotCard({ plot, onClick, className, cached = true }: PlotCardProps) {
   const tags = (plot.hashtags || []).slice(0, 3)
 
   return (
@@ -52,6 +53,7 @@ export function PlotCard({ plot, onClick, className }: PlotCardProps) {
             src={plot.imageUrl}
             alt={plot.name}
             loading="lazy"
+            noCache={!cached}
             className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>

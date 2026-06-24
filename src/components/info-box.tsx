@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import type { InfoBoxContent, InfoBoxCharacter } from "@/lib/types"
@@ -65,7 +66,7 @@ export function InfoBox({ data, charAvatars = {} }: InfoBoxProps) {
               <CustomAccordionTrigger className="px-3 py-2 bg-transparent hover:bg-amber-500/5">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Avatar className="size-7 shrink-0">
-                    <AvatarImage src={avatarUrl} />
+                    <CachedAvatarImage src={avatarUrl} />
                     <AvatarFallback className="text-xs">
                       {(character.name || "?")[0]}
                     </AvatarFallback>
