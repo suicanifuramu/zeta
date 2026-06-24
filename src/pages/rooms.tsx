@@ -71,7 +71,7 @@ export function RoomsPage() {
             <p>チャットルームがありません</p>
           </div>
         ) : (
-          <div className="flex flex-col">
+          <div className="flex flex-col overflow-x-hidden">
             {rooms.map((room, i) => {
               const plot = (room.plot || {}) as any // eslint-disable-line @typescript-eslint/no-explicit-any
               const preview = getPreview(room.lastMessage as any) // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -97,7 +97,7 @@ export function RoomsPage() {
                       <Badge className="ml-1 shrink-0 tabular-nums">{room.unreadCount}</Badge>
                     )}
                   </button>
-                  {i < rooms.length - 1 && <Separator className="ml-17" />}
+                  {i < rooms.length - 1 && <Separator className="ml-17 w-[calc(100%-68px)]" />}
                 </div>
               )
             })}
