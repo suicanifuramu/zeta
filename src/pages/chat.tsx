@@ -1252,7 +1252,7 @@ export function ChatPage() {
         <div className="border-t border-border px-4 py-4 text-center">
           <p className="text-sm text-muted-foreground">プロフィールを選択してチャットを開始してください</p>
           {!profileSheetOpen && (
-            <Button size="sm" className="mt-2" onClick={() => setProfileSheetOpen(true)}>プロフィールを選択</Button>
+            <Button size="sm" className="mt-2 cursor-pointer" onClick={() => setProfileSheetOpen(true)}>プロフィールを選択</Button>
           )}
         </div>
       ) : (
@@ -1306,6 +1306,7 @@ export function ChatPage() {
         profiles={profileList}
         plotProfiles={plotChatProfiles}
         open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
         onSelect={handleProfileSelect}
         onPlotSelect={handlePlotProfileSelect}
         loading={profileLoading}
