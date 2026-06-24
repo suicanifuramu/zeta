@@ -481,9 +481,9 @@ export function ChatPage() {
         setPlotName(roomPlotName)
         sessionStorage.setItem("chat_plot_name", roomPlotName)
       }
-      if (roomPlotImg !== undefined) {
-        setPlotImg(roomPlotImg || "")
-        sessionStorage.setItem("chat_plot_img", roomPlotImg || "")
+      if (roomPlotImg) {
+        setPlotImg(roomPlotImg)
+        sessionStorage.setItem("chat_plot_img", roomPlotImg)
       }
     }).catch(() => {})
 
@@ -1041,12 +1041,10 @@ export function ChatPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")} aria-label="戻る">
           <ArrowLeft className="size-5" />
         </Button>
-        {plotImg && (
-          <Avatar className="size-9">
-            <CachedAvatarImage src={plotImg} />
-            <AvatarFallback>{plotName[0]}</AvatarFallback>
-          </Avatar>
-        )}
+        <Avatar className="size-9">
+          <CachedAvatarImage src={plotImg} />
+          <AvatarFallback>{plotName[0]}</AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1 cursor-pointer" onClick={handleHeaderClick}>
           <p className="truncate text-sm font-semibold">{plotName}</p>
           <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
