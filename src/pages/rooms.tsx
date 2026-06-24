@@ -51,7 +51,6 @@ export function RoomsPage() {
     <div className="animate-fade-in">
       <header className="px-5 pt-[max(18px,env(safe-area-inset-top))] pb-3">
         <h1 className="text-2xl font-bold">チャット</h1>
-        <p className="text-sm text-muted-foreground">会話の一覧</p>
       </header>
 
       <div className="px-5">

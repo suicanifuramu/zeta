@@ -452,3 +452,22 @@ export interface ClaimQuizResponse {
     currency?: string
   }
 }
+
+// My profile (user-plot-chat-profiles/me)
+export interface MyPlotChatProfileResponse {
+  id: string
+  userId: string
+  roomId: string
+  plotChatProfileId?: string
+  name: string
+  imageUrl?: string
+  summary?: string
+  description?: string
+  selected?: boolean
+}
+
+export interface SelectedUserPersonaResponse {
+  name: string
+  profileImageUrl?: string
+  description?: string
+}

@@ -127,7 +127,6 @@ export function SettingsPage() {
     <div className="animate-fade-in">
       <header className="px-5 pt-[max(18px,env(safe-area-inset-top))] pb-3">
         <h1 className="text-2xl font-bold">設定</h1>
-        <p className="text-sm text-muted-foreground">セッション管理・プロフィール設定</p>
       </header>
 
       <div className="flex flex-col gap-4 px-5 pb-8">
@@ -161,19 +160,11 @@ export function SettingsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleLogout}>ログアウト</Button>
-              <Button variant="outline" size="sm" onClick={() => {
-                setDeviceId(deviceId)
-                if (refreshToken) importTokens(refreshToken)
-                toast.success("Token を保存しました")
-              }}>Token を保存</Button>
               <Button size="sm" onClick={handleRefreshSession} disabled={refreshing}>
                 {refreshing && <Spinner className="mr-1 size-3" />}
                 セッション更新
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Device ID / Refresh Token を入力して「Token を保存」するとローカルストレージに保存されます。
-            </p>
           </CardContent>
         </Card>
 

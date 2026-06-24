@@ -68,7 +68,6 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
     <div className="mx-auto w-full max-w-lg">
       <div className="px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">プロフィールを選択</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">チャットで使用するプロフィールを選んでください</p>
       </div>
 
       <div className="max-h-[40vh] overflow-y-auto overscroll-contain px-5 touch-scrollable">

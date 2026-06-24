@@ -19,6 +19,7 @@ import { ProfileSelectSheet } from "@/components/profile-select-sheet"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { InfoBox } from "@/components/info-box"
 import { CharacterDetailSheet } from "@/components/character-detail-sheet"
+import { MyProfileSheet } from "@/components/my-profile-sheet"
 import {
   createIntro, deleteMessages, deleteRoom, getCandidates, getIntroBeforeSelection,
   getMessages, getMessagesByCursor, getPlot, getRecommended,
@@ -46,7 +47,7 @@ function formatMessageText(text: string) {
 }
 
 // ── Message Bubble ──
-function MessageBubble({ content, avatarUrl, onAvatarTap }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string; onAvatarTap?: () => void }) {
+function MessageBubble({ content, avatarUrl, onAvatarTap, onUserMessageTap }: { content: any /* eslint-disable-line @typescript-eslint/no-explicit-any */; avatarUrl?: string; onAvatarTap?: () => void; onUserMessageTap?: () => void }) {
   const pos = content.position || "LEFT"
   if (pos === "NARRATOR") {
     return (
@@ -64,7 +65,10 @@ function MessageBubble({ content, avatarUrl, onAvatarTap }: { content: any /* es
           <AvatarFallback>{(content.speakerName || "?")[0]}</AvatarFallback>
         </Avatar>
       )}
-      <div className={cn("max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed", isRight ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+      <div
+        className={cn("max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed", isRight ? "bg-primary text-primary-foreground cursor-pointer" : "bg-secondary")}
+        onClick={isRight ? onUserMessageTap : undefined}
+      >
         {!isRight && content.speakerName && (
           <p className="mb-1 text-xs font-medium text-muted-foreground">{content.speakerName}</p>
         )}
@@ -158,6 +162,10 @@ export function ChatPage() {
   const [characterDetailOpen, setCharacterDetailOpen] = useState(false)
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
+
+  // My profile sheet
+  const [myProfileSheetOpen, setMyProfileSheetOpen] = useState(false)
+  const myProfileKeyRef = useRef(0)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
   useEffect(() => {
@@ -567,6 +575,11 @@ export function ChatPage() {
     setSelectedCharacter(character)
     setCharacterDetailOpen(true)
   }, [characters])
+
+  const handleUserMessageTap = useCallback(() => {
+    myProfileKeyRef.current += 1
+    setMyProfileSheetOpen(true)
+  }, [])
 
   // Send message
   const sendMessage = async () => {
@@ -1013,7 +1026,7 @@ export function ChatPage() {
               if (c.type === "INFO_BOX") {
                 return <InfoBox key={`regen-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
               }
-              return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} />
+              return <MessageBubble key={`regen-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} onUserMessageTap={handleUserMessageTap} />
             })
           ) : isRegening && regenContents.length === 0 ? (
             <StreamingDots />
@@ -1031,7 +1044,7 @@ export function ChatPage() {
                 if (c.type === "INFO_BOX") {
                   return <InfoBox key={ci} data={c as InfoBoxContent} charAvatars={charAvatars} />
                 }
-                return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} onAvatarTap={() => c.position !== "RIGHT" && handleAvatarTap(c.speakerName)} />
+                return <MessageBubble key={ci} content={c} avatarUrl={c.position !== "RIGHT" ? charAvatars[c.speakerName] : undefined} onAvatarTap={() => c.position !== "RIGHT" && handleAvatarTap(c.speakerName)} onUserMessageTap={handleUserMessageTap} />
               })}
             </div>
           )}
@@ -1146,7 +1159,7 @@ export function ChatPage() {
                     if (c.type === "INFO_BOX") {
                       return <InfoBox key={`stream-${ci}`} data={c as InfoBoxContent} charAvatars={charAvatars} />
                     }
-                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} />
+                    return <MessageBubble key={`stream-${ci}`} content={c} avatarUrl={charAvatars[c.speakerName]} onAvatarTap={() => handleAvatarTap(c.speakerName)} onUserMessageTap={handleUserMessageTap} />
                   })
             )}
           </div>
@@ -1326,6 +1339,15 @@ export function ChatPage() {
         plotId={plotId}
         open={characterDetailOpen}
         onOpenChange={setCharacterDetailOpen}
+      />
+
+      {/* My Profile Sheet */}
+      <MyProfileSheet
+        key={`my-profile-${myProfileKeyRef.current}`}
+        roomId={roomId || ""}
+        plotId={plotId}
+        open={myProfileSheetOpen}
+        onOpenChange={setMyProfileSheetOpen}
       />
     </div>
   )

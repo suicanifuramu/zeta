@@ -332,6 +332,14 @@ export function selectPlotChatProfile({ roomId, plotChatProfileId, plotId, name,
   return post(`/v1/rooms/${roomId}/user-plot-chat-profiles/selected`, { plotChatProfileId, plotId, name, profileImageUrl, summary, description });
 }
 
+export function getMyPlotChatProfile(roomId) {
+  return get(`/v1/rooms/${roomId}/user-plot-chat-profiles/me`);
+}
+
+export function getSelectedUserPersona(plotId, roomId) {
+  return get(`/v1/plots/${plotId}/rooms/${roomId}/user-personas/selected`);
+}
+
 // Quiz
 export function getQuiz() {
   return get('/v1/daily-quizzes');
