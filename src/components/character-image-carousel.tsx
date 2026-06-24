@@ -36,7 +36,7 @@ export function CharacterImageCarousel({
 
   const displayCount = displayImages.length
 
-  const realToDisplay = (realIdx: number) => realIdx + 1
+  const realToDisplay = useCallback((realIdx: number) => total > 1 ? realIdx + 1 : realIdx, [total])
   const displayToReal = useCallback(
     (displayIdx: number) => {
       if (displayIdx === 0) return total - 1
@@ -74,7 +74,8 @@ export function CharacterImageCarousel({
     })
   }, [])
 
-  const handleTransitionEnd = useCallback(() => {
+  const handleTransitionEnd = useCallback((event: React.TransitionEvent) => {
+    if (event.target !== event.currentTarget) return
     setIsTransitioning(false)
     if (displayIndex === 0 || displayIndex === displayCount - 1) {
       setNavigatedIndex((prev) => {
@@ -170,6 +171,7 @@ export function CharacterImageCarousel({
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const s = touchState.current
     if (!s) return
+    if (isTransitioning) return
 
     if (s.isSwiping && scale <= 1) {
       const diffX = e.changedTouches[0].clientX - s.startX
@@ -193,7 +195,7 @@ export function CharacterImageCarousel({
     }
 
     touchState.current = null
-  }, [scale, displayCount, displayIndex, goToPrev, goToNext])
+  }, [scale, displayCount, displayIndex, goToPrev, goToNext, isTransitioning])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft") goToPrev()
