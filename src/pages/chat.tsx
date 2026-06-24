@@ -174,21 +174,11 @@ export function ChatPage() {
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
   useEffect(() => {
-    const originalHtmlOverflow = document.documentElement.style.overflow
-    const originalBodyOverflow = document.body.style.overflow
-    const originalPosition = document.body.style.position
-    const originalWidth = document.body.style.width
-    const originalHeight = document.body.style.height
+    document.documentElement.classList.add("chat-locked")
+    document.body.classList.add("chat-locked")
 
-    document.documentElement.style.overflow = "hidden"
-    document.body.style.overflow = "hidden"
-    document.body.style.position = "fixed"
-    document.body.style.width = "100%"
-    document.body.style.height = "100%"
-    
     const preventTouchMove = (e: TouchEvent) => {
       const target = e.target as HTMLElement
-      // Allow scrolling inside ScrollArea, explicitly marked touch-scrollable containers, or Vaul Drawers
       if (
         target.closest('[data-radix-scroll-area-viewport]') || 
         target.closest('.touch-scrollable') || 
@@ -196,27 +186,25 @@ export function ChatPage() {
       ) {
         return
       }
-      
+
       if (target.tagName === 'TEXTAREA') {
         const ta = target as HTMLTextAreaElement
-        // If textarea is not scrollable (single line or fits in view)
         if (ta.scrollHeight <= ta.clientHeight) {
           if (e.cancelable) e.preventDefault()
         }
-        return // Let native touch scroll happen if scrollable
+        return
       }
-      
+
       if (e.cancelable) e.preventDefault()
     }
     document.addEventListener("touchmove", preventTouchMove, { passive: false })
 
     return () => {
-      document.documentElement.style.overflow = originalHtmlOverflow
-      document.body.style.overflow = originalBodyOverflow
-      document.body.style.position = originalPosition
-      document.body.style.width = originalWidth
-      document.body.style.height = originalHeight
+      document.documentElement.classList.remove("chat-locked")
+      document.body.classList.remove("chat-locked")
       document.removeEventListener("touchmove", preventTouchMove)
+      void document.body.offsetHeight
+      window.scrollTo(0, 0)
     }
   }, [])
 
