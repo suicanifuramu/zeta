@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Drawer, DrawerContent, DrawerFooter } from "@/components/ui/drawer"
+import { Drawer, DrawerContent } from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -29,26 +29,15 @@ interface ProfileSelectSheetProps {
 
 export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange, onSelect, onPlotSelect, loading }: ProfileSelectSheetProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    const def = profiles.find((p) => p.selected || p.isDefault)
-    if (def) return def.id
-    if (profiles.length > 0) return profiles[0].id
-    if (plotProfiles && plotProfiles.length > 0) return plotProfiles[0].id
-    return null
-  })
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
+  // Initialize selectedId when sheet opens (React 19 render-time setState is safe)
+  if (open && selectedId === null) {
     const def = profiles.find((p) => p.selected || p.isDefault)
-    if (def) {
-      setSelectedId(def.id)
-    } else if (profiles.length > 0) {
-      setSelectedId(profiles[0].id)
-    } else if (plotProfiles && plotProfiles.length > 0) {
-      setSelectedId(plotProfiles[0].id)
-    }
-  }, [open, profiles, plotProfiles])
+    const id = def?.id || profiles[0]?.id || plotProfiles?.[0]?.id || null
+    if (id) setSelectedId(id)
+  }
 
   const findSelected = () => {
     const userProfile = profiles.find((p) => p.id === selectedId)

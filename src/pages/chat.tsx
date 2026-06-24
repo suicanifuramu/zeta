@@ -540,6 +540,7 @@ export function ChatPage() {
     if (!roomId || !plotId) return
     try {
       await selectPlotChatProfile({
+        roomId,
         plotChatProfileId: profile.id,
         plotId,
         name: profile.name,

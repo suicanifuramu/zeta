@@ -328,8 +328,8 @@ export function setDefaultUserChatProfile(profileId) {
   return put(`/v1/user-chat-profiles/${profileId}/default`, {});
 }
 
-export function selectPlotChatProfile({ plotChatProfileId, plotId, name, profileImageUrl, summary, description }) {
-  return post('/v1/user-plot-chat-profiles/selected', { plotChatProfileId, plotId, name, profileImageUrl, summary, description });
+export function selectPlotChatProfile({ roomId, plotChatProfileId, plotId, name, profileImageUrl, summary, description }) {
+  return post(`/v1/rooms/${roomId}/user-plot-chat-profiles/selected`, { plotChatProfileId, plotId, name, profileImageUrl, summary, description });
 }
 
 // Quiz
