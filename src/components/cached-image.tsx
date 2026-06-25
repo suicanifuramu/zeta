@@ -7,7 +7,15 @@ interface CachedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   noCache?: boolean
 }
 
-export function CachedImage({ src, alt, className, noCache = false, onError, onLoad, ...props }: CachedImageProps) {
+export function CachedImage({
+  src,
+  alt,
+  className,
+  noCache = false,
+  onError,
+  onLoad,
+  ...props
+}: CachedImageProps) {
   const { cachedSrc } = useImageCache(src, noCache)
   const [imgLoaded, setImgLoaded] = useState(false)
 
@@ -17,7 +25,11 @@ export function CachedImage({ src, alt, className, noCache = false, onError, onL
     <img
       src={cachedSrc}
       alt={alt}
-      className={cn("transition-opacity duration-300", imgLoaded ? "opacity-100" : "opacity-0", className)}
+      className={cn(
+        "transition-opacity duration-300",
+        imgLoaded ? "opacity-100" : "opacity-0",
+        className
+      )}
       onLoad={(e) => {
         setImgLoaded(true)
         onLoad?.(e)

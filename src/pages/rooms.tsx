@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { getRooms } from "@/lib/api"
-import type { Room } from "@/lib/types"
+import type { ApiRoomsResponse, Room, Message, Plot } from "@/lib/types"
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -19,8 +19,14 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}日前`
 }
 
-function getPreview(lastMessage: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ | undefined) {
-  const contents = lastMessage?.contents as Array<Record<string, string>> | undefined
+function getPreview(
+  lastMessage:
+    | { contents?: Array<Record<string, string>> }
+    | undefined
+) {
+  const contents = lastMessage?.contents as
+    | Array<Record<string, string>>
+    | undefined
   if (!contents?.length) return ""
   const c = contents[0]
   const name = c.speakerName || ""
@@ -35,8 +41,12 @@ export function RoomsPage() {
 
   useEffect(() => {
     getRooms(30)
-      .then((data) => setRooms(data.rooms || []))
-      .catch((e: unknown) => toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`))
+      .then((data) => setRooms((data as ApiRoomsResponse).rooms || []))
+      .catch((e: unknown) =>
+        toast.error(
+          `読み込み失敗: ${e instanceof Error ? e.message : String(e)}`
+        )
+      )
       .finally(() => setLoading(false))
   }, [])
 
@@ -73,9 +83,12 @@ export function RoomsPage() {
         ) : (
           <div className="flex flex-col overflow-x-hidden">
             {rooms.map((room, i) => {
-              const plot = (room.plot || {}) as any // eslint-disable-line @typescript-eslint/no-explicit-any
-              const preview = getPreview(room.lastMessage as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-              const time = (room.lastMessage as any)?.messageTime ? timeAgo((room.lastMessage as any).messageTime) : "" // eslint-disable-line @typescript-eslint/no-explicit-any
+              const plot = (room.plot || {}) as Plot
+              const lastMessage = room.lastMessage as Message | undefined
+              const preview = getPreview(lastMessage as { contents?: Array<Record<string, string>> } | undefined)
+              const time = lastMessage?.createdAt
+                ? timeAgo(lastMessage.createdAt)
+                : ""  
               return (
                 <div key={room.id}>
                   <button
@@ -88,16 +101,26 @@ export function RoomsPage() {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="truncate text-sm font-medium">{room.title || plot.name || "チャット"}</span>
-                        <span className="ml-2 shrink-0 text-xs text-muted-foreground">{time}</span>
+                        <span className="truncate text-sm font-medium">
+                          {room.title || plot.name || "チャット"}
+                        </span>
+                        <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                          {time}
+                        </span>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{preview}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {preview}
+                      </p>
                     </div>
                     {(room.unreadCount || 0) > 0 && (
-                      <Badge className="ml-1 shrink-0 tabular-nums">{room.unreadCount}</Badge>
+                      <Badge className="ml-1 shrink-0 tabular-nums">
+                        {room.unreadCount}
+                      </Badge>
                     )}
                   </button>
-                  {i < rooms.length - 1 && <Separator className="ml-17 w-[calc(100%-68px)]" />}
+                  {i < rooms.length - 1 && (
+                    <Separator className="ml-17 w-[calc(100%-68px)]" />
+                  )}
                 </div>
               )
             })}

@@ -9,7 +9,7 @@ import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getRanking, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
 import { preloadImagesAsync } from "@/lib/image-preloader"
-import type { Plot } from "@/lib/types"
+import type { Plot, ApiRankingResponse, ActiveRoomIdResponse } from "@/lib/types"
 
 const TABS = [
   { value: "TRENDING", label: "トレンド" },
@@ -38,16 +38,16 @@ export function RankingPage() {
     setDisplayed([])
     setHasMore(true)
     try {
-      const data = await getRanking(type, MAX_ITEMS)
+      const data = await getRanking(type, MAX_ITEMS) as ApiRankingResponse
       const items = data.rankings || []
-      
+
       const imageUrls = items
         .map((p: Plot) => p.imageUrl)
         .filter((u: string | undefined): u is string => typeof u === "string")
       if (imageUrls.length > 0) {
         preloadImagesAsync(imageUrls, { concurrency: 6, priority: "low" })
       }
-      
+
       setAllItems(items)
       setDisplayed(items.slice(0, BATCH_SIZE))
       setHasMore(items.length > BATCH_SIZE)
@@ -59,9 +59,9 @@ export function RankingPage() {
     }
   }, [])
 
-  useEffect(() => { 
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadRanking(tab) 
+    loadRanking(tab)
   }, [tab, loadRanking])
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export function RankingPage() {
           })
         }
       },
-      { rootMargin: "300px" },
+      { rootMargin: "300px" }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
@@ -85,7 +85,7 @@ export function RankingPage() {
 
   const handleClick = async (plot: Plot) => {
     try {
-      const data = await getActiveRoomId(plot.id)
+      const data = await getActiveRoomId(plot.id) as ActiveRoomIdResponse
       if (data.roomId) {
         sessionStorage.setItem("chat_plot_name", plot.name || "")
         sessionStorage.setItem("chat_plot_img", plot.imageUrl || "")
@@ -140,7 +140,11 @@ export function RankingPage() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-5">
           {displayed.map((plot, i) => (
-            <div key={plot.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}>
+            <div
+              key={plot.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
+            >
               <PlotCard plot={plot} onClick={() => handleClick(plot)} />
             </div>
           ))}

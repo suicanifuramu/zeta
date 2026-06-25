@@ -10,7 +10,7 @@ import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
 import { getCharacterImages } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import type { Character } from "@/lib/types"
+import type { Character, CharacterImageResponse } from "@/lib/types"
 
 interface CharacterDetailSheetProps {
   character: Character | null
@@ -25,22 +25,34 @@ export function CharacterDetailSheet({
   open,
   onOpenChange,
 }: CharacterDetailSheetProps) {
-  const [images, setImages] = useState<Array<{ imageUrl: string; aspectRatio: number }>>([])
+  const [images, setImages] = useState<
+    Array<{ imageUrl: string; aspectRatio: number }>
+  >([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showFullDesc, setShowFullDesc] = useState(false)
 
-  const wrappedSetCurrentIndex = useCallback((index: number) => {
-    console.log("[DetailSheet] setCurrentIndex called with", index, "| prev:", currentIndex)
-    setCurrentIndex(index)
-  }, [currentIndex])
+  const wrappedSetCurrentIndex = useCallback(
+    (index: number) => {
+      console.log(
+        "[DetailSheet] setCurrentIndex called with",
+        index,
+        "| prev:",
+        currentIndex
+      )
+      setCurrentIndex(index)
+    },
+    [currentIndex]
+  )
 
   useEffect(() => {
     if (!open || !character || !plotId) return
 
     const fetchImages = async () => {
       try {
-        const data = await getCharacterImages(plotId, character.id)
-        console.log("[DetailSheet] images loaded", { count: data.images?.length })
+        const data = await getCharacterImages(plotId, character.id) as CharacterImageResponse
+        console.log("[DetailSheet] images loaded", {
+          count: data.images?.length,
+        })
         setImages(data.images)
         setCurrentIndex(0)
       } catch (e) {
@@ -59,13 +71,16 @@ export function CharacterDetailSheet({
     }
   }, [showFullDesc])
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (!newOpen && showFullDesc) {
-      setShowFullDesc(false)
-      return
-    }
-    onOpenChange(newOpen)
-  }, [showFullDesc, onOpenChange])
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (!newOpen && showFullDesc) {
+        setShowFullDesc(false)
+        return
+      }
+      onOpenChange(newOpen)
+    },
+    [showFullDesc, onOpenChange]
+  )
 
   if (!character || !open) return null
 
@@ -74,17 +89,27 @@ export function CharacterDetailSheet({
 
   const detailContent = (
     <>
-      <div className="flex items-center justify-between px-4 py-3 bg-popover/95 backdrop-blur shrink-0">
+      <div className="flex shrink-0 items-center justify-between bg-popover/95 px-4 py-3 backdrop-blur">
         <div className="flex-1" />
-        <span className="text-base font-medium text-center">{character.name}</span>
-        <Button variant="ghost" size="icon" onClick={() => showFullDesc ? setShowFullDesc(false) : onOpenChange(false)} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+        <span className="text-center text-base font-medium">
+          {character.name}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() =>
+            showFullDesc ? setShowFullDesc(false) : onOpenChange(false)
+          }
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Close"
+        >
           <X className="size-4" />
         </Button>
       </div>
 
       <div ref={scrollRef} className="relative flex-1 overflow-y-auto">
         {showFullDesc ? (
-          <div className="px-4 py-4 whitespace-pre-wrap text-sm text-muted-foreground bg-popover/95 backdrop-blur min-h-full">
+          <div className="min-h-full bg-popover/95 px-4 py-4 text-sm whitespace-pre-wrap text-muted-foreground backdrop-blur">
             {desc}
           </div>
         ) : (
@@ -119,7 +144,10 @@ export function CharacterDetailSheet({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0 max-h-[85vh] flex flex-col" showCloseButton={false}>
+        <DialogContent
+          className="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0"
+          showCloseButton={false}
+        >
           <DialogTitle className="sr-only">{character.name}</DialogTitle>
           {detailContent}
         </DialogContent>
@@ -129,7 +157,7 @@ export function CharacterDetailSheet({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom">
-      <DrawerContent className="max-h-[85vh] flex flex-col">
+      <DrawerContent className="flex max-h-[85vh] flex-col">
         <DrawerTitle className="sr-only">{character.name}</DrawerTitle>
         {detailContent}
       </DrawerContent>
@@ -152,7 +180,7 @@ function CharacterDescription({
     <div>
       <div
         className={cn(
-          "text-sm whitespace-pre-wrap break-all text-left text-muted-foreground",
+          "text-left text-sm break-all whitespace-pre-wrap text-muted-foreground",
           "line-clamp-5"
         )}
       >
@@ -162,7 +190,7 @@ function CharacterDescription({
         <button
           type="button"
           onClick={onReadMore}
-          className="text-sm text-muted-foreground/50 underline mt-2 block text-center"
+          className="mt-2 block text-center text-sm text-muted-foreground/50 underline"
         >
           続きを読む
         </button>

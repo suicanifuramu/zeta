@@ -1,5 +1,16 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
-import { initAuth, getAuthState as getRawAuthState, getAccessToken } from "@/lib/auth"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
+import {
+  initAuth,
+  getAuthState as getRawAuthState,
+  getAccessToken,
+} from "@/lib/auth"
 import { runQuizAutomation } from "@/lib/quiz-client"
 
 interface AuthState {
@@ -38,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     expiresInSeconds: 0,
   })
 
-  const prevAccessTokenRef = useRef<string>('')
+  const prevAccessTokenRef = useRef<string>("")
 
   useEffect(() => {
     initAuth().then((ok: boolean) => {
@@ -58,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentToken = getAccessToken()
         if (currentToken) {
           prevAccessTokenRef.current = currentToken
-          runQuizAutomation().then(msg => console.log('[Quiz] Startup:', msg))
+          runQuizAutomation().then((msg) => console.log("[Quiz] Startup:", msg))
         }
       }
     })
@@ -78,9 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           expiresInSeconds: raw.expiresInSeconds,
         }
 
-        if (next.authenticated && currentToken && currentToken !== prevAccessTokenRef.current) {
+        if (
+          next.authenticated &&
+          currentToken &&
+          currentToken !== prevAccessTokenRef.current
+        ) {
           prevAccessTokenRef.current = currentToken
-          runQuizAutomation().then(msg => console.log('[Quiz] Refresh:', msg))
+          runQuizAutomation().then((msg) => console.log("[Quiz] Refresh:", msg))
         }
 
         return next

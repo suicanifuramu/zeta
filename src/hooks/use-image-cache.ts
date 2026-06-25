@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react"
 import { cacheManager } from "@/lib/cache-db"
-import { fetchPromises, memoryCache, subscribeToCacheClear } from "@/lib/image-cache"
+import {
+  fetchPromises,
+  memoryCache,
+  subscribeToCacheClear,
+} from "@/lib/image-cache"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
 
 let cleanupInitialized = false
@@ -17,7 +21,7 @@ function getPlotImageCache() {
 
 export function useImageCache(
   src: string | undefined,
-  noCache = false,
+  noCache = false
 ): { cachedSrc: string | undefined } {
   const [cacheTick, setCacheTick] = useState(0)
   const [asyncKey, setAsyncKey] = useState(() => `${src}|${noCache}`)
@@ -29,8 +33,7 @@ export function useImageCache(
     setAsyncObjectUrl(undefined)
   }
 
-  const syncCachedSrc =
-    !src || noCache ? src : memoryCache.get(src) || src
+  const syncCachedSrc = !src || noCache ? src : memoryCache.get(src) || src
   const cachedSrc = asyncObjectUrl ?? syncCachedSrc
 
   useEffect(() => {

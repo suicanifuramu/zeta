@@ -208,41 +208,41 @@ export interface GenreRankingResponse {
 }
 
 export interface IntroMessage {
-  senderId: string;
-  content: string;
-  position: string;
+  senderId: string
+  content: string
+  position: string
 }
 
 export interface IntroConversation {
-  messages: IntroMessage[];
+  messages: IntroMessage[]
 }
 
 export interface IntroItem {
-  conversation?: IntroConversation;
+  conversation?: IntroConversation
 }
 
 // Plot/Room
 export interface PlotDetailResponse extends Plot {
-  longDescription?: string;
-  initialRoomImageUrl?: string;
+  longDescription?: string
+  initialRoomImageUrl?: string
   creator?: {
-    id: string;
-    nickname: string;
-    username: string;
-  };
-  intros?: IntroItem[];
-  isAboutPublic?: boolean;
+    id: string
+    nickname: string
+    username: string
+  }
+  intros?: IntroItem[]
+  isAboutPublic?: boolean
   about?: {
     contents: Array<{
-      content?: string;
-      text?: string;
-    }>;
+      content?: string
+      text?: string
+    }>
     characters: Array<{
-      characterId: string;
-      description: string;
-    }>;
-  };
-  chatProfiles?: PlotChatProfile[];
+      characterId: string
+      description: string
+    }>
+  }
+  chatProfiles?: PlotChatProfile[]
 }
 
 export interface PlotImage {

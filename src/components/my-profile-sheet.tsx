@@ -6,7 +6,10 @@ import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { getMyPlotChatProfile, getSelectedUserPersona } from "@/lib/api"
-import type { MyPlotChatProfileResponse, SelectedUserPersonaResponse } from "@/lib/types"
+import type {
+  MyPlotChatProfileResponse,
+  SelectedUserPersonaResponse,
+} from "@/lib/types"
 
 interface MyProfileSheetProps {
   roomId: string
@@ -21,7 +24,12 @@ interface ProfileData {
   description?: string
 }
 
-export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfileSheetProps) {
+export function MyProfileSheet({
+  roomId,
+  plotId,
+  open,
+  onOpenChange,
+}: MyProfileSheetProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,18 +40,24 @@ export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfile
     let cancelled = false
 
     getMyPlotChatProfile(roomId)
-      .then((data: MyPlotChatProfileResponse) => {
+      .then((data) => {
+        const d = data as MyPlotChatProfileResponse
         if (!cancelled) {
-          setProfileData({ name: data.name, summary: data.summary, description: data.description })
+          setProfileData({
+            name: d.name,
+            summary: d.summary,
+            description: d.description,
+          })
           setLoading(false)
         }
       })
       .catch(() => {
         if (cancelled) return
         return getSelectedUserPersona(plotId, roomId)
-          .then((data: SelectedUserPersonaResponse) => {
+          .then((data) => {
+            const d = data as SelectedUserPersonaResponse
             if (!cancelled) {
-              setProfileData({ name: data.name, description: data.description })
+              setProfileData({ name: d.name, description: d.description })
               setLoading(false)
             }
           })
@@ -55,7 +69,9 @@ export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfile
           })
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [open, roomId, plotId])
 
   if (!open) return null
@@ -65,35 +81,49 @@ export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfile
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">マイプロフィール</h2>
         {isDesktop && (
-          <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => onOpenChange(false)} aria-label="閉じる">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+            onClick={() => onOpenChange(false)}
+            aria-label="閉じる"
+          >
             <X className="size-4" />
           </Button>
         )}
       </div>
 
-      <div className="overflow-y-auto overscroll-contain touch-scrollable px-5 pb-6">
+      <div className="touch-scrollable overflow-y-auto overscroll-contain px-5 pb-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <Spinner className="size-6" />
           </div>
         ) : error ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">プロフィールの取得に失敗しました</p>
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            プロフィールの取得に失敗しました
+          </p>
         ) : profileData ? (
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">名前</p>
-              <p className="text-base font-medium whitespace-pre-wrap">{profileData.name}</p>
+              <p className="mb-1 text-sm text-muted-foreground">名前</p>
+              <p className="text-base font-medium whitespace-pre-wrap">
+                {profileData.name}
+              </p>
             </div>
             {profileData.summary && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">概要</p>
-                <p className="text-sm whitespace-pre-wrap">{profileData.summary}</p>
+                <p className="mb-1 text-sm text-muted-foreground">概要</p>
+                <p className="text-sm whitespace-pre-wrap">
+                  {profileData.summary}
+                </p>
               </div>
             )}
             {profileData.description && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">説明</p>
-                <p className="text-sm whitespace-pre-wrap">{profileData.description}</p>
+                <p className="mb-1 text-sm text-muted-foreground">説明</p>
+                <p className="text-sm whitespace-pre-wrap">
+                  {profileData.description}
+                </p>
               </div>
             )}
           </div>
@@ -105,7 +135,10 @@ export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfile
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md gap-0 p-0 sm:max-w-lg max-h-[85vh] overflow-y-auto" showCloseButton={false}>
+        <DialogContent
+          className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+          showCloseButton={false}
+        >
           <DialogTitle className="sr-only">マイプロフィール</DialogTitle>
           {content}
         </DialogContent>
@@ -117,7 +150,7 @@ export function MyProfileSheet({ roomId, plotId, open, onOpenChange }: MyProfile
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerTitle className="sr-only">マイプロフィール</DrawerTitle>
-        <div className="overflow-y-auto overscroll-contain touch-scrollable max-h-[85vh]">
+        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
           {content}
         </div>
       </DrawerContent>

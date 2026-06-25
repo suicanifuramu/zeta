@@ -18,17 +18,20 @@ export function CharacterThumbnailStrip({
 
   return (
     <div className="px-4 py-3">
-      <div className="flex flex-row gap-1.5 pb-2 pt-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div
+        className="flex flex-row gap-1.5 overflow-x-auto pt-3 pb-2"
+        style={{ scrollbarWidth: "none" }}
+      >
         {images.map((img, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onSelect(i)}
             className={cn(
-              "relative flex flex-col items-center justify-center overflow-hidden rounded-6 bg-background transition-all duration-100 ease-out",
+              "rounded-6 relative flex flex-col items-center justify-center overflow-hidden bg-background transition-all duration-100 ease-out",
               i === currentIndex
                 ? "ring-2 ring-primary"
-                : "ring-1 ring-transparent opacity-70 hover:opacity-100"
+                : "opacity-70 ring-1 ring-transparent hover:opacity-100"
             )}
             style={{ height: 56, width: 56, flexShrink: 0 }}
             aria-label={`キャラクター画像 ${i + 1}/${images.length}`}
@@ -37,10 +40,10 @@ export function CharacterThumbnailStrip({
             <CachedImage
               src={images[i].imageUrl}
               alt={`Thumbnail ${i + 1}`}
-              className="aspect-square object-cover w-full h-full"
+              className="aspect-square h-full w-full object-cover"
             />
             {i === currentIndex && (
-              <div className="absolute inset-0 ring-2 ring-primary rounded-6 pointer-events-none" />
+              <div className="rounded-6 pointer-events-none absolute inset-0 ring-2 ring-primary" />
             )}
           </button>
         ))}

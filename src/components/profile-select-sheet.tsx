@@ -27,7 +27,15 @@ interface ProfileSelectSheetProps {
   loading?: boolean
 }
 
-export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange, onSelect, onPlotSelect, loading }: ProfileSelectSheetProps) {
+export function ProfileSelectSheet({
+  profiles,
+  plotProfiles,
+  open,
+  onOpenChange,
+  onSelect,
+  onPlotSelect,
+  loading,
+}: ProfileSelectSheetProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -70,14 +78,16 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
         <h2 className="text-lg font-semibold">プロフィールを選択</h2>
       </div>
 
-      <div className="max-h-[40vh] overflow-y-auto overscroll-contain px-5 touch-scrollable">
+      <div className="touch-scrollable max-h-[40vh] overflow-y-auto overscroll-contain px-5">
         <div className="flex flex-col gap-2 py-2">
           {loading ? (
             <div className="flex justify-center py-8">
               <Spinner className="size-6" />
             </div>
           ) : profiles.length === 0 && !hasPlotProfiles ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">プロフィールがありません</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              プロフィールがありません
+            </p>
           ) : (
             <>
               {profiles.map((p) => {
@@ -87,31 +97,38 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
                     key={p.id}
                     type="button"
                     className={cn(
-                        "flex items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors cursor-pointer",
-                        isSelected
-                          ? "bg-primary/10 ring-1 ring-primary/40"
-                          : "bg-secondary/30 hover:bg-secondary/60",
-                      )}
-                      onClick={() => setSelectedId(p.id)}
-                    >
-                      <Avatar className="size-10 shrink-0 mt-0.5">
-                        <AvatarImage src={p.profileImageUrl} />
-                        <AvatarFallback className="text-sm">{(p.name || "?")[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium">{p.name}</p>
-                          {p.isDefault && (
-                            <span className="shrink-0 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                              デフォルト
-                            </span>
-                          )}
-                        </div>
-                        {p.description && (
-                          <p className={cn("mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap", !isSelected && "line-clamp-2")}>
-                            {p.description}
-                          </p>
+                      "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+                      isSelected
+                        ? "bg-primary/10 ring-1 ring-primary/40"
+                        : "bg-secondary/30 hover:bg-secondary/60"
+                    )}
+                    onClick={() => setSelectedId(p.id)}
+                  >
+                    <Avatar className="mt-0.5 size-10 shrink-0">
+                      <AvatarImage src={p.profileImageUrl} />
+                      <AvatarFallback className="text-sm">
+                        {(p.name || "?")[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium">{p.name}</p>
+                        {p.isDefault && (
+                          <span className="shrink-0 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            デフォルト
+                          </span>
                         )}
+                      </div>
+                      {p.description && (
+                        <p
+                          className={cn(
+                            "mt-0.5 text-xs whitespace-pre-wrap text-muted-foreground",
+                            !isSelected && "line-clamp-2"
+                          )}
+                        >
+                          {p.description}
+                        </p>
+                      )}
                     </div>
                     {isSelected && (
                       <Check className="mt-1 size-5 shrink-0 text-primary" />
@@ -138,25 +155,34 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
                         key={p.id}
                         type="button"
                         className={cn(
-                          "flex items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors cursor-pointer",
+                          "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors",
                           isSelected
                             ? "bg-primary/10 ring-1 ring-primary/40"
-                            : "bg-secondary/30 hover:bg-secondary/60",
+                            : "bg-secondary/30 hover:bg-secondary/60"
                         )}
                         onClick={() => setSelectedId(p.id)}
                       >
-                        <Avatar className="size-10 shrink-0 mt-0.5">
-                          <AvatarFallback className="text-sm">{(p.name || "?")[0]}</AvatarFallback>
+                        <Avatar className="mt-0.5 size-10 shrink-0">
+                          <AvatarFallback className="text-sm">
+                            {(p.name || "?")[0]}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium">{p.name}</p>
+                            <p className="truncate text-sm font-medium">
+                              {p.name}
+                            </p>
                             <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
                               プロット
                             </span>
                           </div>
                           {p.description && (
-                            <p className={cn("mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap", !isSelected && "line-clamp-2")}>
+                            <p
+                              className={cn(
+                                "mt-0.5 text-xs whitespace-pre-wrap text-muted-foreground",
+                                !isSelected && "line-clamp-2"
+                              )}
+                            >
                               {p.description}
                             </p>
                           )}
@@ -173,9 +199,14 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
           )}
         </div>
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4 mt-2">
+      <div className="mt-2 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
         {isDesktop && (
-          <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => onOpenChange?.(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => onOpenChange?.(false)}
+          >
             閉じる
           </Button>
         )}
@@ -194,7 +225,7 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={(v) => onOpenChange?.(v)}>
-        <DialogContent className="max-w-md gap-0 p-0 sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg">
           {content}
         </DialogContent>
       </Dialog>
@@ -204,7 +235,7 @@ export function ProfileSelectSheet({ profiles, plotProfiles, open, onOpenChange,
   return (
     <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)}>
       <DrawerContent className="max-h-[85vh]">
-        <div className="overflow-y-auto overscroll-contain touch-scrollable max-h-[85vh]">
+        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
           {content}
         </div>
       </DrawerContent>

@@ -30,24 +30,28 @@ export function CharacterImageCarousel({
   const maxScale = 4
 
   const total = images.length
-  const displayImages = total > 1
-    ? [images[total - 1], ...images, images[0]]
-    : images
+  const displayImages =
+    total > 1 ? [images[total - 1], ...images, images[0]] : images
 
   const displayCount = displayImages.length
 
-  const realToDisplay = useCallback((realIdx: number) => total > 1 ? realIdx + 1 : realIdx, [total])
+  const realToDisplay = useCallback(
+    (realIdx: number) => (total > 1 ? realIdx + 1 : realIdx),
+    [total]
+  )
   const displayToReal = useCallback(
     (displayIdx: number) => {
       if (displayIdx === 0) return total - 1
       if (displayIdx === displayCount - 1) return 0
       return displayIdx - 1
     },
-    [total, displayCount],
+    [total, displayCount]
   )
 
   const [prevIndex, setPrevIndex] = useState(index)
-  const [navigatedIndex, setNavigatedIndex] = useState(() => realToDisplay(index))
+  const [navigatedIndex, setNavigatedIndex] = useState(() =>
+    realToDisplay(index)
+  )
 
   if (prevIndex !== index) {
     setPrevIndex(index)
@@ -74,17 +78,20 @@ export function CharacterImageCarousel({
     })
   }, [])
 
-  const handleTransitionEnd = useCallback((event: React.TransitionEvent) => {
-    if (event.target !== event.currentTarget) return
-    setIsTransitioning(false)
-    if (displayIndex === 0 || displayIndex === displayCount - 1) {
-      setNavigatedIndex((prev) => {
-        const real = displayToReal(prev)
-        onIndexChange?.(real)
-        return realToDisplay(real)
-      })
-    }
-  }, [displayIndex, displayCount, displayToReal, realToDisplay, onIndexChange])
+  const handleTransitionEnd = useCallback(
+    (event: React.TransitionEvent) => {
+      if (event.target !== event.currentTarget) return
+      setIsTransitioning(false)
+      if (displayIndex === 0 || displayIndex === displayCount - 1) {
+        setNavigatedIndex((prev) => {
+          const real = displayToReal(prev)
+          onIndexChange?.(real)
+          return realToDisplay(real)
+        })
+      }
+    },
+    [displayIndex, displayCount, displayToReal, realToDisplay, onIndexChange]
+  )
 
   const goToPrev = useCallback(() => {
     if (isTransitioning) return
@@ -127,87 +134,100 @@ export function CharacterImageCarousel({
     }
   }, [])
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const s = touchState.current
-    if (!s || e.touches.length !== 1) return
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const s = touchState.current
+      if (!s || e.touches.length !== 1) return
 
-    const t = e.touches[0]
-    const diffX = t.clientX - s.startX
-    const diffY = t.clientY - s.startY
+      const t = e.touches[0]
+      const diffX = t.clientX - s.startX
+      const diffY = t.clientY - s.startY
 
-    if (!s.isSwiping && !s.isPanning) {
-      if (Math.abs(diffY) > Math.abs(diffX) + 10) {
-        s.isPanning = true
-        return
+      if (!s.isSwiping && !s.isPanning) {
+        if (Math.abs(diffY) > Math.abs(diffX) + 10) {
+          s.isPanning = true
+          return
+        }
+        if (Math.abs(diffX) > 10) {
+          s.isSwiping = true
+        }
       }
-      if (Math.abs(diffX) > 10) {
-        s.isSwiping = true
-      }
-    }
 
-    if (s.isSwiping && scale <= 1) {
-      e.preventDefault()
-      const el = containerRef.current?.firstElementChild as HTMLElement | null
-      if (el) {
-        const offset = t.clientX - s.startX
-        el.style.transition = 'none'
-        el.style.transform = `translateX(calc(-${displayIndex * 100 / displayCount}% + ${offset}px))`
+      if (s.isSwiping && scale <= 1) {
+        e.preventDefault()
+        const el = containerRef.current?.firstElementChild as HTMLElement | null
+        if (el) {
+          const offset = t.clientX - s.startX
+          el.style.transition = "none"
+          el.style.transform = `translateX(calc(-${(displayIndex * 100) / displayCount}% + ${offset}px))`
+        }
       }
-    }
 
-    if (s.isPanning && scale > 1) {
-      e.preventDefault()
-    }
-  }, [scale, displayCount, displayIndex])
+      if (s.isPanning && scale > 1) {
+        e.preventDefault()
+      }
+    },
+    [scale, displayCount, displayIndex]
+  )
 
   function setFlexTransform(translateX: string) {
     const el = containerRef.current?.firstElementChild as HTMLElement | null
     if (!el) return
     /* eslint-disable-next-line react-hooks/immutability */
-    el.style.transition = 'transform 0.3s ease-out'
+    el.style.transition = "transform 0.3s ease-out"
     el.style.transform = translateX
   }
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const s = touchState.current
-    if (!s) return
-    if (isTransitioning) return
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const s = touchState.current
+      if (!s) return
+      if (isTransitioning) return
 
-    if (s.isSwiping && scale <= 1) {
-      const diffX = e.changedTouches[0].clientX - s.startX
-      const di = displayIndex
+      if (s.isSwiping && scale <= 1) {
+        const diffX = e.changedTouches[0].clientX - s.startX
+        const di = displayIndex
 
-      if (Math.abs(diffX) > 60) {
-        if (diffX > 0) {
-          if (di > 0) {
-            setFlexTransform(`translateX(-${(di - 1) * 100 / displayCount}%)`)
-            goToPrev()
+        if (Math.abs(diffX) > 60) {
+          if (diffX > 0) {
+            if (di > 0) {
+              setFlexTransform(
+                `translateX(-${((di - 1) * 100) / displayCount}%)`
+              )
+              goToPrev()
+            }
+          } else {
+            if (di < displayCount - 1) {
+              setFlexTransform(
+                `translateX(-${((di + 1) * 100) / displayCount}%)`
+              )
+              goToNext()
+            }
           }
         } else {
-          if (di < displayCount - 1) {
-            setFlexTransform(`translateX(-${(di + 1) * 100 / displayCount}%)`)
-            goToNext()
-          }
+          setFlexTransform(`translateX(-${(di * 100) / displayCount}%)`)
         }
-      } else {
-        setFlexTransform(`translateX(-${di * 100 / displayCount}%)`)
       }
-    }
 
-    touchState.current = null
-  }, [scale, displayCount, displayIndex, goToPrev, goToNext, isTransitioning])
+      touchState.current = null
+    },
+    [scale, displayCount, displayIndex, goToPrev, goToNext, isTransitioning]
+  )
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") goToPrev()
-    else if (e.key === "ArrowRight") goToNext()
-  }, [goToPrev, goToNext])
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "ArrowLeft") goToPrev()
+      else if (e.key === "ArrowRight") goToNext()
+    },
+    [goToPrev, goToNext]
+  )
 
   if (total === 0) return null
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-black"
+      className="relative h-full w-full overflow-hidden bg-black"
       onWheel={handleWheel}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -215,9 +235,9 @@ export function CharacterImageCarousel({
       <div
         className="flex h-full"
         style={{
-          transform: `translateX(-${displayIndex * 100 / displayCount}%)`,
+          transform: `translateX(-${(displayIndex * 100) / displayCount}%)`,
           width: `${displayCount * 100}%`,
-          transition: isTransitioning ? 'transform 0.3s ease-out' : 'none',
+          transition: isTransitioning ? "transform 0.3s ease-out" : "none",
         }}
         onTransitionEnd={handleTransitionEnd}
       >
@@ -225,21 +245,23 @@ export function CharacterImageCarousel({
           return (
             <div
               key={i}
-              className="w-full h-full flex items-center justify-center"
+              className="flex h-full w-full items-center justify-center"
               style={{ width: `${100 / displayCount}%` }}
             >
               <div
-                className="w-full h-full flex items-center justify-center touch-none select-none relative"
+                className="relative flex h-full w-full touch-none items-center justify-center select-none"
                 onDoubleClick={handleDoubleClick}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                {!loadedUrls.has(img.imageUrl) && <Skeleton className="absolute inset-0 w-full h-full" />}
+                {!loadedUrls.has(img.imageUrl) && (
+                  <Skeleton className="absolute inset-0 h-full w-full" />
+                )}
                 <CachedImage
                   src={img.imageUrl}
                   alt=""
-                  className="max-w-full max-h-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                   style={{
                     transform: `scale(${Math.max(1, scale)})`,
                     transformOrigin: "center center",
@@ -257,21 +279,39 @@ export function CharacterImageCarousel({
         <>
           <button
             type="button"
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            className="absolute top-1/2 left-4 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
             onClick={goToPrev}
             aria-label="Previous image"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           <button
             type="button"
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            className="absolute top-1/2 right-4 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
             onClick={goToNext}
             aria-label="Next image"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>

@@ -31,21 +31,41 @@ export function clearMemoryCache(): number {
 }
 
 export const memoryCache = {
-  has(url: string): boolean { return _map.has(url) },
-  get(url: string): string | undefined { return _map.get(url) },
+  has(url: string): boolean {
+    return _map.has(url)
+  },
+  get(url: string): string | undefined {
+    return _map.get(url)
+  },
   set(url: string, objectUrl: string): void {
     if (!_map.has(url)) evictIfNeeded()
     _map.set(url, objectUrl)
   },
-  delete(url: string): void { _map.delete(url) },
-  clear(): void { _map.clear() },
-  get size(): number { return _map.size },
+  delete(url: string): void {
+    _map.delete(url)
+  },
+  clear(): void {
+    _map.clear()
+  },
+  get size(): number {
+    return _map.size
+  },
 }
 
 export const fetchPromises = {
-  has(url: string): boolean { return _fetchPromises.has(url) },
-  get(url: string): Promise<string> | undefined { return _fetchPromises.get(url) },
-  set(url: string, promise: Promise<string>): void { _fetchPromises.set(url, promise) },
-  delete(url: string): void { _fetchPromises.delete(url) },
-  clear(): void { _fetchPromises.clear() },
+  has(url: string): boolean {
+    return _fetchPromises.has(url)
+  },
+  get(url: string): Promise<string> | undefined {
+    return _fetchPromises.get(url)
+  },
+  set(url: string, promise: Promise<string>): void {
+    _fetchPromises.set(url, promise)
+  },
+  delete(url: string): void {
+    _fetchPromises.delete(url)
+  },
+  clear(): void {
+    _fetchPromises.clear()
+  },
 }

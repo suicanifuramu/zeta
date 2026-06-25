@@ -9,7 +9,12 @@ interface CachedAvatarImageProps {
   className?: string
 }
 
-export function CachedAvatarImage({ src, alt, noCache = false, className }: CachedAvatarImageProps) {
+export function CachedAvatarImage({
+  src,
+  alt,
+  noCache = false,
+  className,
+}: CachedAvatarImageProps) {
   const { cachedSrc } = useImageCache(src, noCache)
   const [errored, setErrored] = useState(false)
 

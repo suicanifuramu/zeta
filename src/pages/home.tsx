@@ -9,7 +9,7 @@ import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { getHomePlots, getActiveRoomId } from "@/lib/api"
 import { startNewChat } from "@/lib/new-chat"
-import type { Plot } from "@/lib/types"
+import type { Plot, ApiHomeResponse, ActiveRoomIdResponse } from "@/lib/types"
 
 let cachedPlots: Plot[] | null = null
 let cachedHasMore = true
@@ -42,12 +42,18 @@ export function HomePage() {
       setLoadingMore(true)
     }
     try {
-      const data = await getHomePlots(20, cursorRef.current || undefined)
-      const newPlots = (data.plots || []).filter((p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => !seenIds.current.has(p.id))
-      newPlots.forEach((p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ => seenIds.current.add(p.id))
-      
+      const data = await getHomePlots(20, cursorRef.current || undefined) as ApiHomeResponse
+      const newPlots = (data.plots || []).filter(
+        (p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ =>
+          !seenIds.current.has(p.id)
+      )
+      newPlots.forEach(
+        (p: any) /* eslint-disable-line @typescript-eslint/no-explicit-any */ =>
+          seenIds.current.add(p.id)
+      )
+
       cachedSeenIds = new Set(seenIds.current)
-      
+
       const nextCursor = data.nextCursor || data.cursor || null
       cursorRef.current = nextCursor
       cachedCursor = nextCursor
@@ -59,8 +65,9 @@ export function HomePage() {
         setPlots((prev) => {
           const next = reset ? newPlots : [...prev, ...newPlots]
           cachedPlots = next
-          
-          const more = !!nextCursor || (newPlots.length > 0 && data.plots?.length >= 20)
+
+          const more =
+            !!nextCursor || (newPlots.length > 0 && (data.plots?.length ?? 0) >= 20)
           setHasMore(more)
           cachedHasMore = more
           return next
@@ -75,9 +82,9 @@ export function HomePage() {
     }
   }, [])
 
-  useEffect(() => { 
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!cachedPlots) loadPlots(true) 
+    if (!cachedPlots) loadPlots(true)
   }, [loadPlots])
 
   useEffect(() => {
@@ -93,8 +100,10 @@ export function HomePage() {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && hasMore && !loadingMore) loadPlots() },
-      { rootMargin: "300px" },
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore) loadPlots()
+      },
+      { rootMargin: "300px" }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
@@ -102,7 +111,7 @@ export function HomePage() {
 
   const handlePlotClick = async (plot: Plot) => {
     try {
-      const data = await getActiveRoomId(plot.id)
+      const data = await getActiveRoomId(plot.id) as ActiveRoomIdResponse
       if (data.roomId) {
         // Existing room — go directly to chat
         sessionStorage.setItem("chat_plot_name", plot.name || "")
@@ -131,7 +140,14 @@ export function HomePage() {
         <div>
           <h1 className="text-2xl font-bold">おすすめ</h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { loadPlots(true); toast.success("更新しました") }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            loadPlots(true)
+            toast.success("更新しました")
+          }}
+        >
           <RefreshCw className="mr-1 size-4" />
           更新
         </Button>
@@ -154,8 +170,16 @@ export function HomePage() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-5">
           {plots.map((plot, i) => (
-            <div key={plot.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}>
-              <PlotCard plot={plot} cached={false} onClick={() => handlePlotClick(plot)} />
+            <div
+              key={plot.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
+            >
+              <PlotCard
+                plot={plot}
+                cached={false}
+                onClick={() => handlePlotClick(plot)}
+              />
             </div>
           ))}
         </div>
