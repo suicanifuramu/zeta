@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Asterisk, ChevronLeft, ChevronRight, RefreshCw, Send, Star, Trash2, Pencil, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
@@ -173,7 +173,7 @@ export function ChatPage() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   // Lock body scroll to prevent iOS Safari "black space" bouncing
-  useLayoutEffect(() => {
+  useEffect(() => {
     document.documentElement.classList.add("chat-locked")
     document.body.classList.add("chat-locked")
 
@@ -1142,7 +1142,7 @@ export function ChatPage() {
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setExitConfirmOpen(true)}>退出</Button>
           </AlertDialogTrigger>
-          <AlertDialogContent>
+          <AlertDialogContent onOverlayClick={() => setExitConfirmOpen(false)}>
             <AlertDialogHeader>
               <AlertDialogTitle>チャットから退出</AlertDialogTitle>
               <AlertDialogDescription>このチャットから退出しますか？メッセージは削除されます。</AlertDialogDescription>
@@ -1158,7 +1158,7 @@ export function ChatPage() {
           </AlertDialogContent>
         </AlertDialog>
         <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent onOverlayClick={() => setResetConfirmOpen(false)}>
             <AlertDialogHeader>
               <AlertDialogTitle>ルームをリセット</AlertDialogTitle>
               <AlertDialogDescription className="break-keep">新しいルームを作成して会話をリセットしますか？</AlertDialogDescription>

@@ -125,13 +125,11 @@
   will-change: transform;
 }
 
-/* ===== Chat body lock (iOS bounce prevention) ===== */
+/* ===== Chat body lock (bounce prevention) ===== */
 html.chat-locked,
 body.chat-locked {
   overflow: hidden !important;
-  position: fixed !important;
-  width: 100% !important;
-  height: 100% !important;
+  overscroll-behavior: none !important;
 }
 .glow-sm { box-shadow: 0 0 15px oklch(0.65 0.25 290 / 15%); }
 .glow-md { box-shadow: 0 0 25px oklch(0.65 0.25 290 / 20%); }
