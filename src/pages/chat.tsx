@@ -1661,7 +1661,7 @@ export function ChatPage() {
           <AlertDialogContent onOverlayClick={() => setResetConfirmOpen(false)}>
             <AlertDialogHeader>
               <AlertDialogTitle>ルームをリセット</AlertDialogTitle>
-              <AlertDialogDescription className="break-keep">
+              <AlertDialogDescription>
                 新しいルームを作成して会話をリセットしますか？
               </AlertDialogDescription>
             </AlertDialogHeader>
