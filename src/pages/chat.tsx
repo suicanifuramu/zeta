@@ -1429,7 +1429,7 @@ export function ChatPage() {
                     content={c}
                     avatarUrl={c.speakerName ? charAvatars[c.speakerName] : undefined}
                     onAvatarTap={() => c.speakerName && handleAvatarTap(c.speakerName)}
-                    onUserMessageTap={handleUserMessageTap}
+                    onUserMessageTap={deleteMode ? undefined : handleUserMessageTap}
                   />
                 )
               }
@@ -1481,7 +1481,7 @@ export function ChatPage() {
                       onAvatarTap={() =>
                         c.position !== "RIGHT" && c.speakerName && handleAvatarTap(c.speakerName)
                       }
-                      onUserMessageTap={handleUserMessageTap}
+                      onUserMessageTap={deleteMode ? undefined : handleUserMessageTap}
                     />
                   )
                 }
@@ -1733,7 +1733,7 @@ export function ChatPage() {
                         content={c}
                         avatarUrl={c.speakerName ? charAvatars[c.speakerName] : undefined}
                         onAvatarTap={() => c.speakerName && handleAvatarTap(c.speakerName)}
-                        onUserMessageTap={handleUserMessageTap}
+                        onUserMessageTap={deleteMode ? undefined : handleUserMessageTap}
                       />
                     )
                   }
