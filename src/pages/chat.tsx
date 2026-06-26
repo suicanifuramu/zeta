@@ -706,7 +706,7 @@ export function ChatPage() {
 
           // Update header from room data to fix stale sessionStorage bug
           const roomPlotName = room?.plot?.name || room?.title
-          const roomPlotImg = room?.plot?.imageUrl
+          const roomPlotImg = room?.plot?.imageUrl || chars?.[0]?.imageUrl
           if (roomPlotName) {
             setPlotName(roomPlotName)
             sessionStorage.setItem("chat_plot_name", roomPlotName)
