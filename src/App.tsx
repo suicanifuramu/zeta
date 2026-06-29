@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/layout/app-shell"
 import { Spinner } from "@/components/ui/spinner"
+import { startSentryTransaction } from "@/lib/headers"
 
 // Lazy-loaded pages for route-based code splitting
 const HomePage = lazy(() =>
@@ -33,6 +34,14 @@ function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)
+    const page =
+      pathname === "/" ? "Home"
+      : pathname.startsWith("/chat") ? "Chat"
+      : pathname === "/ranking" ? "Ranking"
+      : pathname === "/rooms" ? "Rooms"
+      : pathname === "/settings" ? "Settings"
+      : "Unknown"
+    startSentryTransaction(page)
   }, [pathname])
   return null
 }

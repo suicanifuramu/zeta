@@ -204,7 +204,7 @@ export async function refreshSession(forceNetwork = false) {
 
       const res = await fetch(`${BASE}/v1/auth/tokens`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { ...getCommonHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId: getDeviceId(), type: 'refresh', refreshToken })
       });
 
@@ -285,5 +285,7 @@ export async function clearSession() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.dispatchEvent(new CustomEvent('zeta-auth-updated', { detail: getAuthState() }));
 }
+
+import { getCommonHeaders } from './headers.js';
 
 const BASE = 'https://api.zeta-ai.io';

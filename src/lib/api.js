@@ -1,10 +1,11 @@
 // ===== API Client =====
 import { ensureAccessToken, getAccessToken, refreshSession } from './auth.js';
+import { getCommonHeaders } from './headers.js';
 
 const BASE = 'https://api.zeta-ai.io';
 
 function headers(extra = {}) {
-  const h = { Accept: 'application/json', ...extra };
+  const h = { ...getCommonHeaders(), ...extra };
   const token = getAccessToken();
   if (token) h.Authorization = `Bearer ${token}`;
   return h;
