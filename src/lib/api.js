@@ -1,6 +1,6 @@
 // ===== API Client =====
 import { ensureAccessToken, getAccessToken, refreshSession } from './auth.js';
-import { getCommonHeaders } from './headers.js';
+import { getCommonHeaders, setAppVersion, APP_VERSION } from './headers.js';
 
 const BASE = 'https://api.zeta-ai.io';
 
@@ -11,7 +11,7 @@ function headers(extra = {}) {
   return h;
 }
 
-async function request(path, options = {}, retry = true) {
+async function request(path, options = {}, retry = true, versionRetry = true) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: headers(options.headers || {})
@@ -19,7 +19,23 @@ async function request(path, options = {}, retry = true) {
 
   if (res.status === 401 && retry) {
     await refreshSession(true);
-    return request(path, options, false);
+    return request(path, options, false, versionRetry);
+  }
+
+  if (res.status === 400 && versionRetry) {
+    const text = await res.text().catch(() => '');
+    try {
+      const body = JSON.parse(text);
+      if (body.code === 'APP_UPDATE_REQUIRED') {
+        const raw = typeof body.data === 'string' ? JSON.parse(body.data) : (body.data || {});
+        const minVersion = raw.minimumRequiredVersion;
+        if (minVersion && minVersion !== APP_VERSION) {
+          setAppVersion(minVersion);
+          return request(path, options, retry, false);
+        }
+      }
+    } catch {}
+    throw new Error(`${options.method || 'GET'} ${path} -> 400: ${text.slice(0, 160)}`);
   }
 
   if (!res.ok) {

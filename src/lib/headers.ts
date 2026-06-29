@@ -1,6 +1,14 @@
 import { getDeviceId } from "@/lib/auth"
+import { APP_VERSION as BUILD_VERSION } from "./version"
 
-export const APP_VERSION = "0.0.1"
+// Runtime-mutable — starts at build-time value, auto-updated on APP_UPDATE_REQUIRED
+export let APP_VERSION = BUILD_VERSION
+
+export function setAppVersion(v: string) {
+  APP_VERSION = v
+  console.log(`[headers] Version updated: ${BUILD_VERSION} → ${v}`)
+}
+
 export const CLIENT_TYPE = "app"
 export const DEVICE_TYPE = "android"
 export const SENTRY_PUBLIC_KEY = "fd83742acfe641a1888315dbc022c936"

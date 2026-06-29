@@ -37,6 +37,9 @@ out/
 *.sln
 *.sw?
 
+# Auto-generated version (fetched from Google Play)
+/src/lib/version.ts
+
 # Zeta specific session tokens (do not commit!)
 .zeta-session.json
 
