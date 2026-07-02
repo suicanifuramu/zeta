@@ -256,7 +256,7 @@ export function ChatPage() {
 
   // Typewriter: reveal streaming text character by character
   const typewriterContents = useTypewriter(streamContents)
-  const typewriterRegenContents = useTypewriter(regenContents)
+  const typewriterRegenContents = useTypewriter(regenContents) ?? []
 
   // Candidates cache: msgId -> { candidates, currentIdx }
   const [candidatesCache, setCandidatesCache] = useState<
