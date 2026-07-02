@@ -42,18 +42,36 @@ export function useTypewriter(
         setState((prev) => {
           if (prev.gen !== myGen) {
             const lengths = new Map<number, number>()
+            let lastTextIdx = -1
+            currentContents.forEach((item, i) => {
+              if (item.text && item.type !== "INFO_BOX") lastTextIdx = i
+            })
             currentContents.forEach((item, i) => {
               if (item.type !== "INFO_BOX" && item.text) {
-                lengths.set(i, Math.min(1, item.text.length))
+                lengths.set(
+                  i,
+                  i === lastTextIdx
+                    ? Math.min(1, item.text.length)
+                    : item.text.length
+                )
               }
             })
             return { gen: myGen, lengths }
           }
 
+          let lastTextIdx = -1
+          currentContents.forEach((item, i) => {
+            if (item.text && item.type !== "INFO_BOX") lastTextIdx = i
+          })
+
           const lengths = new Map(prev.lengths)
           let allDone = true
           currentContents.forEach((item, i) => {
             if (item.type === "INFO_BOX" || !item.text) return
+            if (i !== lastTextIdx) {
+              lengths.set(i, item.text.length)
+              return
+            }
             const cur = lengths.get(i) ?? 0
             if (cur < item.text.length) {
               lengths.set(i, cur + 1)
@@ -79,9 +97,15 @@ export function useTypewriter(
   if (contents === null) return null
   if (contents.length === 0) return contents
 
+  let lastTextIdx = -1
+  contents.forEach((item, i) => {
+    if (item.text && item.type !== "INFO_BOX") lastTextIdx = i
+  })
+
   return contents.map((item, i) => {
     if (item.type === "INFO_BOX" || !item.text) return item
-    const len = state.lengths.get(i) ?? item.text.length
-    return { ...item, text: item.text.slice(0, len) }
+    if (i !== lastTextIdx) return item
+    const len = state.lengths.get(i) ?? 1
+    return { ...item, text: item.text.slice(0, Math.min(len, item.text.length)) }
   })
 }
