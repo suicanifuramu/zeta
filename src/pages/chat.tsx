@@ -61,6 +61,7 @@ import {
   editMessage,
 } from "@/lib/api"
 import { useLongPress } from "@/hooks/use-long-press"
+import { useTypewriter } from "@/hooks/use-typewriter"
 import { preloadImages } from "@/lib/image-preloader"
 import type {
   Message,
@@ -252,6 +253,10 @@ export function ChatPage() {
       []
   )
   const prevRegenMsgIdRef = useRef<string | null>(null)
+
+  // Typewriter: reveal streaming text character by character
+  const typewriterContents = useTypewriter(streamContents)
+  const typewriterRegenContents = useTypewriter(regenContents)
 
   // Candidates cache: msgId -> { candidates, currentIdx }
   const [candidatesCache, setCandidatesCache] = useState<
@@ -1408,8 +1413,8 @@ export function ChatPage() {
           }}
         >
           {/* Show inline regen streaming instead of original content */}
-          {isRegening && regenContents.length > 0 ? (
-            regenContents.map(
+          {isRegening && typewriterRegenContents.length > 0 ? (
+            typewriterRegenContents.map(
               (
                 c: ContentItem,
                 ci: number
@@ -1434,7 +1439,7 @@ export function ChatPage() {
                 )
               }
             )
-          ) : isRegening && regenContents.length === 0 ? (
+          ) : isRegening && typewriterRegenContents.length === 0 ? (
             <StreamingDots />
           ) : (
             <div
@@ -1709,11 +1714,11 @@ export function ChatPage() {
               )}
             </div>
             {renderedMessages}
-            {streamContents !== null &&
-              (streamContents.length === 0 ? (
+            {typewriterContents !== null &&
+              (typewriterContents.length === 0 ? (
                 <StreamingDots />
               ) : (
-                streamContents.map(
+                typewriterContents.map(
                   (
                     c: ContentItem,
                     ci: number
