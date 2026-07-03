@@ -19,7 +19,7 @@ export function useTypewriter(
   }, [contents])
 
   useEffect(() => {
-    if (contents === null) {
+    if (contents === null || contents.length === 0) {
       if (timerRef.current) {
         clearInterval(timerRef.current)
         timerRef.current = null
