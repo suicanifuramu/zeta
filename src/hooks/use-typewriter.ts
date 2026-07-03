@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 
 type ContentItem = { type?: string; position?: string; speakerName?: string; text?: string }
 
@@ -13,9 +13,21 @@ export function useTypewriter(
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerGenRef = useRef(0)
   const contentsRef = useRef(contents)
+  const [activeGen, setActiveGen] = useState(0)
 
   useEffect(() => {
     contentsRef.current = contents
+  }, [contents])
+
+  useLayoutEffect(() => {
+    if (contents !== null && contents.length > 0) {
+      const hasTextItems = contents.some(
+        (item) => item.text && item.type !== "INFO_BOX"
+      )
+      if (hasTextItems) {
+        setActiveGen(timerGenRef.current)
+      }
+    }
   }, [contents])
 
   useEffect(() => {
@@ -105,7 +117,9 @@ export function useTypewriter(
   return contents.map((item, i) => {
     if (item.type === "INFO_BOX" || !item.text) return item
     if (i !== lastTextIdx) return item
-    const len = state.lengths.get(i) ?? 1
-    return { ...item, text: item.text.slice(0, Math.min(len, item.text.length)) }
+    const len = state.lengths.get(i)
+    const nextShowing =
+      len !== undefined && activeGen !== state.gen ? 1 : len ?? 1
+    return { ...item, text: item.text.slice(0, Math.min(nextShowing, item.text.length)) }
   })
 }
