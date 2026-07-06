@@ -107,7 +107,7 @@ export function CharacterDetailSheet({
         </Button>
       </div>
 
-      <div ref={scrollRef} className="relative flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="relative flex-1 overflow-y-auto touch-pan-y">
         {showFullDesc ? (
           <div className="min-h-full bg-popover/95 px-4 py-4 text-sm whitespace-pre-wrap text-muted-foreground backdrop-blur">
             {desc}

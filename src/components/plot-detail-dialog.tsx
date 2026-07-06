@@ -143,7 +143,7 @@ export function PlotDetailDialog({
   }, [showPlotImage, isDesktop])
   const content = (
     <div className="flex h-full flex-col">
-      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
       {/* Hero image */}
       {heroImg ? (
         <div

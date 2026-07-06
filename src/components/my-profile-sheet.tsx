@@ -93,7 +93,7 @@ export function MyProfileSheet({
         )}
       </div>
 
-      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y px-5 pb-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <Spinner className="size-6" />
