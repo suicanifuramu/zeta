@@ -218,7 +218,10 @@ export function ProfileSelectSheet({
           <button
             type="button"
             className="flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors bg-secondary/30 hover:bg-secondary/60"
-            onClick={() => setShowCreate(true)}
+            onClick={() => {
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+              setShowCreate(true)
+            }}
           >
             <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/60">
               <Plus className="size-5 text-muted-foreground" />
