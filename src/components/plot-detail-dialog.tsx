@@ -142,7 +142,8 @@ export function PlotDetailDialog({
     setShowPlotImage((prev) => !prev)
   }, [showPlotImage, isDesktop])
   const content = (
-    <>
+    <div className="flex h-full flex-col">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {/* Hero image */}
       {heroImg ? (
         <div
@@ -367,9 +368,10 @@ export function PlotDetailDialog({
           </>
         )}
       </div>
+      </div>
 
       {/* Action footer */}
-      <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-3">
         {isDesktop && (
           <Button
             variant="outline"
@@ -391,7 +393,7 @@ export function PlotDetailDialog({
           </Button>
         )}
       </div>
-    </>
+    </div>
   )
 
   if (isDesktop) {
@@ -405,9 +407,9 @@ export function PlotDetailDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh] gap-0 overflow-hidden p-0">
-        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.45, 0.95]} snapToSequentialPoint>
+      <DrawerContent className="gap-0 overflow-hidden p-0">
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
         </div>
       </DrawerContent>

@@ -77,8 +77,8 @@ export function MyProfileSheet({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto w-full max-w-lg">
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+      <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">マイプロフィール</h2>
         {isDesktop && (
           <Button
@@ -93,7 +93,7 @@ export function MyProfileSheet({
         )}
       </div>
 
-      <div className="touch-scrollable overflow-y-auto overscroll-contain px-5 pb-6">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <Spinner className="size-6" />
@@ -147,10 +147,10 @@ export function MyProfileSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.38, 0.95]} snapToSequentialPoint>
+      <DrawerContent>
         <DrawerTitle className="sr-only">マイプロフィール</DrawerTitle>
-        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
         </div>
       </DrawerContent>

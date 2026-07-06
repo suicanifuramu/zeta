@@ -85,11 +85,12 @@ function CreateProfileSheet({
   }
 
   const content = (
-    <div className="mx-auto w-full max-w-lg">
-      <div className="px-5 pt-4 pb-2">
+    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+      <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">新しいプロフィール</h2>
       </div>
-      <div className="space-y-4 px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="space-y-4 px-5 py-4">
         <div className="space-y-2">
           <label className="text-sm font-medium">プロフィール名</label>
           <Input
@@ -110,7 +111,8 @@ function CreateProfileSheet({
           />
         </div>
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+      </div>
+      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
         {isDesktop && (
           <Button
             variant="outline"
@@ -144,9 +146,9 @@ function CreateProfileSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
-        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.40, 0.95]} snapToSequentialPoint>
+      <DrawerContent>
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
         </div>
       </DrawerContent>
@@ -206,12 +208,12 @@ export function ProfileSelectSheet({
   }
 
   const content = (
-    <div className="mx-auto w-full max-w-lg">
-      <div className="px-5 pt-4 pb-2">
+    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+      <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">プロフィールを選択</h2>
       </div>
 
-      <div className="touch-scrollable max-h-[40vh] overflow-y-auto overscroll-contain px-5">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain px-5">
         <div className="flex flex-col gap-2 py-2">
           <button
             type="button"
@@ -349,7 +351,7 @@ export function ProfileSelectSheet({
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
         {isDesktop && (
           <Button
             variant="outline"
@@ -389,9 +391,9 @@ export function ProfileSelectSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)}>
-      <DrawerContent className="max-h-[85vh]">
-        <div className="touch-scrollable max-h-[85vh] overflow-y-auto overscroll-contain">
+    <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)} snapPoints={[0.48, 0.95]} snapToSequentialPoint>
+      <DrawerContent>
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
         </div>
       </DrawerContent>
