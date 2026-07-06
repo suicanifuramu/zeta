@@ -368,25 +368,28 @@ export function ProfileSelectSheet({
         </Button>
       </div>
 
+    </div>
+  )
+
+  return (
+    <>
+      <ResponsiveDialog
+        open={open}
+        onOpenChange={(v) => onOpenChange?.(v)}
+        title="プロフィールを選択"
+        desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+        snapPoints={[0.48, 0.95]}
+        snapToSequentialPoint
+        handleOnly
+      >
+        {content}
+      </ResponsiveDialog>
+
       <CreateProfileSheet
         open={showCreate}
         onOpenChange={setShowCreate}
         onProfileCreated={handleProfileCreated}
       />
-    </div>
-  )
-
-  return (
-    <ResponsiveDialog
-      open={open}
-      onOpenChange={(v) => onOpenChange?.(v)}
-      title="プロフィールを選択"
-      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
-      snapPoints={[0.48, 0.95]}
-      snapToSequentialPoint
-      handleOnly
-    >
-      {content}
-    </ResponsiveDialog>
+    </>
   )
 }

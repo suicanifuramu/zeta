@@ -60,7 +60,9 @@ export function ResponsiveDialog({
     >
       <DrawerContent className={mobileClassName || className}>
         <DrawerTitle className="sr-only">{ariaTitle}</DrawerTitle>
-        {children}
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
+          {children}
+        </div>
       </DrawerContent>
     </Drawer>
   )
