@@ -104,7 +104,7 @@ export function CharacterDetailSheet({
         </Button>
       </div>
 
-      <div ref={scrollRef} className="relative flex-1 overflow-y-auto touch-pan-y">
+      <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {showFullDesc ? (
           <div className="min-h-full bg-popover/95 px-4 py-4 text-sm whitespace-pre-wrap text-muted-foreground backdrop-blur">
             {desc}
@@ -144,11 +144,8 @@ export function CharacterDetailSheet({
       onOpenChange={handleOpenChange}
       title={character.name}
       desktopClassName="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0"
-      mobileClassName="flex max-h-[95vh] flex-col"
+      mobileClassName="flex max-h-[85vh] flex-col"
       showCloseButton={false}
-      snapPoints={[0.45, 0.95]}
-      snapToSequentialPoint
-      handleOnly
     >
       {detailContent}
     </ResponsiveDialog>

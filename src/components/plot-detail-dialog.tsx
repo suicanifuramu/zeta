@@ -142,7 +142,7 @@ export function PlotDetailDialog({
   }, [showPlotImage, isDesktop])
   const content = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
+      <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
       {/* Hero image */}
       {heroImg ? (
         <div
@@ -401,7 +401,7 @@ export function PlotDetailDialog({
       onOpenChange={onOpenChange}
       title="ストーリー詳細"
       desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
-      mobileClassName="gap-0 overflow-hidden p-0"
+      mobileClassName="max-h-[85vh] gap-0 overflow-hidden p-0"
       handleOnly
     >
       {content}
