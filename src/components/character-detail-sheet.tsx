@@ -156,7 +156,7 @@ export function CharacterDetailSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom" snapPoints={[0.45, 0.95]} snapToSequentialPoint>
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom" snapPoints={[0.45, 0.95]} snapToSequentialPoint handleOnly>
       <DrawerContent className="flex max-h-[95vh] flex-col">
         <DrawerTitle className="sr-only">{character.name}</DrawerTitle>
         {detailContent}

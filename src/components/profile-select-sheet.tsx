@@ -146,7 +146,7 @@ function CreateProfileSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.40, 0.95]} snapToSequentialPoint>
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.40, 0.95]} snapToSequentialPoint handleOnly>
       <DrawerContent>
         <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
@@ -391,7 +391,7 @@ export function ProfileSelectSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)} snapPoints={[0.48, 0.95]} snapToSequentialPoint>
+      <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)} snapPoints={[0.48, 0.95]} snapToSequentialPoint handleOnly>
       <DrawerContent>
         <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}

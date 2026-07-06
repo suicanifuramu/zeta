@@ -147,7 +147,7 @@ export function MyProfileSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.38, 0.95]} snapToSequentialPoint>
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.38, 0.95]} snapToSequentialPoint handleOnly>
       <DrawerContent>
         <DrawerTitle className="sr-only">マイプロフィール</DrawerTitle>
         <div className="flex max-h-[95vh] flex-col overflow-hidden">

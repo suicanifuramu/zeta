@@ -407,7 +407,7 @@ export function PlotDetailDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.45, 0.95]} snapToSequentialPoint>
+    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.45, 0.95]} snapToSequentialPoint handleOnly>
       <DrawerContent className="gap-0 overflow-hidden p-0">
         <div className="flex max-h-[95vh] flex-col overflow-hidden">
           {content}
