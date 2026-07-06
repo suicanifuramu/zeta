@@ -85,7 +85,7 @@ function CreateProfileSheet({
   }
 
   const content = (
-    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+    <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">新しいプロフィール</h2>
       </div>
@@ -208,7 +208,7 @@ export function ProfileSelectSheet({
   }
 
   const content = (
-    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+    <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">プロフィールを選択</h2>
       </div>

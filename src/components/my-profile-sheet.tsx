@@ -77,7 +77,7 @@ export function MyProfileSheet({
   if (!open) return null
 
   const content = (
-    <div className="mx-auto flex w-full max-w-lg flex-col" style={{ height: '100%' }}>
+    <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">マイプロフィール</h2>
         {isDesktop && (
