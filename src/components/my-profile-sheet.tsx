@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { getMyPlotChatProfile, getSelectedUserPersona } from "@/lib/api"
@@ -132,28 +131,18 @@ export function MyProfileSheet({
     </div>
   )
 
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
-          showCloseButton={false}
-        >
-          <DialogTitle className="sr-only">マイプロフィール</DialogTitle>
-          {content}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.38, 0.95]} snapToSequentialPoint handleOnly>
-      <DrawerContent>
-        <DrawerTitle className="sr-only">マイプロフィール</DrawerTitle>
-        <div className="flex max-h-[95vh] flex-col overflow-hidden">
-          {content}
-        </div>
-      </DrawerContent>
-    </Drawer>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="マイプロフィール"
+      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      showCloseButton={false}
+      snapPoints={[0.38, 0.95]}
+      snapToSequentialPoint
+      handleOnly
+    >
+      {content}
+    </ResponsiveDialog>
   )
 }

@@ -2,8 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { BookOpen, MessageCircle, ScrollText, Users } from "lucide-react"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Drawer, DrawerContent } from "@/components/ui/drawer"
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import type { Plot, PlotDetailResponse, Character, IntroMessage } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -396,23 +395,18 @@ export function PlotDetailDialog({
     </div>
   )
 
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg">
-          {content}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.45, 0.95]} snapToSequentialPoint handleOnly>
-      <DrawerContent className="gap-0 overflow-hidden p-0">
-        <div className="flex max-h-[95vh] flex-col overflow-hidden">
-          {content}
-        </div>
-      </DrawerContent>
-    </Drawer>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="ストーリー詳細"
+      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      mobileClassName="gap-0 overflow-hidden p-0"
+      snapPoints={[0.45, 0.95]}
+      snapToSequentialPoint
+      handleOnly
+    >
+      {content}
+    </ResponsiveDialog>
   )
 }

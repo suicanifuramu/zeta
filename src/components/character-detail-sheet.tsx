@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { X } from "lucide-react"
-import { useMediaQuery } from "@/hooks/use-media-query"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
 import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
@@ -62,7 +60,6 @@ export function CharacterDetailSheet({
     fetchImages()
   }, [open, character, plotId])
 
-  const isDesktop = useMediaQuery("(min-width: 768px)")
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -141,27 +138,20 @@ export function CharacterDetailSheet({
     </>
   )
 
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent
-          className="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0"
-          showCloseButton={false}
-        >
-          <DialogTitle className="sr-only">{character.name}</DialogTitle>
-          {detailContent}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
-    <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom" snapPoints={[0.45, 0.95]} snapToSequentialPoint handleOnly>
-      <DrawerContent className="flex max-h-[95vh] flex-col">
-        <DrawerTitle className="sr-only">{character.name}</DrawerTitle>
-        {detailContent}
-      </DrawerContent>
-    </Drawer>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={character.name}
+      desktopClassName="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0"
+      mobileClassName="flex max-h-[95vh] flex-col"
+      showCloseButton={false}
+      snapPoints={[0.45, 0.95]}
+      snapToSequentialPoint
+      handleOnly
+    >
+      {detailContent}
+    </ResponsiveDialog>
   )
 }
 

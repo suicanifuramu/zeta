@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/components/ui/spinner"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Drawer, DrawerContent } from "@/components/ui/drawer"
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { createUserChatProfile, checkUserChatProfileAbuse } from "@/lib/api"
@@ -135,24 +134,18 @@ function CreateProfileSheet({
     </div>
   )
 
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg">
-          {content}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} snapPoints={[0.40, 0.95]} snapToSequentialPoint handleOnly>
-      <DrawerContent>
-        <div className="flex max-h-[95vh] flex-col overflow-hidden">
-          {content}
-        </div>
-      </DrawerContent>
-    </Drawer>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="新しいプロフィール"
+      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      snapPoints={[0.40, 0.95]}
+      snapToSequentialPoint
+      handleOnly
+    >
+      {content}
+    </ResponsiveDialog>
   )
 }
 
@@ -383,23 +376,17 @@ export function ProfileSelectSheet({
     </div>
   )
 
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={(v) => onOpenChange?.(v)}>
-        <DialogContent className="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg">
-          {content}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
-      <Drawer open={open} onOpenChange={(v) => onOpenChange?.(v)} snapPoints={[0.48, 0.95]} snapToSequentialPoint handleOnly>
-      <DrawerContent>
-        <div className="flex max-h-[95vh] flex-col overflow-hidden">
-          {content}
-        </div>
-      </DrawerContent>
-    </Drawer>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={(v) => onOpenChange?.(v)}
+      title="プロフィールを選択"
+      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      snapPoints={[0.48, 0.95]}
+      snapToSequentialPoint
+      handleOnly
+    >
+      {content}
+    </ResponsiveDialog>
   )
 }
