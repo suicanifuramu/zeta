@@ -893,7 +893,9 @@ export function ChatPage() {
       setStreamContents(null)
     } finally {
       setSending(false)
-      inputRef.current?.focus({ preventScroll: true })
+      if (document.activeElement === inputRef.current) {
+        inputRef.current?.focus({ preventScroll: true })
+      }
     }
   }
 
