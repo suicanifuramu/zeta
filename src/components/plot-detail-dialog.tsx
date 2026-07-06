@@ -402,8 +402,6 @@ export function PlotDetailDialog({
       title="ストーリー詳細"
       desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
       mobileClassName="gap-0 overflow-hidden p-0"
-      snapPoints={[0.45, 0.95]}
-      snapToSequentialPoint
       handleOnly
     >
       {content}
