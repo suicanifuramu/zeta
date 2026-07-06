@@ -788,6 +788,11 @@ export function ChatPage() {
     }
   }
 
+  // Handle create-and-start for new profile
+  const handleCreateProfile = async (profile: UserChatProfile) => {
+    await handleProfileSelect(profile)
+  }
+
   // Handle avatar tap to open character detail sheet
   const handleAvatarTap = useCallback(
     async (characterName: string) => {
@@ -1989,6 +1994,7 @@ export function ChatPage() {
         onOpenChange={setProfileSheetOpen}
         onSelect={handleProfileSelect}
         onPlotSelect={handlePlotProfileSelect}
+        onCreateProfile={handleCreateProfile}
         loading={profileLoading}
       />
 
