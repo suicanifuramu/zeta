@@ -826,12 +826,13 @@ export function ChatPage() {
         toast.error(`編集失敗: ${e instanceof Error ? e.message : String(e)}`)
       } finally {
         setSending(false)
-        inputRef.current?.focus()
+        inputRef.current?.focus({ preventScroll: true })
       }
       return
     }
 
     setInputValue("")
+    inputRef.current?.focus({ preventScroll: true })
     setRecVisible(false)
     setRecPage(0)
 
@@ -892,7 +893,7 @@ export function ChatPage() {
       setStreamContents(null)
     } finally {
       setSending(false)
-      inputRef.current?.focus()
+      inputRef.current?.focus({ preventScroll: true })
     }
   }
 
@@ -1938,6 +1939,7 @@ export function ChatPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
+                    inputRef.current?.focus({ preventScroll: true })
                     sendMessage()
                   }
                 }}
@@ -1945,6 +1947,7 @@ export function ChatPage() {
                 className="max-h-28 min-h-10 resize-none overscroll-contain border-0 bg-secondary/50 pr-9 text-sm"
                 rows={1}
                 style={{ fontSize: "16px" }}
+                inputMode="text"
               />
               <Button
                 variant="outline"
@@ -1959,6 +1962,10 @@ export function ChatPage() {
             <Button
               size="icon"
               disabled={sending}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                inputRef.current?.focus({ preventScroll: true })
+              }}
               onClick={sendMessage}
               aria-label="送信"
             >

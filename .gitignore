@@ -40,9 +40,12 @@ out/
 # Auto-generated version (fetched from Google Play)
 /src/lib/version.ts
 
-# Zeta specific session tokens (do not commit!)
-.zeta-session.json
-
 # Scratchpads / Temporary files
 *.txt
+
+# MCP and Skills (fetched from external sources)
 .mcp.json
+skills/
+skills-lock.json
+.migration/
+AGENTS.MD
