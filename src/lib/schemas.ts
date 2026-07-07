@@ -46,8 +46,8 @@ export const MyPlotChatProfileResponseSchema = z.object({
 // `SelectedUserPersonaResponse` — used by `<MyProfileSheet>` (fallback path).
 export const SelectedUserPersonaResponseSchema = z.object({
   name: z.string(),
-  profileImageUrl: z.string().optional(),
-  description: z.string().optional(),
+  profileImageUrl: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
 })
 
 /**
