@@ -8,6 +8,7 @@ import { logger } from "./log"
 const ACCESS_TOKEN_KEY = "zeta_access_token"
 const REFRESH_TOKEN_KEY = "zeta_refresh_token"
 const DEVICE_ID_KEY = "zeta_device_id"
+const GENDER_KEY = "zeta_gender"
 
 const BASE = "https://api.zeta-ai.io"
 
@@ -158,6 +159,23 @@ export function setDeviceId(deviceId: string): void {
   saveLocalAuth()
 }
 
+export function getGender(): string {
+  return localStorage.getItem(GENDER_KEY) || ""
+}
+
+export function setGender(gender: string): void {
+  const normalized = String(gender || "").trim().toUpperCase()
+  if (normalized) {
+    localStorage.setItem(GENDER_KEY, normalized)
+  } else {
+    localStorage.removeItem(GENDER_KEY)
+  }
+}
+
+export function clearGender(): void {
+  localStorage.removeItem(GENDER_KEY)
+}
+
 export function updateRefreshToken(token: string): void {
   const parsed = readJsonToken(token)
   storeRefreshToken(parsed.refreshToken || token)
@@ -191,6 +209,7 @@ export interface AuthState {
   userId: string
   timezone: string
   country: string
+  gender: string
 }
 
 export function getAuthState(): AuthState {
@@ -207,6 +226,7 @@ export function getAuthState(): AuthState {
     userId: (payload?.uid || payload?.sub || "") as string,
     timezone: (payload?.tz || "") as string,
     country: (payload?.cty || "") as string,
+    gender: getGender(),
   }
 }
 
@@ -351,6 +371,7 @@ export async function clearSession(): Promise<void> {
   savedRefreshToken = ""
   sessionStorage.removeItem(ACCESS_TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
+  clearGender()
   window.dispatchEvent(
     new CustomEvent("zeta-auth-updated", { detail: getAuthState() })
   )

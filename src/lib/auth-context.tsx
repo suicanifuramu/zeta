@@ -18,6 +18,7 @@ interface AuthState {
   userId: string
   expiresAt: number
   expiresInSeconds: number
+  gender: string
 }
 
 const AuthContext = createContext<AuthState>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthState>({
   userId: "",
   expiresAt: 0,
   expiresInSeconds: 0,
+  gender: "",
 })
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userId: "",
     expiresAt: 0,
     expiresInSeconds: 0,
+    gender: "",
   })
 
   useEffect(() => {
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: raw.userId || "",
         expiresAt: raw.expiresAt,
         expiresInSeconds: raw.expiresInSeconds,
+        gender: raw.gender || "",
       })
     })
 
@@ -70,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: raw.userId || "",
         expiresAt: raw.expiresAt,
         expiresInSeconds: raw.expiresInSeconds,
+        gender: raw.gender || "",
       }))
     }
 

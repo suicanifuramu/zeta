@@ -422,6 +422,33 @@ export interface StoreProductsResponse {
   }>
 }
 
+export interface MyProfileResponse {
+  id: string
+  name: string
+  email?: string
+  nickname?: string
+  username?: string
+  profileImageUrl?: string | null
+  description?: string
+  gender: string
+  timeZone?: string
+  birthdate?: string
+  language?: string
+  isAnonymous?: boolean
+  marketingOptIn?: boolean
+  sexualContentsAllowed?: boolean
+  isUnlimited?: boolean
+  isAuthenticatedByAdditionalAuth?: boolean
+  isBackgroundEnabled?: boolean
+  isUserCharacterProfileImageEnabled?: boolean
+  createdAt?: string
+  tier?: {
+    type: string
+    isTrial?: boolean
+    expiredAt?: string | null
+  }
+}
+
 // Profiles
 export interface UserChatProfilesResponse {
   userChatProfiles?: UserChatProfile[]

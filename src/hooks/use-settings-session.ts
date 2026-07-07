@@ -8,7 +8,9 @@ import {
   importTokens,
   refreshSession,
   setDeviceId,
+  setGender,
 } from "@/lib/auth"
+import { getMyProfile } from "@/lib/api"
 
 export function useSettingsSession() {
   const [deviceId, setDeviceIdState] = useState(getDeviceId())
@@ -22,6 +24,8 @@ export function useSettingsSession() {
       if (refreshToken) importTokens(refreshToken)
       await refreshSession()
       setRefreshToken(getRefreshToken())
+      const profile = await getMyProfile()
+      setGender(profile.gender)
       toast.success("セッションを更新しました")
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e))

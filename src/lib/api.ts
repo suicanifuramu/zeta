@@ -1,6 +1,7 @@
 import {
   ensureAccessToken,
   getAccessToken,
+  getGender,
   refreshSession,
 } from "./auth"
 import { getCommonHeaders, setAppVersion, APP_VERSION } from "./headers"
@@ -35,6 +36,7 @@ import type {
   JoinQuizResponse,
   LikedPlotsResponse,
   ModelSettingResponse,
+  MyProfileResponse,
   MyPlotChatProfileResponse,
   NotificationTimeResponse,
   PlotDetailResponse,
@@ -232,10 +234,16 @@ export function getRanking(
   limit = 20,
   filterValues = "all"
 ): Promise<ApiRankingResponse> {
+  const gender = getGender() || "MALE"
   const apiType = type === "TREND" ? "TRENDING" : type
   return get<ApiRankingResponse>(
-    `/v1/plots/ranking?limit=${limit}&gender=MALE&type=${apiType}&filterType=GENRE&filterValues=${encodeURIComponent(filterValues)}`
+    `/v1/plots/ranking?limit=${limit}&gender=${gender}&type=${apiType}&filterType=GENRE&filterValues=${encodeURIComponent(filterValues)}`
   )
+}
+
+// My profile
+export function getMyProfile(): Promise<MyProfileResponse> {
+  return get<MyProfileResponse>("/v1/users/me")
 }
 
 // Plots / rooms
