@@ -3,7 +3,6 @@
 import { toast } from "sonner"
 import { createRoom, getActiveRoomId, getPlot } from "@/lib/api"
 import { preloadImages } from "@/lib/image-preloader"
-import type { PlotDetailResponse, ActiveRoomIdResponse, CreateRoomResponse } from "@/lib/types"
 
 export async function startNewChat(
   plotId: string,
@@ -13,14 +12,12 @@ export async function startNewChat(
     // Pre-fetch plot info for header display before navigating
     getPlot(plotId)
       .then((plot) => {
-          
-        if ((plot as PlotDetailResponse)?.name) 
-          sessionStorage.setItem("chat_plot_name", (plot as PlotDetailResponse).name)
-        const img = ((plot as PlotDetailResponse)?.imageUrl || 
-          (plot as PlotDetailResponse)?.initialRoomImageUrl || "")
+        if (plot?.name)
+          sessionStorage.setItem("chat_plot_name", plot.name)
+        const img = (plot?.imageUrl || plot?.initialRoomImageUrl || "")
         sessionStorage.setItem("chat_plot_img", img)
 
-        const imageUrls = [(plot as PlotDetailResponse)?.imageUrl, (plot as PlotDetailResponse)?.initialRoomImageUrl].filter(
+        const imageUrls = [plot?.imageUrl, plot?.initialRoomImageUrl].filter(
           Boolean
         ) as string[]
         if (imageUrls.length > 0) {
@@ -32,7 +29,7 @@ export async function startNewChat(
     let roomId: string | undefined
     try {
       const data = await getActiveRoomId(plotId)
-      roomId = (data as ActiveRoomIdResponse).roomId
+      roomId = data.roomId
     } catch {
       /* no active room */
     }
@@ -40,7 +37,7 @@ export async function startNewChat(
     if (!roomId) {
       toast.info("ルームを作成中…")
       const data = await createRoom(plotId)
-      roomId = (data as CreateRoomResponse).id
+      roomId = data.id
     }
 
     if (!roomId) {

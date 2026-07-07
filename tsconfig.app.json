@@ -29,5 +29,5 @@
     }
   },
   "include": ["src"],
-  "allowJs": true
+  "allowJs": false
 }

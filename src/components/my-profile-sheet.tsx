@@ -5,10 +5,6 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { getMyPlotChatProfile, getSelectedUserPersona } from "@/lib/api"
-import type {
-  MyPlotChatProfileResponse,
-  SelectedUserPersonaResponse,
-} from "@/lib/types"
 
 interface MyProfileSheetProps {
   roomId: string
@@ -40,23 +36,21 @@ export function MyProfileSheet({
 
     getMyPlotChatProfile(roomId)
       .then((data) => {
-        const d = data as MyPlotChatProfileResponse
         if (!cancelled) {
           setProfileData({
-            name: d.name,
-            summary: d.summary,
-            description: d.description,
+            name: data.name,
+            summary: data.summary,
+            description: data.description,
           })
           setLoading(false)
         }
       })
       .catch(() => {
-        if (cancelled) return
+        if (!cancelled) return
         return getSelectedUserPersona(plotId, roomId)
           .then((data) => {
-            const d = data as SelectedUserPersonaResponse
             if (!cancelled) {
-              setProfileData({ name: d.name, description: d.description })
+              setProfileData({ name: data.name, description: data.description })
               setLoading(false)
             }
           })

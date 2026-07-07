@@ -47,7 +47,6 @@ function CreateProfileSheet({
 
   useEffect(() => {
     if (!open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName("")
       setDescription("")
     }
@@ -60,20 +59,19 @@ function CreateProfileSheet({
     }
     setSaving(true)
     try {
-      const data = (await checkUserChatProfileAbuse({
+      const data = await checkUserChatProfileAbuse({
         name: name.trim(),
         description: description.trim(),
-      })) as Record<string, boolean>
+      })
       if (data.isAbusing) {
         toast.error("不適切な内容が含まれています")
         setSaving(false)
         return
       }
-      const raw = await createUserChatProfile({
+      const newProfile = await createUserChatProfile({
         name: name.trim(),
         description: description.trim(),
       })
-      const newProfile = raw as UserChatProfile
       await onProfileCreated(newProfile)
     } catch (e: unknown) {
       toast.error(
@@ -182,9 +180,9 @@ export function ProfileSelectSheet({
     setConfirming(true)
     try {
       if (selected.type === "user") {
-        await onSelect?.(selected.profile as UserChatProfile)
+        await onSelect?.(selected.profile)
       } else {
-        await onPlotSelect?.(selected.profile as PlotProfileItem)
+        await onPlotSelect?.(selected.profile)
       }
     } finally {
       setConfirming(false)

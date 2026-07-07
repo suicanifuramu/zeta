@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import {
   Card,
@@ -14,26 +13,11 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
-import { clearAllCache } from "@/lib/cache-cleanup"
-import {
-  clearSession,
-  getAuthState,
-  getDeviceId,
-  getRefreshToken,
-  importTokens,
-  refreshSession,
-  setDeviceId,
-} from "@/lib/auth"
-import {
-  checkUserChatProfileAbuse,
-  createUserChatProfile,
-  deleteUserChatProfile,
-  getSessionOverview,
-  getUserChatProfiles,
-  setDefaultUserChatProfile,
-  updateUserChatProfile,
-} from "@/lib/api"
-import type { UserChatProfile, SessionOverview } from "@/lib/types"
+import { useSettingsSession } from "@/hooks/use-settings-session"
+import { useSettingsOverview } from "@/hooks/use-settings-overview"
+import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
+import { useSettingsQuiz } from "@/hooks/use-settings-quiz"
+import { useSettingsCache } from "@/hooks/use-settings-cache"
 
 function formatDate(ms: number) {
   if (!ms) return "-"
@@ -51,134 +35,48 @@ function formatSeconds(s: number) {
 }
 
 export function SettingsPage() {
-  const [deviceId, setDeviceIdState] = useState(getDeviceId())
-  const [refreshToken, setRefreshToken] = useState(getRefreshToken())
-  const [refreshing, setRefreshing] = useState(false)
+  const {
+    deviceId,
+    setDeviceIdState,
+    refreshToken,
+    setRefreshToken,
+    refreshing,
+    handleRefreshSession,
+    handleLogout,
+    authState,
+  } = useSettingsSession()
 
-  // Overview
-  const [overview, setOverview] = useState<SessionOverview | null>(null)
-  const [loadingOverview, setLoadingOverview] = useState(false)
+  const { overview, loadingOverview, loadOverview } = useSettingsOverview()
 
-  // Profiles
-  const [profiles, setProfiles] = useState<UserChatProfile[]>([])
-  const [loadingProfiles, setLoadingProfiles] = useState(false)
-  const [editId, setEditId] = useState("")
-  const [profileName, setProfileName] = useState("")
-  const [profileDesc, setProfileDesc] = useState("")
-  const [profileSaving, setProfileSaving] = useState(false)
+  const {
+    profiles,
+    loadingProfiles,
+    loadProfiles,
+    editId,
+    profileName,
+    setProfileName,
+    profileDesc,
+    setProfileDesc,
+    profileSaving,
+    handleSaveProfile,
+    handleSetDefault,
+    handleDelete,
+    handleEdit,
+    handleCheckAbuse,
+    resetForm,
+  } = useSettingsProfiles()
 
-  // Quiz
-  const [quizStatus, setQuizStatus] = useState("確認中...")
+  const { quizStatus, runQuiz } = useSettingsQuiz()
+  const { cacheCount, cacheDeleting, clearCache } = useSettingsCache()
 
-  // Cache
-  const [cacheCount, setCacheCount] = useState(0)
-  const [cacheDeleting, setCacheDeleting] = useState(false)
-
-  useEffect(() => {
-    caches
-      .open("plot-images")
-      .then((c) => c.keys().then((k) => setCacheCount(k.length)))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    import("@/lib/quiz-client")
-      .then(async (mod) => {
-        try {
-          setQuizStatus(await mod.getQuizStatus())
-        } catch {
-          setQuizStatus("取得失敗")
-        }
-      })
-      .catch(() => setQuizStatus("モジュール読み込み失敗"))
-  }, [])
-
-  const handleRefreshSession = async () => {
-    setRefreshing(true)
-    try {
-      setDeviceId(deviceId)
-      if (refreshToken) importTokens(refreshToken)
-      await refreshSession()
-      setRefreshToken(getRefreshToken())
-      toast.success("セッションを更新しました")
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e))
-    } finally {
-      setRefreshing(false)
+  const handleRunQuiz = async () => {
+    const result = await runQuiz()
+    if (result.startsWith("エラー") || result.startsWith("失敗")) {
+      toast.error(result)
+    } else {
+      toast.success(result)
     }
   }
-
-  const handleLogout = async () => {
-    await clearSession()
-    setRefreshToken("")
-    toast.info("ローカルセッションを削除しました")
-  }
-
-  const loadOverview = async () => {
-    setLoadingOverview(true)
-    try {
-      setOverview((await getSessionOverview()) as SessionOverview)
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoadingOverview(false)
-    }
-  }
-
-  const loadProfiles = async () => {
-    setLoadingProfiles(true)
-    try {
-      const data = (await getUserChatProfiles(50)) as Record<
-        string,
-        UserChatProfile[]
-      >
-      const list = data.userChatProfiles || data.profiles || data || []
-      setProfiles(Array.isArray(list) ? list : [])
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoadingProfiles(false)
-    }
-  }
-
-  const resetForm = () => {
-    setEditId("")
-    setProfileName("")
-    setProfileDesc("")
-  }
-
-  const handleSaveProfile = async () => {
-    if (!profileName.trim()) {
-      toast.error("名前を入力してください")
-      return
-    }
-    setProfileSaving(true)
-    try {
-      if (editId) {
-        await updateUserChatProfile(editId, {
-          name: profileName,
-          description: profileDesc,
-        })
-        toast.success("プロフィールを更新しました")
-      } else {
-        await createUserChatProfile({
-          name: profileName,
-          description: profileDesc,
-        })
-        toast.success("プロフィールを作成しました")
-      }
-      resetForm()
-      await loadProfiles()
-    } catch (e: unknown) {
-      toast.error(
-        `${editId ? "更新" : "作成"}失敗: ${e instanceof Error ? e.message : String(e)}`
-      )
-    } finally {
-      setProfileSaving(false)
-    }
-  }
-
-  const state = getAuthState()
 
   return (
     <div className="animate-fade-in">
@@ -195,12 +93,12 @@ export function SettingsPage() {
           <CardContent className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                ["Access Token", state.hasAccessToken ? "有効" : "なし"],
-                ["Refresh Token", state.hasRefreshToken ? "保存済み" : "なし"],
-                ["有効期限", formatDate(state.expiresAt)],
-                ["残り時間", formatSeconds(state.expiresInSeconds)],
-                ["User ID", state.userId || "-"],
-                ["Timezone", state.timezone || "-"],
+                ["Access Token", authState.hasAccessToken ? "有効" : "なし"],
+                ["Refresh Token", authState.hasRefreshToken ? "保存済み" : "なし"],
+                ["有効期限", formatDate(authState.expiresAt)],
+                ["残り時間", formatSeconds(authState.expiresInSeconds)],
+                ["User ID", authState.userId || "-"],
+                ["Timezone", authState.timezone || "-"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg bg-secondary/50 p-3">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -328,17 +226,7 @@ export function SettingsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 text-xs"
-                          onClick={async () => {
-                            try {
-                              await setDefaultUserChatProfile(p.id)
-                              toast.success("デフォルトに設定しました")
-                              await loadProfiles()
-                            } catch (e: unknown) {
-                              toast.error(
-                                e instanceof Error ? e.message : String(e)
-                              )
-                            }
-                          }}
+                          onClick={() => handleSetDefault(p.id)}
                         >
                           選択
                         </Button>
@@ -347,11 +235,7 @@ export function SettingsPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => {
-                          setEditId(p.id)
-                          setProfileName(p.name || "")
-                          setProfileDesc(p.description || "")
-                        }}
+                        onClick={() => handleEdit(p)}
                       >
                         編集
                       </Button>
@@ -359,18 +243,7 @@ export function SettingsPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs text-destructive"
-                        onClick={async () => {
-                          if (!confirm(`「${p.name}」を削除しますか?`)) return
-                          try {
-                            await deleteUserChatProfile(p.id)
-                            toast.success("削除しました")
-                            await loadProfiles()
-                          } catch (e: unknown) {
-                            toast.error(
-                              e instanceof Error ? e.message : String(e)
-                            )
-                          }
-                        }}
+                        onClick={() => handleDelete(p.id, p.name || "")}
                       >
                         削除
                       </Button>
@@ -412,19 +285,7 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={async () => {
-                    try {
-                      const data = (await checkUserChatProfileAbuse({
-                        name: profileName,
-                        description: profileDesc,
-                      })) as Record<string, boolean>
-                      toast(
-                        data.isAbusing ? "内容チェック: NG" : "内容チェック: OK"
-                      )
-                    } catch (e: unknown) {
-                      toast.error(e instanceof Error ? e.message : String(e))
-                    }
-                  }}
+                  onClick={handleCheckAbuse}
                 >
                   内容チェック
                 </Button>
@@ -458,21 +319,7 @@ export function SettingsPage() {
             <p className="mb-3 text-sm text-muted-foreground">
               ステータス: {quizStatus}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                setQuizStatus("実行中...")
-                const mod = await import("@/lib/quiz-client")
-                const result = await mod.runQuizAutomation()
-                setQuizStatus(result)
-                if (result.startsWith("エラー") || result.startsWith("失敗")) {
-                  toast.error(result)
-                } else {
-                  toast.success(result)
-                }
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={handleRunQuiz}>
               手動実行
             </Button>
           </CardContent>
@@ -506,18 +353,7 @@ export function SettingsPage() {
               variant="destructive"
               size="sm"
               disabled={cacheDeleting || cacheCount === 0}
-              onClick={async () => {
-                setCacheDeleting(true)
-                try {
-                  const { deletedCount } = await clearAllCache()
-                  setCacheCount(0)
-                  toast.success(`${deletedCount} 件のキャッシュを削除しました`)
-                } catch (e: unknown) {
-                  toast.error(e instanceof Error ? e.message : String(e))
-                } finally {
-                  setCacheDeleting(false)
-                }
-              }}
+              onClick={clearCache}
             >
               {cacheDeleting && <Spinner className="mr-1 size-3" />}
               画像キャッシュを削除

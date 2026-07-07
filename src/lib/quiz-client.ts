@@ -1,6 +1,7 @@
 // ===== Quiz Automation (Client-side) =====
-import { claimQuiz, getQuiz, joinQuiz, getPlot } from "./api.js"
+import { claimQuiz, getQuiz, joinQuiz, getPlot } from "./api"
 import type { QuizData, QuizPlot } from "./types"
+import { logger } from "./log"
 
 function isJoined(data: QuizData): boolean {
   return data?.type === "Selected" || Boolean(data?.selection)
@@ -77,7 +78,7 @@ export async function runQuizAutomation(): Promise<string> {
     if (!data || !data.id) return "クイズが見つかりません"
 
     const quizId = data.id
-    console.log("[Quiz] Quiz data:", JSON.stringify(data, null, 2))
+    logger.debug("[Quiz] Quiz data:", JSON.stringify(data, null, 2))
 
     // Already claimed
     if (isClaimed(data)) {
@@ -104,7 +105,7 @@ export async function runQuizAutomation(): Promise<string> {
           selectedPlot = validPlots.reduce((max, p) =>
             (p.interactionCount ?? 0) > (max.interactionCount ?? 0) ? p : max
           )
-          console.log(
+          logger.debug(
             "[Quiz] Plot interaction counts:",
             validPlots.map((p) => ({
               id: p.id,
@@ -112,11 +113,11 @@ export async function runQuizAutomation(): Promise<string> {
               count: p.interactionCount,
             }))
           )
-          console.log(
+          logger.debug(
             `[Quiz] Selected plot with max messages: ${selectedPlot.id} (${selectedPlot.name}, ${selectedPlot.interactionCount} messages)`
           )
         } else {
-          console.log(
+          logger.debug(
             "[Quiz] No valid interactionCount, falling back to first plot"
           )
         }
@@ -127,7 +128,7 @@ export async function runQuizAutomation(): Promise<string> {
         )
       }
 
-      console.log(
+      logger.debug(
         `[Quiz] Joining quiz ${quizId} with plot ${selectedPlot.id} (${selectedPlot.name})`
       )
       await joinQuiz(String(quizId), selectedPlot.id)
@@ -136,7 +137,7 @@ export async function runQuizAutomation(): Promise<string> {
       // Re-fetch to get updated state
       await delay(500)
       data = await getQuiz()
-      console.log("[Quiz] After join:", JSON.stringify(data, null, 2))
+      logger.debug("[Quiz] After join:", JSON.stringify(data, null, 2))
     }
 
     // Step 2: Try to claim reward
@@ -156,9 +157,9 @@ export async function runQuizAutomation(): Promise<string> {
 
     // Attempt claim
     try {
-      console.log(`[Quiz] Claiming reward for quiz ${quizId}`)
+      logger.debug(`[Quiz] Claiming reward for quiz ${quizId}`)
       const claimResult = await claimQuiz(String(quizId))
-      console.log("[Quiz] Claim result:", JSON.stringify(claimResult, null, 2))
+      logger.debug("[Quiz] Claim result:", JSON.stringify(claimResult, null, 2))
       return `報酬を受け取りました${claimResult?.reward ? ` (${JSON.stringify(claimResult.reward)})` : ""}`
     } catch (claimError: unknown) {
       const claimErr = claimError as Error
@@ -166,11 +167,11 @@ export async function runQuizAutomation(): Promise<string> {
 
       // If we just joined, wait a bit and retry
       if (justJoined) {
-        console.log("[Quiz] Retrying claim after delay...")
+        logger.debug("[Quiz] Retrying claim after delay...")
         await delay(2000)
         try {
           const retryResult = await claimQuiz(String(quizId))
-          console.log(
+          logger.debug(
             "[Quiz] Retry claim result:",
             JSON.stringify(retryResult, null, 2)
           )

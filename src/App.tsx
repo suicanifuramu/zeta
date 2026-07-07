@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { Suspense, lazy, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { useQuizAutomation } from "@/hooks/use-quiz-automation"
 import { AppShell } from "@/components/layout/app-shell"
 import { Spinner } from "@/components/ui/spinner"
 import { startSentryTransaction } from "@/lib/headers"
@@ -48,6 +49,7 @@ function ScrollToTop() {
 
 export default function App() {
   const { ready } = useAuth()
+  useQuizAutomation()
 
   if (!ready) {
     return (

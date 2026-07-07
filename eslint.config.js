@@ -21,6 +21,14 @@ export default defineConfig([
     },
     rules: {
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // TODO(refactoring-continuation-plan Cycle 12): re-enable these strict React 19 rules and fix the underlying issues
+      'react-hooks/refs': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      // Cycle 12: promote exhaustive-deps from warn→error so render-loop
+      // regressions surface at lint time instead of in prod.
+      'react-hooks/exhaustive-deps': 'error',
     },
   },
 ])

@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
@@ -66,7 +67,10 @@ function CustomAccordionContent({
   )
 }
 
-export function InfoBox({ data, charAvatars = {} }: InfoBoxProps) {
+export const InfoBox = memo(function InfoBox({
+  data,
+  charAvatars = {},
+}: InfoBoxProps) {
   const characters = data.characters || []
 
   if (characters.length === 0) return null
@@ -129,4 +133,4 @@ export function InfoBox({ data, charAvatars = {} }: InfoBoxProps) {
       </Accordion>
     </div>
   )
-}
+})

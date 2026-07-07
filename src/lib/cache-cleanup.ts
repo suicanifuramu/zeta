@@ -1,6 +1,7 @@
 import { cacheManager, clearAllUrls } from "./cache-db"
 import { clearMemoryCache } from "./image-cache"
 import type { CleanupResult } from "./cache-types"
+import { logger } from "./log"
 
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000
 const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
@@ -33,7 +34,7 @@ async function deleteFromCacheAPI(urls: string[]): Promise<string[]> {
 
 export async function runCleanup(): Promise<CleanupResult> {
   if (isCleanupRunning) {
-    console.log("[CacheCleanup] Already running, skipping")
+    logger.debug("[CacheCleanup] Already running, skipping")
     return {
       scanned: 0,
       deleted: 0,
@@ -43,13 +44,13 @@ export async function runCleanup(): Promise<CleanupResult> {
   }
 
   isCleanupRunning = true
-  console.log("[CacheCleanup] Starting...")
+  logger.debug("[CacheCleanup] Starting...")
 
   try {
     const expiredUrls = await cacheManager.getExpiredUrls(MAX_AGE_MS)
 
     if (expiredUrls.length === 0) {
-      console.log("[CacheCleanup] No expired items")
+      logger.debug("[CacheCleanup] No expired items")
       return { scanned: 0, deleted: 0, errors: [], durationMs: 0 }
     }
 
@@ -63,7 +64,7 @@ export async function runCleanup(): Promise<CleanupResult> {
       durationMs: 0,
     }
 
-    console.log(`[CacheCleanup] Completed: deleted ${result.deleted} items`)
+    logger.debug(`[CacheCleanup] Completed: deleted ${result.deleted} items`)
     return result
   } catch (e) {
     const errorMsg = String(e)
@@ -121,7 +122,7 @@ export async function clearAllCache(): Promise<{ deletedCount: number }> {
     console.warn("[CacheCleanup] IndexedDB clear failed:", e)
   }
 
-  console.log(
+  logger.debug(
     `[CacheCleanup] Memory cache cleared: ${deletedCount} items (Cache API kept intact)`
   )
   return { deletedCount }

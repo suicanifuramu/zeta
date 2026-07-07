@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useMemo, useRef } from "react"
 
 export function useLongPress(
   onLongPress: (e: React.MouseEvent | React.TouchEvent) => void,
@@ -41,13 +41,16 @@ export function useLongPress(
     [onClick, clear]
   )
 
-  return {
-    onMouseDown: start,
-    onMouseUp: clear,
-    onMouseLeave: clear,
-    onTouchStart: start,
-    onTouchEnd: clear,
-    onTouchMove: clear,
-    onClick: handleClick,
-  }
+  return useMemo(
+    () => ({
+      onMouseDown: start,
+      onMouseUp: clear,
+      onMouseLeave: clear,
+      onTouchStart: start,
+      onTouchEnd: clear,
+      onTouchMove: clear,
+      onClick: handleClick,
+    }),
+    [start, clear, handleClick]
+  )
 }

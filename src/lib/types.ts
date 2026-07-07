@@ -39,6 +39,7 @@ export interface Room {
   title?: string
   name?: string
   unreadCount?: number
+  lastMessage?: Message
   [key: string]: unknown
 }
 
@@ -49,17 +50,14 @@ export interface Message {
   text: string
   createdAt?: string
   candidates?: Candidate[]
+  contents?: ContentItem[]
 }
 
 export interface Candidate {
   id: string
   text: string
   isFinalized?: boolean
-  contents?: Array<{
-    position: string
-    speakerName?: string
-    text: string
-  }>
+  contents?: ContentItem[]
   content?: string
 }
 
@@ -99,13 +97,12 @@ export interface PlotChatProfile {
 }
 
 export interface SessionOverview {
-  coin?: { balance?: number }
-  subscription?: { type?: string }
-  creatorStats?: {
-    followingCount?: number
-    followerCount?: number
-    plotCount?: number
-  }
+  coin: CoinBalanceResponse | null
+  creatorStats: CreatorStatsResponse | null
+  subscription: SubscriptionResponse | null
+  promotion: PromotionEligibilityResponse | null
+  notifications: NotificationTimeResponse | null
+  profiles: UserChatProfilesResponse | null
 }
 
 export interface ApiListResponse<T> {
@@ -131,7 +128,7 @@ export interface ApiRoomsResponse {
 }
 
 export interface ApiMessagesResponse {
-  messages?: Message[]
+  messages?: RuntimeMessage[]
 }
 
 export interface QuizPlot {
@@ -290,7 +287,6 @@ export interface CreateRoomResponse {
 
 export interface RoomDetailResponse extends Room {
   plot?: PlotDetailResponse
-  lastMessage?: Message
   unreadCount?: number
 }
 
@@ -432,6 +428,22 @@ export interface UserChatProfilesResponse {
   profiles?: UserChatProfile[]
   cursor?: string
   nextCursor?: string
+}
+
+export interface ContentItem {
+  type?: string
+  position?: string
+  speakerName?: string
+  text?: string
+  scenes?: unknown[]
+  characters?: InfoBoxCharacter[]
+}
+
+export interface RuntimeMessage extends Message {
+  contents?: ContentItem[]
+  candidateId?: string
+  isIntro?: boolean
+  sender?: { type: string }
 }
 
 export interface AbuseCheckResponse {

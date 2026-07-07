@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { getRooms } from "@/lib/api"
-import type { ApiRoomsResponse, Room, Message, Plot } from "@/lib/types"
+import type { Room, Message } from "@/lib/types"
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -19,14 +19,8 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}日前`
 }
 
-function getPreview(
-  lastMessage:
-    | { contents?: Array<Record<string, string>> }
-    | undefined
-) {
-  const contents = lastMessage?.contents as
-    | Array<Record<string, string>>
-    | undefined
+function getPreview(lastMessage: Message | undefined) {
+  const contents = lastMessage?.contents
   if (!contents?.length) return ""
   const c = contents[0]
   const name = c.speakerName || ""
@@ -41,7 +35,7 @@ export function RoomsPage() {
 
   useEffect(() => {
     getRooms(30)
-      .then((data) => setRooms((data as ApiRoomsResponse).rooms || []))
+      .then((data) => setRooms(data.rooms || []))
       .catch((e: unknown) =>
         toast.error(
           `読み込み失敗: ${e instanceof Error ? e.message : String(e)}`
@@ -51,9 +45,9 @@ export function RoomsPage() {
   }, [])
 
   const handleClick = (room: Room) => {
-    const plot = (room.plot || {}) as any // eslint-disable-line @typescript-eslint/no-explicit-any
-    sessionStorage.setItem("chat_plot_name", plot.name || room.title || "")
-    sessionStorage.setItem("chat_plot_img", plot.imageUrl || "")
+    const plot = room.plot
+    sessionStorage.setItem("chat_plot_name", plot?.name || room.title || "")
+    sessionStorage.setItem("chat_plot_img", plot?.imageUrl || "")
     navigate(`/chat/${room.id}`)
   }
 
@@ -83,9 +77,9 @@ export function RoomsPage() {
         ) : (
           <div className="flex flex-col overflow-x-hidden">
             {rooms.map((room, i) => {
-              const plot = (room.plot || {}) as Plot
-              const lastMessage = room.lastMessage as Message | undefined
-              const preview = getPreview(lastMessage as { contents?: Array<Record<string, string>> } | undefined)
+              const plot = room.plot
+              const lastMessage = room.lastMessage
+              const preview = getPreview(lastMessage)
               const time = lastMessage?.createdAt
                 ? timeAgo(lastMessage.createdAt)
                 : ""  
@@ -96,13 +90,13 @@ export function RoomsPage() {
                     onClick={() => handleClick(room)}
                   >
                     <Avatar className="size-12 flex-shrink-0">
-                      <CachedAvatarImage src={plot.imageUrl} alt={plot.name} />
-                      <AvatarFallback>{(plot.name || "?")[0]}</AvatarFallback>
+                      <CachedAvatarImage src={plot?.imageUrl} alt={plot?.name} />
+                      <AvatarFallback>{(plot?.name || "?")[0]}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="truncate text-sm font-medium">
-                          {room.title || plot.name || "チャット"}
+                          {room.title || plot?.name || "チャット"}
                         </span>
                         <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                           {time}

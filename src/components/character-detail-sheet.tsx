@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { X } from "lucide-react"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
 import { getCharacterImages } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import type { Character, CharacterImageResponse } from "@/lib/types"
+import type { Character } from "@/lib/types"
 
 interface CharacterDetailSheetProps {
   character: Character | null
@@ -29,28 +29,12 @@ export function CharacterDetailSheet({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showFullDesc, setShowFullDesc] = useState(false)
 
-  const wrappedSetCurrentIndex = useCallback(
-    (index: number) => {
-      console.log(
-        "[DetailSheet] setCurrentIndex called with",
-        index,
-        "| prev:",
-        currentIndex
-      )
-      setCurrentIndex(index)
-    },
-    [currentIndex]
-  )
-
   useEffect(() => {
     if (!open || !character || !plotId) return
 
     const fetchImages = async () => {
       try {
-        const data = await getCharacterImages(plotId, character.id) as CharacterImageResponse
-        console.log("[DetailSheet] images loaded", {
-          count: data.images?.length,
-        })
+        const data = await getCharacterImages(plotId, character.id)
         setImages(data.images)
         setCurrentIndex(0)
       } catch (e) {
@@ -115,7 +99,7 @@ export function CharacterDetailSheet({
               <CharacterImageCarousel
                 images={images}
                 index={currentIndex}
-                onIndexChange={wrappedSetCurrentIndex}
+                onIndexChange={setCurrentIndex}
               />
             </div>
 
@@ -130,7 +114,7 @@ export function CharacterDetailSheet({
             <CharacterThumbnailStrip
               images={images}
               currentIndex={currentIndex}
-              onSelect={wrappedSetCurrentIndex}
+              onSelect={setCurrentIndex}
             />
           </>
         )}

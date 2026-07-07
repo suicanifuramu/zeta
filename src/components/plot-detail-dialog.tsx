@@ -60,7 +60,9 @@ export function PlotDetailDialog({
   const d = (detail || plot || {}) as PlotDetailResponse
 
   // Resolve fields from actual API response
-  const dExtra = d as unknown as Record<string, unknown>
+  // Single cast (instead of discouraged `as unknown as Record<...>`):
+  // typed fields stay typed, undeclared server fields come back as `unknown`.
+  const dExtra = d as PlotDetailResponse & Record<string, unknown>
   const heroImg = (d.imageUrl || d.initialRoomImageUrl || plot?.imageUrl || "") as string
   const plotName = (d.name || dExtra.title || plot?.name || "タイトルなし") as string
   const creatorName =
@@ -111,7 +113,7 @@ export function PlotDetailDialog({
   const handleStart = async () => {
     setStarting(true)
     try {
-      if (onStartChat) await onStartChat(d as Plot)
+      if (onStartChat) await onStartChat(d)
     } finally {
       setStarting(false)
     }
@@ -229,7 +231,7 @@ export function PlotDetailDialog({
                 <ScrollText className="size-3.5" /> 設定
               </h3>
               <div className="flex flex-col gap-2">
-                {(aboutContents as Array<{ type: string; content: string; text?: string }>).map(
+                {aboutContents.map(
                   (
                     item: { type: string; content: string; text?: string },
                     i: number

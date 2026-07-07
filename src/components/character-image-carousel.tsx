@@ -173,7 +173,6 @@ export function CharacterImageCarousel({
   function setFlexTransform(translateX: string) {
     const el = containerRef.current?.firstElementChild as HTMLElement | null
     if (!el) return
-    /* eslint-disable-next-line react-hooks/immutability */
     el.style.transition = "transform 0.3s ease-out"
     el.style.transform = translateX
   }

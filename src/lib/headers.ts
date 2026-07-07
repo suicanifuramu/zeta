@@ -1,12 +1,13 @@
 import { getDeviceId } from "@/lib/auth"
 import { APP_VERSION as BUILD_VERSION } from "./version"
+import { logger } from "@/lib/log"
 
 // Runtime-mutable — starts at build-time value, auto-updated on APP_UPDATE_REQUIRED
 export let APP_VERSION = BUILD_VERSION
 
 export function setAppVersion(v: string) {
   APP_VERSION = v
-  console.log(`[headers] Version updated: ${BUILD_VERSION} → ${v}`)
+  logger.debug(`[headers] Version updated: ${BUILD_VERSION} → ${v}`)
 }
 
 export const CLIENT_TYPE = "app"
