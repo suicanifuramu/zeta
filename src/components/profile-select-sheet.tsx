@@ -248,13 +248,13 @@ export function ProfileSelectSheet({
     if (open) {
       const id =
         initialSelectedId ||
-        profiles.find((p) => p.selected || p.isDefault)?.id ||
+        profiles.find((p) => p.selected)?.id ||
         profiles[0]?.id ||
-        plotProfiles?.[0]?.id ||
+        (variant !== "change" ? plotProfiles?.[0]?.id : null) ||
         null
       setSelectedId(id)
     }
-  }, [open, initialSelectedId, profiles, plotProfiles])
+  }, [open, initialSelectedId, profiles, plotProfiles, variant])
 
   const findSelected = () => {
     const userProfile = profiles.find((p) => p.id === selectedId)
