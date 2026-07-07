@@ -14,15 +14,6 @@ interface ImageCropDialogProps {
   onCropComplete: (imageUrl: string) => void
 }
 
-function getImageDimensions(src: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = () => reject(new Error("画像の読み込みに失敗しました"))
-    img.src = src
-  })
-}
-
 export function ImageCropDialog({
   open,
   onOpenChange,
@@ -60,11 +51,6 @@ export function ImageCropDialog({
     if (!croppedAreaPixels) return
     setSaving(true)
     try {
-      const { width: imgW, height: imgH } = await getImageDimensions(imageSrc)
-      if (imgW < 224 || imgH < 224) {
-        throw new Error("画像サイズが小さすぎます（224px以上必要）")
-      }
-
       const w = Math.round(croppedAreaPixels.width)
       const h = Math.round(croppedAreaPixels.height)
       if (w < 224 || h < 224) {
