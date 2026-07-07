@@ -551,7 +551,7 @@ export function getUserChatProfiles(
   )
 }
 
-export function uploadUserChatProfileImage(
+export async function uploadUserChatProfileImage(
   file: File | Blob
 ): Promise<ImageUploadResponse> {
   await ensureAccessToken()

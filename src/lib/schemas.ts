@@ -52,6 +52,7 @@ export const SelectedUserPersonaResponseSchema = z.object({
 
 /**
  * `ImageUploadResponse` — used after uploading a chat profile image.
+ */
 export const ImageUploadResponseSchema = z.object({
   imageUrl: z.string(),
 })

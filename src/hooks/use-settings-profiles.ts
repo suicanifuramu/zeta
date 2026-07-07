@@ -7,7 +7,6 @@ import {
   getUserChatProfiles,
   setDefaultUserChatProfile,
   updateUserChatProfile,
-  uploadUserChatProfileImage,
 } from "@/lib/api"
 import type { UserChatProfile } from "@/lib/types"
 
