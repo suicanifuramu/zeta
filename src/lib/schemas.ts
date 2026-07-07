@@ -51,6 +51,12 @@ export const SelectedUserPersonaResponseSchema = z.object({
 })
 
 /**
+ * `ImageUploadResponse` — used after uploading a chat profile image.
+export const ImageUploadResponseSchema = z.object({
+  imageUrl: z.string(),
+})
+
+/**
  * `PlotDetailResponse` — used by `<PlotDetailDialog>`.
  *
  * Includes the loose fallback fields that the dialog reads via `dExtra`

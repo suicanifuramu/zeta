@@ -8,6 +8,7 @@ import { getCommonHeaders, setAppVersion, APP_VERSION } from "./headers"
 import { z } from "zod"
 import {
   CharacterImageResponseSchema,
+  ImageUploadResponseSchema,
   MyPlotChatProfileResponseSchema,
   PlotDetailResponseSchema,
   SelectedUserPersonaResponseSchema,
@@ -32,6 +33,7 @@ import type {
   DeleteRoomResponse,
   EditMessageResponse,
   GenreRankingResponse,
+  ImageUploadResponse,
   IntroBeforeSelectionResponse,
   JoinQuizResponse,
   LikedPlotsResponse,
@@ -549,14 +551,35 @@ export function getUserChatProfiles(
   )
 }
 
+export function uploadUserChatProfileImage(
+  file: File | Blob
+): Promise<ImageUploadResponse> {
+  await ensureAccessToken()
+  const formData = new FormData()
+  formData.append("image", file)
+  return request<ImageUploadResponse>("/v1/user-chat-profiles/images", {
+    method: "POST",
+    body: formData,
+    headers: {},
+  }).then(
+    (data) =>
+      validate(ImageUploadResponseSchema, data, "uploadUserChatProfileImage") as ImageUploadResponse
+  )
+}
+
 export function createUserChatProfile({
   name,
   description,
+  profileImageUrl,
 }: {
   name: string
   description?: string
+  profileImageUrl?: string
 }): Promise<UserChatProfile> {
-  return post<unknown>("/v1/user-chat-profiles", { name, description }).then(
+  const body: Record<string, unknown> = { name }
+  if (description) body.description = description
+  if (profileImageUrl) body.profileImageUrl = profileImageUrl
+  return post<unknown>("/v1/user-chat-profiles", body).then(
     (data) =>
       validate(UserChatProfileSchema, data, "createUserChatProfile") as UserChatProfile
   )
@@ -577,12 +600,12 @@ export function checkUserChatProfileAbuse({
 
 export function updateUserChatProfile(
   profileId: string,
-  { name, description }: { name: string; description?: string }
+  { name, description, profileImageUrl }: { name: string; description?: string; profileImageUrl?: string }
 ): Promise<unknown> {
-  return patch<unknown>(`/v1/user-chat-profiles/${profileId}`, {
-    name,
-    description,
-  })
+  const body: Record<string, unknown> = { name }
+  if (description) body.description = description
+  if (profileImageUrl) body.profileImageUrl = profileImageUrl
+  return patch<unknown>(`/v1/user-chat-profiles/${profileId}`, body)
 }
 
 export function deleteUserChatProfile(profileId: string): Promise<unknown> {

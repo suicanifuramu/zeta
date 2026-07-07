@@ -7,6 +7,7 @@ import {
   getUserChatProfiles,
   setDefaultUserChatProfile,
   updateUserChatProfile,
+  uploadUserChatProfileImage,
 } from "@/lib/api"
 import type { UserChatProfile } from "@/lib/types"
 
@@ -16,6 +17,7 @@ export function useSettingsProfiles() {
   const [editId, setEditId] = useState("")
   const [profileName, setProfileName] = useState("")
   const [profileDesc, setProfileDesc] = useState("")
+  const [profileImageUrl, setProfileImageUrl] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
 
   const loadProfiles = async () => {
@@ -35,6 +37,7 @@ export function useSettingsProfiles() {
     setEditId("")
     setProfileName("")
     setProfileDesc("")
+    setProfileImageUrl("")
   }
 
   const handleSaveProfile = async () => {
@@ -48,12 +51,14 @@ export function useSettingsProfiles() {
         await updateUserChatProfile(editId, {
           name: profileName,
           description: profileDesc,
+          profileImageUrl: profileImageUrl || undefined,
         })
         toast.success("プロフィールを更新しました")
       } else {
         await createUserChatProfile({
           name: profileName,
           description: profileDesc,
+          profileImageUrl: profileImageUrl || undefined,
         })
         toast.success("プロフィールを作成しました")
       }
@@ -93,6 +98,7 @@ export function useSettingsProfiles() {
     setEditId(profile.id)
     setProfileName(profile.name || "")
     setProfileDesc(profile.description || "")
+    setProfileImageUrl(profile.profileImageUrl || "")
   }
 
   const handleCheckAbuse = async () => {
@@ -116,6 +122,8 @@ export function useSettingsProfiles() {
     setProfileName,
     profileDesc,
     setProfileDesc,
+    profileImageUrl,
+    setProfileImageUrl,
     profileSaving,
     handleSaveProfile,
     handleSetDefault,

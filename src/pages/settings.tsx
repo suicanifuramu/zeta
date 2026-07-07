@@ -1,3 +1,5 @@
+import { useRef, useState } from "react"
+import { Camera } from "lucide-react"
 import { toast } from "sonner"
 import {
   Card,
@@ -13,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
+import { ImageCropDialog } from "@/components/image-crop-dialog"
 import { useSettingsSession } from "@/hooks/use-settings-session"
 import { useSettingsOverview } from "@/hooks/use-settings-overview"
 import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
@@ -57,6 +60,8 @@ export function SettingsPage() {
     setProfileName,
     profileDesc,
     setProfileDesc,
+    profileImageUrl,
+    setProfileImageUrl,
     profileSaving,
     handleSaveProfile,
     handleSetDefault,
@@ -65,6 +70,34 @@ export function SettingsPage() {
     handleCheckAbuse,
     resetForm,
   } = useSettingsProfiles()
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const valid = await new Promise<boolean>((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve(img.width >= 224 && img.height >= 224)
+      img.onerror = () => resolve(false)
+      img.src = URL.createObjectURL(file)
+    })
+    if (!valid) {
+      toast.error("画像は224px以上である必要があります")
+      return
+    }
+    setCropFile(file)
+    setCropOpen(true)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleCropComplete = (imageUrl: string) => {
+    setProfileImageUrl(imageUrl)
+    setCropOpen(false)
+    setCropFile(null)
+  }
 
   const { quizStatus, runQuiz } = useSettingsQuiz()
   const { cacheCount, cacheDeleting, clearCache } = useSettingsCache()
@@ -270,6 +303,35 @@ export function SettingsPage() {
               {editId ? "編集" : "新規作成"}
             </h3>
             <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  className="group relative cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={profileSaving}
+                >
+                  <Avatar className="size-16">
+                    <AvatarImage src={profileImageUrl || undefined} />
+                    <AvatarFallback className="text-xl">
+                      {profileName ? profileName[0] : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Camera className="size-5 text-white" />
+                  </div>
+                </button>
+                <p className="text-xs text-muted-foreground">
+                  画像をタップして変更
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
               <Input
                 placeholder="名前"
                 value={profileName}
@@ -304,6 +366,18 @@ export function SettingsPage() {
                 </Button>
               </div>
             </div>
+
+            {cropFile && (
+              <ImageCropDialog
+                open={cropOpen}
+                onOpenChange={(v) => {
+                  setCropOpen(v)
+                  if (!v) setCropFile(null)
+                }}
+                file={cropFile}
+                onCropComplete={handleCropComplete}
+              />
+            )}
           </CardContent>
         </Card>
 

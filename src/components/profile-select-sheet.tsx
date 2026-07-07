@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Check, Plus } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Camera, Check, Plus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/components/ui/spinner"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
+import { ImageCropDialog } from "@/components/image-crop-dialog"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { createUserChatProfile, checkUserChatProfileAbuse } from "@/lib/api"
@@ -31,6 +32,17 @@ interface ProfileSelectSheetProps {
   loading?: boolean
 }
 
+function validateImageDimensions(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve(img.width >= 224 && img.height >= 224)
+    }
+    img.onerror = () => resolve(false)
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 function CreateProfileSheet({
   open,
   onOpenChange,
@@ -43,14 +55,41 @@ function CreateProfileSheet({
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [profileImageUrl, setProfileImageUrl] = useState("")
   const [saving, setSaving] = useState(false)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) {
       setName("")
       setDescription("")
+      setProfileImageUrl("")
+      setCropFile(null)
     }
   }, [open])
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const valid = await validateImageDimensions(file)
+    if (!valid) {
+      toast.error("画像は224px以上である必要があります")
+      return
+    }
+
+    setCropFile(file)
+    setCropOpen(true)
+
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleCropComplete = (imageUrl: string) => {
+    setProfileImageUrl(imageUrl)
+    setCropOpen(false)
+  }
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -71,6 +110,7 @@ function CreateProfileSheet({
       const newProfile = await createUserChatProfile({
         name: name.trim(),
         description: description.trim(),
+        profileImageUrl: profileImageUrl || undefined,
       })
       await onProfileCreated(newProfile)
     } catch (e: unknown) {
@@ -85,28 +125,55 @@ function CreateProfileSheet({
     <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">新しいプロフィール</h2>
-      </div>        <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
-        <div className="space-y-4 px-5 py-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">プロフィール名</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="プロフィール名を入力"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">説明</label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="説明を入力（任意）"
-            rows={3}
-            disabled={saving}
-          />
-        </div>
       </div>
+      <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
+        <div className="space-y-4 px-5 py-4">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="group relative cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+            >
+              <Avatar className="size-20">
+                <AvatarImage src={profileImageUrl || undefined} />
+                <AvatarFallback className="text-2xl">
+                  {name ? name[0] : "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="size-6 text-white" />
+              </div>
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">プロフィール名</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="プロフィール名を入力"
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">説明</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="説明を入力（任意）"
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </div>
       </div>
       <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
         {isDesktop && (
@@ -128,6 +195,18 @@ function CreateProfileSheet({
           この名前で開始
         </Button>
       </div>
+
+      {cropFile && (
+        <ImageCropDialog
+          open={cropOpen}
+          onOpenChange={(v) => {
+            setCropOpen(v)
+            if (!v) setCropFile(null)
+          }}
+          file={cropFile}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   )
 

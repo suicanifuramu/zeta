@@ -520,3 +520,7 @@ export interface SelectedUserPersonaResponse {
   profileImageUrl?: string
   description?: string
 }
+
+export interface ImageUploadResponse {
+  imageUrl: string
+}
