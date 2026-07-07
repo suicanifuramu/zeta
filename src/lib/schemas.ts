@@ -81,7 +81,7 @@ export const PlotDetailResponseSchema = z.object({
     .optional(),
   // PlotDetailResponse-specific fields
   longDescription: z.string().optional(),
-  initialRoomImageUrl: z.string().optional(),
+  initialRoomImageUrl: z.string().nullish(),
   creator: z
     .object({
       id: z.string(),
@@ -105,7 +105,7 @@ export const PlotDetailResponseSchema = z.object({
         })
       ),
     })
-    .optional(),
+    .nullish(),
   intros: z
     .array(
       z.object({
@@ -116,7 +116,7 @@ export const PlotDetailResponseSchema = z.object({
                 z.object({
                   senderId: z.string(),
                   content: z.string(),
-                  position: z.string(),
+                  position: z.string().optional(),
                 })
               ),
           })
