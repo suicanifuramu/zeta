@@ -552,11 +552,15 @@ export function getUserChatProfiles(
 }
 
 export async function uploadUserChatProfileImage(
-  file: File | Blob
+  file: File | Blob,
+  cropCoordinates?: string
 ): Promise<ImageUploadResponse> {
   await ensureAccessToken()
   const formData = new FormData()
   formData.append("image", file)
+  if (cropCoordinates) {
+    formData.append("cropCoordinates", cropCoordinates)
+  }
   return request<ImageUploadResponse>("/v1/user-chat-profiles/images", {
     method: "POST",
     body: formData,

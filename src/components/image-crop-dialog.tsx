@@ -47,58 +47,24 @@ export function ImageCropDialog({
     []
   )
 
-  const createImage = (url: string): Promise<HTMLImageElement> =>
-    new Promise((resolve, reject) => {
-      const image = new Image()
-      image.onload = () => resolve(image)
-      image.onerror = () => reject(new Error("画像の読み込みに失敗しました"))
-      image.src = url
-    })
-
-  const getCroppedImg = async (
-    imageSrc: string,
-    pixelCrop: Area
-  ): Promise<Blob> => {
-    const w = Math.round(pixelCrop.width)
-    const h = Math.round(pixelCrop.height)
-    if (w < 224 || h < 224) {
-      throw new Error("切り取った画像が小さすぎます（224px以上必要）")
-    }
-
-    const image = await createImage(imageSrc)
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")!
-
-    canvas.width = w
-    canvas.height = h
-
-    ctx.fillStyle = "#FFFFFF"
-    ctx.fillRect(0, 0, w, h)
-
-    ctx.drawImage(image, pixelCrop.x, pixelCrop.y, w, h, 0, 0, w, h)
-
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Canvas is empty"))
-            return
-          }
-          resolve(blob)
-        },
-        "image/jpeg",
-        0.95
-      )
-    })
-  }
-
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return
     setSaving(true)
     try {
-      const blob = await getCroppedImg(imageSrc, croppedAreaPixels)
-      const file = new File([blob], "profile.jpeg", { type: "image/jpeg" })
-      const result = await uploadUserChatProfileImage(file)
+      const w = Math.round(croppedAreaPixels.width)
+      const h = Math.round(croppedAreaPixels.height)
+      if (w < 224 || h < 224) {
+        throw new Error("切り取った画像が小さすぎます（224px以上必要）")
+      }
+
+      const cropCoordinates = JSON.stringify({
+        minX: Math.round(croppedAreaPixels.x),
+        minY: Math.round(croppedAreaPixels.y),
+        maxX: Math.round(croppedAreaPixels.x + croppedAreaPixels.width),
+        maxY: Math.round(croppedAreaPixels.y + croppedAreaPixels.height),
+      })
+
+      const result = await uploadUserChatProfileImage(file, cropCoordinates)
       onCropComplete(result.imageUrl)
       onOpenChange(false)
     } catch (e: unknown) {
