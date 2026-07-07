@@ -24,9 +24,9 @@ export const CharacterImageResponseSchema = z.object({
 export const UserChatProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string().optional(),
+  description: z.string().nullish(),
   isDefault: z.boolean().optional(),
-  profileImageUrl: z.string().optional(),
+  profileImageUrl: z.string().nullish(),
   selected: z.boolean().optional(),
 })
 
@@ -35,11 +35,11 @@ export const MyPlotChatProfileResponseSchema = z.object({
   id: z.string(),
   userId: z.string(),
   roomId: z.string(),
-  plotChatProfileId: z.string().optional(),
+  plotChatProfileId: z.string().nullish(),
   name: z.string(),
-  imageUrl: z.string().optional(),
-  summary: z.string().optional(),
-  description: z.string().optional(),
+  imageUrl: z.string().nullish(),
+  summary: z.string().nullish(),
+  description: z.string().nullish(),
   selected: z.boolean().optional(),
 })
 
@@ -69,8 +69,8 @@ export const PlotDetailResponseSchema = z.object({
   // Plot base fields
   id: z.string(),
   name: z.string(),
-  imageUrl: z.string().optional(),
-  shortDescription: z.string().optional(),
+  imageUrl: z.string().nullish(),
+  shortDescription: z.string().nullish(),
   interactionCount: z.number().optional(),
   hashtags: z.array(z.string()).optional(),
   rank: z.number().optional(),
@@ -81,13 +81,13 @@ export const PlotDetailResponseSchema = z.object({
       z.object({
         id: z.string(),
         name: z.string(),
-        imageUrl: z.string().optional(),
-        description: z.string().optional(),
+        imageUrl: z.string().nullish(),
+        description: z.string().nullish(),
       })
     )
     .optional(),
   // PlotDetailResponse-specific fields
-  longDescription: z.string().optional(),
+  longDescription: z.string().nullish(),
   initialRoomImageUrl: z.string().nullish(),
   creator: z
     .object({
@@ -101,14 +101,14 @@ export const PlotDetailResponseSchema = z.object({
     .object({
       contents: z.array(
         z.object({
-          content: z.string().optional(),
-          text: z.string().optional(),
+          content: z.string().nullish(),
+          text: z.string().nullish(),
         })
       ),
       characters: z.array(
         z.object({
-          characterId: z.string().optional(),
-          description: z.string().optional(),
+          characterId: z.string().nullish(),
+          description: z.string().nullish(),
         })
       ),
     })
@@ -123,7 +123,7 @@ export const PlotDetailResponseSchema = z.object({
                 z.object({
                   senderId: z.string(),
                   content: z.string(),
-                  position: z.string().optional(),
+                  position: z.string().nullish(),
                 })
               ),
           })
@@ -137,18 +137,18 @@ export const PlotDetailResponseSchema = z.object({
         id: z.string(),
         plotId: z.string(),
         name: z.string(),
-        imageUrl: z.string().optional(),
-        summary: z.string().optional(),
-        description: z.string().optional(),
+        imageUrl: z.string().nullish(),
+        summary: z.string().nullish(),
+        description: z.string().nullish(),
         isUsingDefaultName: z.boolean().optional(),
       })
     )
     .optional(),
   // Loose fallback fields consumed via `dExtra` in plot-detail-dialog
-  title: z.string().optional(),
-  description: z.string().optional(),
-  synopsis: z.string().optional(),
-  summary: z.string().optional(),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
+  synopsis: z.string().nullish(),
+  summary: z.string().nullish(),
   hashTags: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   chatCount: z.number().optional(),
