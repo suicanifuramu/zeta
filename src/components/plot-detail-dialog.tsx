@@ -404,7 +404,6 @@ export function PlotDetailDialog({
       title="ストーリー詳細"
       desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh] gap-0 overflow-hidden p-0"
-      handleOnly
     >
       {content}
     </ResponsiveDialog>

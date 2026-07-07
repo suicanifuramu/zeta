@@ -129,7 +129,6 @@ export function CharacterDetailSheet({
       title={character.name}
       desktopClassName="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0"
       mobileClassName="flex max-h-[85vh] flex-col"
-      handleOnly
       showCloseButton={false}
     >
       {detailContent}

@@ -13,7 +13,6 @@ interface ResponsiveDialogProps {
   mobileClassName?: string
   snapPoints?: (number | string)[]
   snapToSequentialPoint?: boolean
-  handleOnly?: boolean
   direction?: "top" | "bottom" | "left" | "right"
   showCloseButton?: boolean
 }
@@ -28,7 +27,6 @@ export function ResponsiveDialog({
   mobileClassName,
   snapPoints,
   snapToSequentialPoint,
-  handleOnly,
   direction = "bottom",
   showCloseButton,
 }: ResponsiveDialogProps) {
@@ -55,7 +53,6 @@ export function ResponsiveDialog({
       onOpenChange={onOpenChange}
       snapPoints={snapPoints}
       snapToSequentialPoint={snapToSequentialPoint}
-      handleOnly={handleOnly}
       direction={direction}
     >
       <DrawerContent className={mobileClassName || className}>
