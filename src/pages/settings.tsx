@@ -67,7 +67,6 @@ export function SettingsPage() {
     handleSetDefault,
     handleDelete,
     handleEdit,
-    handleCheckAbuse,
     resetForm,
   } = useSettingsProfiles()
 
@@ -344,13 +343,6 @@ export function SettingsPage() {
                 onChange={(e) => setProfileDesc(e.target.value)}
               />
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCheckAbuse}
-                >
-                  内容チェック
-                </Button>
                 {editId && (
                   <Button variant="ghost" size="sm" onClick={resetForm}>
                     キャンセル

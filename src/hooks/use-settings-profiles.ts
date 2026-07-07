@@ -46,6 +46,16 @@ export function useSettingsProfiles() {
     }
     setProfileSaving(true)
     try {
+      const data = await checkUserChatProfileAbuse({
+        name: profileName,
+        description: profileDesc,
+      })
+      if (data.isAbusing) {
+        toast.error("不適切な内容が含まれています")
+        setProfileSaving(false)
+        return
+      }
+
       if (editId) {
         await updateUserChatProfile(editId, {
           name: profileName,
@@ -100,18 +110,6 @@ export function useSettingsProfiles() {
     setProfileImageUrl(profile.profileImageUrl || "")
   }
 
-  const handleCheckAbuse = async () => {
-    try {
-      const data = await checkUserChatProfileAbuse({
-        name: profileName,
-        description: profileDesc,
-      })
-      toast(data.isAbusing ? "内容チェック: NG" : "内容チェック: OK")
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e))
-    }
-  }
-
   return {
     profiles,
     loadingProfiles,
@@ -128,7 +126,6 @@ export function useSettingsProfiles() {
     handleSetDefault,
     handleDelete,
     handleEdit,
-    handleCheckAbuse,
     resetForm,
   }
 }
