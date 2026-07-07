@@ -50,9 +50,8 @@ export function ImageCropDialog({
   const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
       const image = new Image()
-      image.crossOrigin = "anonymous"
       image.onload = () => resolve(image)
-      image.onerror = (err) => reject(err)
+      image.onerror = () => reject(new Error("画像の読み込みに失敗しました"))
       image.src = url
     })
 
@@ -60,24 +59,23 @@ export function ImageCropDialog({
     imageSrc: string,
     pixelCrop: Area
   ): Promise<Blob> => {
+    const w = Math.round(pixelCrop.width)
+    const h = Math.round(pixelCrop.height)
+    if (w < 224 || h < 224) {
+      throw new Error("切り取った画像が小さすぎます（224px以上必要）")
+    }
+
     const image = await createImage(imageSrc)
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")!
 
-    canvas.width = pixelCrop.width
-    canvas.height = pixelCrop.height
+    canvas.width = w
+    canvas.height = h
 
-    ctx.drawImage(
-      image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
-      0,
-      0,
-      pixelCrop.width,
-      pixelCrop.height
-    )
+    ctx.fillStyle = "#FFFFFF"
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.drawImage(image, pixelCrop.x, pixelCrop.y, w, h, 0, 0, w, h)
 
     return new Promise((resolve, reject) => {
       canvas.toBlob(
