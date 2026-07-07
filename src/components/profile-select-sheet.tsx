@@ -22,6 +22,7 @@ export interface PlotProfileItem {
 }
 
 interface ProfileSelectSheetProps {
+  variant?: "start" | "change"
   profiles: UserChatProfile[]
   plotProfiles?: PlotProfileItem[]
   open: boolean
@@ -30,6 +31,7 @@ interface ProfileSelectSheetProps {
   onPlotSelect?: (profile: PlotProfileItem) => void
   onCreateProfile?: (profile: UserChatProfile) => void
   loading?: boolean
+  initialSelectedId?: string
 }
 
 function validateImageDimensions(file: File): Promise<boolean> {
@@ -47,10 +49,12 @@ function CreateProfileSheet({
   open,
   onOpenChange,
   onProfileCreated,
+  variant,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onProfileCreated: (profile: UserChatProfile) => Promise<void>
+  variant: "start" | "change"
 }) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [name, setName] = useState("")
@@ -192,7 +196,7 @@ function CreateProfileSheet({
           onClick={handleCreate}
         >
           {saving && <Spinner className="mr-1.5 size-4" />}
-          この名前で開始
+          {variant === "change" ? "作成して変更" : "この名前で開始"}
         </Button>
       </div>
 
@@ -224,6 +228,7 @@ function CreateProfileSheet({
 }
 
 export function ProfileSelectSheet({
+  variant = "start",
   profiles,
   plotProfiles,
   open,
@@ -232,17 +237,24 @@ export function ProfileSelectSheet({
   onPlotSelect,
   onCreateProfile,
   loading,
+  initialSelectedId,
 }: ProfileSelectSheetProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
 
-  if (open && selectedId === null) {
-    const def = profiles.find((p) => p.selected || p.isDefault)
-    const id = def?.id || profiles[0]?.id || plotProfiles?.[0]?.id || null
-    if (id) setSelectedId(id)
-  }
+  useEffect(() => {
+    if (open) {
+      const id =
+        initialSelectedId ||
+        profiles.find((p) => p.selected || p.isDefault)?.id ||
+        profiles[0]?.id ||
+        plotProfiles?.[0]?.id ||
+        null
+      setSelectedId(id)
+    }
+  }, [open, initialSelectedId, profiles, plotProfiles])
 
   const findSelected = () => {
     const userProfile = profiles.find((p) => p.id === selectedId)
@@ -277,7 +289,9 @@ export function ProfileSelectSheet({
   const content = (
     <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
-        <h2 className="text-lg font-semibold">プロフィールを選択</h2>
+        <h2 className="text-lg font-semibold">
+          {variant === "change" ? "プロフィールを変更" : "プロフィールを選択"}
+        </h2>
       </div>
 
       <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain px-5">
@@ -438,11 +452,12 @@ export function ProfileSelectSheet({
           onClick={handleConfirm}
         >
           {confirming && <Spinner className="mr-1.5 size-4" />}
-          この名前で開始
+          {variant === "change" ? "このプロフィールに変更" : "この名前で開始"}
         </Button>
       </div>
 
       <CreateProfileSheet
+        variant={variant}
         open={showCreate}
         onOpenChange={setShowCreate}
         onProfileCreated={handleProfileCreated}
@@ -454,7 +469,7 @@ export function ProfileSelectSheet({
     <ResponsiveDialog
       open={open}
       onOpenChange={(v) => onOpenChange?.(v)}
-      title="プロフィールを選択"
+      title={variant === "change" ? "プロフィールを変更" : "プロフィールを選択"}
       desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh]"
     >

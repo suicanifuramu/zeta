@@ -1,12 +1,10 @@
 import { ProfileSelectSheet } from "@/components/profile-select-sheet"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { CharacterDetailSheet } from "@/components/character-detail-sheet"
-import { MyProfileSheet } from "@/components/my-profile-sheet"
 import type { UserChatProfile, Character, PlotDetailResponse } from "@/lib/types"
 import type { PlotProfileItem } from "@/components/profile-select-sheet"
 
 interface ChatOverlaysProps {
-  roomId: string
   plotId: string
   profileSheetOpen: boolean
   setProfileSheetOpen: (v: boolean) => void
@@ -22,13 +20,18 @@ interface ChatOverlaysProps {
   selectedCharacter: Character | null
   characterDetailOpen: boolean
   setCharacterDetailOpen: (v: boolean) => void
-  myProfileSheetOpen: boolean
-  setMyProfileSheetOpen: (v: boolean) => void
-  myProfileKeyRef: React.RefObject<number>
+  changeProfileSheetOpen: boolean
+  setChangeProfileSheetOpen: (v: boolean) => void
+  changeProfileList: UserChatProfile[]
+  changePlotProfiles: PlotProfileItem[]
+  changeProfileLoading: boolean
+  changeProfileInitialId: string | null
+  handleChangeProfileSelect: (profile: UserChatProfile) => Promise<void>
+  handleChangePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
+  handleCreateChangeProfile: (profile: UserChatProfile) => Promise<void>
 }
 
 export function ChatOverlays({
-  roomId,
   plotId,
   profileSheetOpen,
   setProfileSheetOpen,
@@ -44,9 +47,15 @@ export function ChatOverlays({
   selectedCharacter,
   characterDetailOpen,
   setCharacterDetailOpen,
-  myProfileSheetOpen,
-  setMyProfileSheetOpen,
-  myProfileKeyRef,
+  changeProfileSheetOpen,
+  setChangeProfileSheetOpen,
+  changeProfileList,
+  changePlotProfiles,
+  changeProfileLoading,
+  changeProfileInitialId,
+  handleChangeProfileSelect,
+  handleChangePlotProfileSelect,
+  handleCreateChangeProfile,
 }: ChatOverlaysProps) {
   return (
     <>
@@ -61,6 +70,19 @@ export function ChatOverlays({
         loading={profileLoading}
       />
 
+      <ProfileSelectSheet
+        variant="change"
+        profiles={changeProfileList}
+        plotProfiles={changePlotProfiles}
+        open={changeProfileSheetOpen}
+        onOpenChange={setChangeProfileSheetOpen}
+        onSelect={handleChangeProfileSelect}
+        onPlotSelect={handleChangePlotProfileSelect}
+        onCreateProfile={handleCreateChangeProfile}
+        loading={changeProfileLoading}
+        initialSelectedId={changeProfileInitialId || undefined}
+      />
+
       <PlotDetailDialog
         plot={plotDetailData}
         open={plotDetailOpen}
@@ -72,14 +94,6 @@ export function ChatOverlays({
         plotId={plotId}
         open={characterDetailOpen}
         onOpenChange={setCharacterDetailOpen}
-      />
-
-      <MyProfileSheet
-        key={`my-profile-${myProfileKeyRef.current}`}
-        roomId={roomId}
-        plotId={plotId}
-        open={myProfileSheetOpen}
-        onOpenChange={setMyProfileSheetOpen}
       />
     </>
   )

@@ -41,15 +41,21 @@ export function ChatPage() {
     characterDetailOpen,
     setCharacterDetailOpen,
     selectedCharacter,
-    myProfileSheetOpen,
-    setMyProfileSheetOpen,
-    myProfileKeyRef,
+    changeProfileSheetOpen,
+    setChangeProfileSheetOpen,
+    changeProfileList,
+    changePlotProfiles,
+    changeProfileLoading,
+    changeProfileInitialId,
     exitConfirmOpen,
     setExitConfirmOpen,
     resetConfirmOpen,
     setResetConfirmOpen,
     handleAvatarTap,
     handleUserMessageTap,
+    handleChangeProfileSelect,
+    handleChangePlotProfileSelect,
+    handleCreateChangeProfile,
     handleHeaderClick,
   } = useChatDialogs({ roomId, plotId, setPlotId, characters })
   const { releaseBodyLock } = useChatBodyLock()
@@ -267,7 +273,6 @@ export function ChatPage() {
       />
 
       <ChatOverlays
-        roomId={roomId || ""}
         plotId={plotId}
         profileSheetOpen={profileSheetOpen}
         setProfileSheetOpen={setProfileSheetOpen}
@@ -283,9 +288,15 @@ export function ChatPage() {
         selectedCharacter={selectedCharacter}
         characterDetailOpen={characterDetailOpen}
         setCharacterDetailOpen={setCharacterDetailOpen}
-        myProfileSheetOpen={myProfileSheetOpen}
-        setMyProfileSheetOpen={setMyProfileSheetOpen}
-        myProfileKeyRef={myProfileKeyRef}
+        changeProfileSheetOpen={changeProfileSheetOpen}
+        setChangeProfileSheetOpen={setChangeProfileSheetOpen}
+        changeProfileList={changeProfileList}
+        changePlotProfiles={changePlotProfiles}
+        changeProfileLoading={changeProfileLoading}
+        changeProfileInitialId={changeProfileInitialId}
+        handleChangeProfileSelect={handleChangeProfileSelect}
+        handleChangePlotProfileSelect={handleChangePlotProfileSelect}
+        handleCreateChangeProfile={handleCreateChangeProfile}
       />
     </div>
   )
