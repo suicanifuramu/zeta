@@ -46,7 +46,7 @@ export function MyProfileSheet({
         }
       })
       .catch(() => {
-        if (!cancelled) return
+        if (cancelled) return
         return getSelectedUserPersona(plotId, roomId)
           .then((data) => {
             if (!cancelled) {
