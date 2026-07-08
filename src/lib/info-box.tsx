@@ -19,7 +19,9 @@ export interface RenderContentItemCtx {
   charAvatars: Record<string, string>
   /** When true, the user's taps in delete mode are disabled. */
   deleteMode: boolean
-  /** Tapping a USER (right-aligned) bubble opens the message edit flow. */
+  /** When true, long-press on a USER bubble is disabled while streaming. */
+  streaming: boolean
+  /** Long-pressing a USER (right-aligned) bubble opens the profile-change sheet. */
   onUserMessageTap: () => void
   /** Tapping a character avatar opens their detail sheet. */
   onAvatarTap: (characterName: string) => void
@@ -74,7 +76,9 @@ export function renderContentItem(
           ctx.onAvatarTap(c.speakerName)
         }
       }}
-      onUserMessageTap={ctx.deleteMode ? undefined : ctx.onUserMessageTap}
+      onUserMessageTap={
+        ctx.deleteMode || ctx.streaming ? undefined : ctx.onUserMessageTap
+      }
     />
   )
 }

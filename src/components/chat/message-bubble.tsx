@@ -2,6 +2,7 @@ import { memo } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { cn } from "@/lib/utils"
+import { useLongPress } from "@/hooks/use-long-press"
 import type { ContentItem } from "@/lib/types"
 
 function formatMessageText(text: string) {
@@ -39,6 +40,7 @@ export const MessageBubble = memo(function MessageBubble({
   onUserMessageTap,
 }: MessageBubbleProps) {
   const pos = (content.position as string) || "LEFT"
+  const longPressHandlers = useLongPress(onUserMessageTap ?? (() => {}))
   if (pos === "NARRATOR") {
     return (
       <div className="mx-auto my-2 max-w-md rounded-lg bg-muted/50 px-4 py-2 text-center text-sm whitespace-pre-wrap text-muted-foreground italic">
@@ -70,7 +72,7 @@ export const MessageBubble = memo(function MessageBubble({
             ? "cursor-pointer bg-primary text-primary-foreground"
             : "bg-secondary"
         )}
-        onClick={isRight ? onUserMessageTap : undefined}
+        {...(isRight && onUserMessageTap ? longPressHandlers : {})}
       >
         {!isRight && content.speakerName && (
           <p className="mb-1 text-xs font-medium text-muted-foreground">

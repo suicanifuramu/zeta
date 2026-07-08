@@ -222,7 +222,10 @@ export function ChatPage() {
         showScrollBottom={showScrollBottom}
         onSmoothScrollToBottom={smoothScrollToBottom}
         onAvatarTap={handleAvatarTap}
-        onUserMessageTap={handleUserMessageTap}
+        onUserMessageTap={() => {
+          void handleUserMessageTap()
+        }}
+        streaming={typewriterContents !== null || isRegenerating}
         onRegen={handleRegen}
         onSwitchCandidate={handleSwitchCandidate}
         onEditMessage={handleEditMessage}

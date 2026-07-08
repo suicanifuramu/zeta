@@ -33,6 +33,7 @@ interface MessageListProps {
     key: number
   }
   showScrollBottom: boolean
+  streaming: boolean
   onSmoothScrollToBottom: () => void
   onAvatarTap: (characterName: string) => void
   onUserMessageTap: () => void
@@ -58,6 +59,7 @@ export const MessageList = memo(function MessageList({
   candidatesCache,
   lastSwipeDirection,
   showScrollBottom,
+  streaming,
   onSmoothScrollToBottom,
   onAvatarTap,
   onUserMessageTap,
@@ -228,6 +230,7 @@ export const MessageList = memo(function MessageList({
               renderContentItem(c, "regen-", ci, {
                 charAvatars,
                 deleteMode,
+                streaming,
                 onUserMessageTap,
                 onAvatarTap,
                 streamMode: true,
@@ -258,6 +261,7 @@ export const MessageList = memo(function MessageList({
                 renderContentItem(c, "", ci, {
                   charAvatars,
                   deleteMode,
+                  streaming,
                   onUserMessageTap,
                   onAvatarTap,
                   streamMode: false,
@@ -342,6 +346,7 @@ export const MessageList = memo(function MessageList({
   }, [
     messages,
     deleteMode,
+    streaming,
     selectedMsgId,
     regenMsgId,
     typewriterRegenContents,
@@ -399,6 +404,7 @@ export const MessageList = memo(function MessageList({
                   renderContentItem(c, "stream-", ci, {
                     charAvatars,
                     deleteMode,
+                    streaming,
                     onUserMessageTap,
                     onAvatarTap,
                     streamMode: true,
