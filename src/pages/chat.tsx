@@ -150,6 +150,7 @@ export function ChatPage() {
 
   const typewriterContents = useTypewriter(streamContents)
   const typewriterRegenContents = useTypewriter(regenContents) ?? []
+  const isRegenerating = regenMsgId !== null
   const {
     inputValue,
     setInputValue,
@@ -162,6 +163,7 @@ export function ChatPage() {
   } = useChatInput({
     roomId,
     sending,
+    regenerating: isRegenerating,
     sendChatMessage,
     scrollToBottom,
     clearRecItems,
@@ -254,7 +256,7 @@ export function ChatPage() {
         ref={inputRef}
         inputValue={inputValue}
         onInputChange={setInputValue}
-        sending={sending}
+        sending={sending || isRegenerating}
         recVisible={recVisible}
         onToggleRecommend={() => {
           setRecVisible((v) => !v)

@@ -4,6 +4,7 @@ import type { SendMessageOptions } from "./use-chat-messages"
 export interface UseChatInputDeps {
   roomId: string | undefined
   sending: boolean
+  regenerating: boolean
   sendChatMessage: (options: SendMessageOptions) => Promise<void>
   scrollToBottom: () => void
   clearRecItems: () => void
@@ -27,6 +28,7 @@ export function useChatInput(deps: UseChatInputDeps): UseChatInputReturn {
   const {
     roomId,
     sending,
+    regenerating,
     sendChatMessage,
     scrollToBottom,
     clearRecItems,
@@ -43,7 +45,7 @@ export function useChatInput(deps: UseChatInputDeps): UseChatInputReturn {
 
   const sendMessage = useCallback(async () => {
     const text = inputValue.trim()
-    if (sending || !roomId) return
+    if (sending || regenerating || !roomId) return
 
     if (editingMsg) {
       await sendChatMessage({ text, editing: editingMsg })
@@ -67,6 +69,7 @@ export function useChatInput(deps: UseChatInputDeps): UseChatInputReturn {
   }, [
     inputValue,
     sending,
+    regenerating,
     roomId,
     editingMsg,
     sendChatMessage,
