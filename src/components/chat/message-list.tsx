@@ -385,7 +385,7 @@ export const MessageList = memo(function MessageList({
             ))}
           </div>
         ) : (
-          <div aria-live="polite" className="px-4 py-3">
+          <div aria-live="polite" className="min-w-0 overflow-x-hidden px-4 py-3">
             {/* Top sentinel for loading older messages */}
             <div ref={topSentinelRef} className="flex justify-center py-2">
               {loadingHistory && <Spinner className="size-5" />}

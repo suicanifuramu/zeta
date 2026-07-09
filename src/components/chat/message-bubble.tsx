@@ -43,7 +43,7 @@ export const MessageBubble = memo(function MessageBubble({
   const longPressHandlers = useLongPress(onUserMessageTap ?? (() => {}))
   if (pos === "NARRATOR") {
     return (
-      <div className="mx-auto my-2 max-w-md rounded-lg bg-muted/50 px-4 py-2 text-center text-sm whitespace-pre-wrap text-muted-foreground italic">
+      <div className="mx-auto my-2 max-w-full break-words rounded-lg bg-muted/50 px-4 py-2 text-center text-sm whitespace-pre-wrap text-muted-foreground italic [overflow-wrap:anywhere] sm:max-w-md">
         {formatMessageText(content.text || "")}
       </div>
     )
@@ -52,7 +52,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={cn(
-        "animate-msg-in my-1 flex gap-2",
+        "animate-msg-in my-1 flex min-w-0 gap-2",
         isRight ? "flex-row-reverse" : "flex-row"
       )}
     >
@@ -67,7 +67,7 @@ export const MessageBubble = memo(function MessageBubble({
       )}
       <div
         className={cn(
-          "max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+          "min-w-0 max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
           isRight
             ? "cursor-pointer bg-primary text-primary-foreground"
             : "bg-secondary"
