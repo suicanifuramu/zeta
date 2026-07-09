@@ -119,7 +119,7 @@ export const InfoBox = memo(function InfoBox({
                         <span className="shrink-0 text-sm font-semibold text-amber-600 dark:text-amber-400">
                           {item.label}
                         </span>
-                        <p className="flex-1 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/80">
+                          <p className="flex-1 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-foreground/80">
                           {item.value}
                         </p>
                       </div>

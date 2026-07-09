@@ -43,7 +43,7 @@ export const MessageBubble = memo(function MessageBubble({
   const longPressHandlers = useLongPress(onUserMessageTap ?? (() => {}))
   if (pos === "NARRATOR") {
     return (
-      <div className="mx-auto my-2 max-w-full break-words rounded-lg bg-muted/50 px-4 py-2 text-center text-sm whitespace-pre-wrap text-muted-foreground italic [overflow-wrap:anywhere] sm:max-w-md">
+      <div className="mx-auto my-2 max-w-full rounded-lg bg-muted/50 px-4 py-2 text-center text-sm whitespace-pre-wrap text-muted-foreground italic [overflow-wrap:anywhere] sm:max-w-md">
         {formatMessageText(content.text || "")}
       </div>
     )
@@ -79,7 +79,7 @@ export const MessageBubble = memo(function MessageBubble({
             {content.speakerName}
           </p>
         )}
-        <div className="break-words whitespace-pre-wrap">
+        <div className="[overflow-wrap:anywhere] whitespace-pre-wrap">
           {formatMessageText(content.text || "")}
         </div>
       </div>
