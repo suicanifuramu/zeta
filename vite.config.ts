@@ -20,14 +20,11 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes("node_modules")) {
             if (
-              ["react", "react-dom", "react-router-dom"].some((pkg) =>
-                id.includes(pkg)
+              /node_modules\/(react|react-dom|react-router-dom|scheduler)\//.test(
+                id
               )
             ) {
               return "react-core"
-            }
-            if (id.includes("@radix-ui")) {
-              return "radix-ui"
             }
             return "vendor"
           }
