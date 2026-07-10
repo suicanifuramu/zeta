@@ -18,17 +18,11 @@ export function useChatRecommend(roomId: string | undefined) {
     try {
       if (refresh) await refreshRecommended(roomId)
       const data = await getRecommended(roomId)
-      const rawRec = data.recommendedMessages || []
+      const rawRec = data.recommendedMessages || data.messages || []
       const items: RecItem[] = []
       for (const entry of rawRec) {
         if (Array.isArray(entry.replies)) items.push(...entry.replies)
         else items.push(entry)
-      }
-      // Fallback: use plain messages if no recommendedMessages
-      if (items.length === 0 && data.messages) {
-        for (const entry of data.messages) {
-          items.push(entry)
-        }
       }
       if (items.length === 0 && !refresh) {
         await loadRecommendations(true)

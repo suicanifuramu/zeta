@@ -340,15 +340,21 @@ export interface DeleteMessagesResponse {
 }
 
 // Recommend
-export interface RecommendedResponse {
-  recommendedMessages?: Array<{
-    replies?: Array<{
-      text: string
-      type?: string
-    }>
+export interface RecommendedMessageEntry {
+  replies?: Array<{
+    id?: string
     text?: string
+    content?: string
+    type?: string
   }>
-  messages?: Message[]
+  text?: string
+  content?: string
+}
+
+export interface RecommendedResponse {
+  isAbusing?: boolean
+  recommendedMessages?: RecommendedMessageEntry[]
+  messages?: RecommendedMessageEntry[]
 }
 
 export interface RefreshRecommendedResponse {
