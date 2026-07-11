@@ -318,6 +318,17 @@ export function PlotDetailDialog({
               <div className="flex flex-col gap-2">
                 {introMessages.map(
                   (msg, i) => {
+                    if (msg.type === "image") {
+                      return (
+                        <div key={i} className="overflow-hidden rounded-2xl border border-border">
+                          <CachedImage
+                            src={msg.url}
+                            alt={msg.caption || "イントロ画像"}
+                            className="w-full object-cover"
+                          />
+                        </div>
+                      )
+                    }
                     const isNarrator = msg.senderId === "_NARRATOR_"
                     const char = charMap[msg.senderId]
                     const msgKey = `intro-${i}`

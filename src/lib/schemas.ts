@@ -120,11 +120,22 @@ export const PlotDetailResponseSchema = z.object({
           .object({
             messages: z
               .array(
-                z.object({
-                  senderId: z.string(),
-                  content: z.string(),
-                  position: z.string().nullish(),
-                })
+                z.union([
+                  z.object({
+                    senderId: z.string(),
+                    content: z.string(),
+                    position: z.string().nullish(),
+                    type: z.string().optional(),
+                  }),
+                  z.object({
+                    type: z.literal("image"),
+                    id: z.string(),
+                    url: z.string(),
+                    caption: z.string().nullish(),
+                    aspectRatio: z.number().optional(),
+                    fileName: z.string().nullish(),
+                  }),
+                ])
               ),
           })
           .optional(),

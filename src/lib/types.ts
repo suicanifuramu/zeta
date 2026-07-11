@@ -204,11 +204,23 @@ export interface GenreRankingResponse {
   }>
 }
 
-export interface IntroMessage {
+export interface TextIntroMessage {
+  type?: "text"
   senderId: string
   content: string
-  position: string
+  position?: string
 }
+
+export interface ImageIntroMessage {
+  type: "image"
+  id: string
+  url: string
+  caption?: string
+  aspectRatio?: number
+  fileName?: string
+}
+
+export type IntroMessage = TextIntroMessage | ImageIntroMessage
 
 export interface IntroConversation {
   messages: IntroMessage[]
