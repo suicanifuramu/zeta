@@ -206,7 +206,7 @@ export interface GenreRankingResponse {
 
 export interface TextIntroMessage {
   type?: "text"
-  senderId: string
+  senderId: string | null
   content: string
   position?: string
 }

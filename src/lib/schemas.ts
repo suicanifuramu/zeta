@@ -122,7 +122,7 @@ export const PlotDetailResponseSchema = z.object({
               .array(
                 z.union([
                   z.object({
-                    senderId: z.string(),
+                    senderId: z.string().nullable(),
                     content: z.string(),
                     position: z.string().nullish(),
                     type: z.string().optional(),

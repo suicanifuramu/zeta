@@ -330,7 +330,7 @@ export function PlotDetailDialog({
                       )
                     }
                     const isNarrator = msg.senderId === "_NARRATOR_"
-                    const char = charMap[msg.senderId]
+                    const char = msg.senderId ? charMap[msg.senderId] : undefined
                     const msgKey = `intro-${i}`
                     const isExpanded = expandedIds.has(msgKey)
                     return (
