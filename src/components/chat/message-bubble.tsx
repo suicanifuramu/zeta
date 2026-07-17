@@ -1,29 +1,92 @@
-import { memo } from "react"
+import { memo, type ReactNode } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { cn } from "@/lib/utils"
 import { useLongPress } from "@/hooks/use-long-press"
 import type { ContentItem } from "@/lib/types"
 
+function leftBoundary(text: string, i: number): boolean {
+  if (i === 0) return true
+  const c = text[i - 1]
+  return /\s/.test(c) || '(["\'{( '.includes(c)
+}
+
+function rightBoundary(text: string, after: number): boolean {
+  if (after >= text.length) return true
+  const c = text[after]
+  return /\s/.test(c) || ').,!?;:}\'"-'.includes(c)
+}
+
+type EmNode = { type: "b" | "i" | "bi"; text: string; end: number }
+
+function tryEmphasis(text: string, i: number): EmNode | null {
+  if (!leftBoundary(text, i)) return null
+  let k = 0
+  while (i + k < text.length && text[i + k] === "*" && k < 3) k++
+  const j = i + k
+  if (j >= text.length) return null
+  let search = j
+  while (search < text.length) {
+    const starIdx = text.indexOf("*", search)
+    if (starIdx === -1) break
+    let runLen = 0
+    while (starIdx + runLen < text.length && text[starIdx + runLen] === "*") runLen++
+    if (runLen !== k) {
+      search = starIdx + runLen
+      continue
+    }
+    const content = text.slice(j, starIdx)
+    if (content.length === 0 || content.includes("*") || /^\s|\s$/.test(content)) {
+      search = starIdx + runLen
+      continue
+    }
+    if (!rightBoundary(text, starIdx + runLen)) {
+      search = starIdx + runLen
+      continue
+    }
+    const type = k === 3 ? "bi" : k === 2 ? "b" : "i"
+    return { type, text: content, end: starIdx + runLen }
+  }
+  return null
+}
+
 function formatMessageText(text: string) {
   if (!text) return null
-  const parts = text.split(/(\*\*?[^*]+\*\*?)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <i key={i} className="opacity-80">
-          {part.slice(2, -2)}
-        </i>
-      )
-    } else if (part.startsWith("*") && part.endsWith("*")) {
-      return (
-        <i key={i} className="opacity-80">
-          {part.slice(1, -1)}
-        </i>
-      )
+  const nodes: ReactNode[] = []
+  let buf = ""
+  let i = 0
+  let key = 0
+  while (i < text.length) {
+    if (text[i] === "*") {
+      const em = tryEmphasis(text, i)
+      if (em) {
+        if (buf) {
+          nodes.push(buf)
+          buf = ""
+        }
+        if (em.type === "b") {
+          nodes.push(<b key={key++}>{em.text}</b>)
+        } else if (em.type === "i") {
+          nodes.push(
+            <i key={key++} className="opacity-80">
+              {em.text}
+            </i>
+          )
+        } else {
+          nodes.push(
+            <i key={key++} className="opacity-80">
+              <b>{em.text}</b>
+            </i>
+          )
+        }
+        i = em.end
+        continue
+      }
     }
-    return part
-  })
+    buf += text[i++]
+  }
+  if (buf) nodes.push(buf)
+  return nodes
 }
 
 interface MessageBubbleProps {
