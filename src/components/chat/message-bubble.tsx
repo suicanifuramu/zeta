@@ -5,16 +5,18 @@ import { cn } from "@/lib/utils"
 import { useLongPress } from "@/hooks/use-long-press"
 import type { ContentItem } from "@/lib/types"
 
+function isWordChar(c: string | undefined): boolean {
+  return c !== undefined && /[A-Za-z0-9]/.test(c)
+}
+
 function leftBoundary(text: string, i: number): boolean {
   if (i === 0) return true
-  const c = text[i - 1]
-  return /\s/.test(c) || '(["\'{( '.includes(c)
+  return !isWordChar(text[i - 1])
 }
 
 function rightBoundary(text: string, after: number): boolean {
   if (after >= text.length) return true
-  const c = text[after]
-  return /\s/.test(c) || ').,!?;:}\'"-'.includes(c)
+  return !isWordChar(text[after])
 }
 
 type EmNode = { type: "b" | "i" | "bi"; text: string; end: number }
