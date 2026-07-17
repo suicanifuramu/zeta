@@ -60,6 +60,11 @@ export function useChatCandidates(
   // Regen: generate a new candidate via SSE, shown inline at the message position
   async function handleRegen(msgId: string) {
     if (!roomId) return
+    const el = document.getElementById(`msg-swipe-${msgId}`)
+    if (el) {
+      el.style.transition = "none"
+      el.style.transform = "translateX(0px)"
+    }
     swipeKeyRef.current += 1
     setLastSwipeDirection({
       id: msgId,
