@@ -5,7 +5,7 @@ export interface UseChatInputDeps {
   roomId: string | undefined
   sending: boolean
   regenerating: boolean
-  sendChatMessage: (options: SendMessageOptions) => Promise<void>
+  sendChatMessage: (options: SendMessageOptions) => Promise<boolean>
   scrollToBottom: () => void
   clearRecItems: () => void
   setRecVisible: React.Dispatch<React.SetStateAction<boolean>>
@@ -48,21 +48,27 @@ export function useChatInput(deps: UseChatInputDeps): UseChatInputReturn {
     if (sending || regenerating || !roomId) return
 
     if (editingMsg) {
-      await sendChatMessage({ text, editing: editingMsg })
-      setEditingMsg(null)
-      setInputValue("")
-      setRecVisible(false)
-      clearRecItems()
-      inputRef.current?.focus({ preventScroll: true })
+      const ok = await sendChatMessage({ text, editing: editingMsg })
+      if (ok) {
+        setEditingMsg(null)
+        setInputValue("")
+        setRecVisible(false)
+        clearRecItems()
+        inputRef.current?.focus({ preventScroll: true })
+      }
       return
     }
 
+    const raw = inputValue
     setInputValue("")
     inputRef.current?.focus({ preventScroll: true })
     setRecVisible(false)
     clearRecItems()
 
-    await sendChatMessage({ text })
+    const ok = await sendChatMessage({ text })
+    if (!ok) {
+      setInputValue(raw)
+    }
     if (document.activeElement === inputRef.current) {
       inputRef.current?.focus({ preventScroll: true })
     }

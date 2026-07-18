@@ -75,13 +75,20 @@ export function useChatCandidates(
     setRegenContents([])
     try {
       let accumulated: ContentItem[] = []
+      let streamErrored = false
       await regenMessageStream(
         roomId,
         msgId,
         (event) => {
           const e = event as {
+            event?: string
+            type?: string
             chunkMessage?: { contents?: ContentItem[] }
             replyMessage?: RuntimeMessage
+          }
+          if (e.event === "ERROR" || e.type === "CHAT_ERROR") {
+            streamErrored = true
+            return
           }
           if (e.chunkMessage?.contents) accumulated = e.chunkMessage.contents
           if (e.replyMessage) {
@@ -90,6 +97,12 @@ export function useChatCandidates(
           setRegenContents([...accumulated])
         },
         async () => {
+          if (streamErrored) {
+            toast.error("再生成に失敗しました")
+            setRegenMsgId(null)
+            setRegenContents([])
+            return
+          }
           // After stream ends, fetch the candidates list and select the newest one
           try {
             const candData = await getCandidates(roomId, msgId)

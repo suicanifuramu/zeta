@@ -33,7 +33,7 @@ export interface UseChatMessagesReturn {
   setMessages: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
   loadInitialMessages: () => Promise<void>
   loadOlderMessagesRef: React.MutableRefObject<(() => Promise<void>) | undefined>
-  sendMessage: (options: SendMessageOptions) => Promise<void>
+  sendMessage: (options: SendMessageOptions) => Promise<boolean>
 }
 
 export function useChatMessages(
@@ -135,10 +135,11 @@ export function useChatMessages(
   const sendMessage = useCallback(
     async (options: SendMessageOptions) => {
       const { text, editing } = options
-      if (sending || !roomId) return
+      if (sending || !roomId) return false
       setSending(true)
 
       if (editing) {
+        let editFailed = false
         try {
           await editMessage(roomId, editing.id, editing.candidateId, text)
           const data = await getMessages(roomId, 50)
@@ -150,15 +151,17 @@ export function useChatMessages(
           toast.error(
             `編集失敗: ${e instanceof Error ? e.message : String(e)}`
           )
+          editFailed = true
         } finally {
           setSending(false)
         }
-        return
+        return !editFailed
       }
 
       const isEmptyMessage = !text
 
       // Optimistic user message (only for non-empty messages)
+      let tempMsgId: string | null = null
       if (!isEmptyMessage) {
         const tempUserMsg: RuntimeMessage = {
           id: `temp-user-${Date.now()}`,
@@ -168,6 +171,7 @@ export function useChatMessages(
           sender: { type: "USER" },
           contents: [{ position: "RIGHT", text }],
         }
+        tempMsgId = tempUserMsg.id
         setMessages((prev) => [...prev, tempUserMsg])
       }
       setStreamContents([])
@@ -176,13 +180,21 @@ export function useChatMessages(
       try {
         let finalMessage: RuntimeMessage | null = null
         let accumulated: ContentItem[] = []
+        let streamErrored = false
+        let failed = false
         await sendMessageStream(
           roomId,
           text,
           (event) => {
             const e = event as {
+              event?: string
+              type?: string
               chunkMessage?: { contents?: ContentItem[] }
               replyMessage?: RuntimeMessage
+            }
+            if (e.event === "ERROR" || e.type === "CHAT_ERROR") {
+              streamErrored = true
+              return
             }
             if (e.chunkMessage?.contents)
               accumulated = e.chunkMessage.contents
@@ -195,6 +207,14 @@ export function useChatMessages(
           },
           async () => {
             setStreamContents(null)
+            if (streamErrored) {
+              toast.error("送信に失敗しました")
+              failed = true
+              if (tempMsgId) {
+                setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+              }
+              return
+            }
             if (finalMessage) {
               const msg = finalMessage
               setMessages((prev) => [...prev, msg])
@@ -206,11 +226,16 @@ export function useChatMessages(
             setTimeout(() => chatRefs.current.scrollToBottom?.(), 50)
           }
         )
+        return !failed
       } catch (e: unknown) {
         toast.error(
           `送信失敗: ${e instanceof Error ? e.message : String(e)}`
         )
         setStreamContents(null)
+        if (tempMsgId) {
+          setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+        }
+        return false
       } finally {
         setSending(false)
       }
