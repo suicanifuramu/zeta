@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { getRooms } from "@/lib/api"
+import { formatMessageText } from "@/lib/format-message"
 import type { Room, Message } from "@/lib/types"
 
 function timeAgo(dateStr: string) {
@@ -24,7 +25,7 @@ function getPreview(lastMessage: Message | undefined) {
   if (!contents?.length) return ""
   const c = contents[0]
   const name = c.speakerName || ""
-  const text = (c.text || "").slice(0, 50).replace(/\n/g, " ")
+  const text = (c.text || "").replace(/\n/g, " ")
   return name ? `${name}: ${text}` : text
 }
 
@@ -103,7 +104,7 @@ export function RoomsPage() {
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {preview}
+                        {formatMessageText(preview)}
                       </p>
                     </div>
                     {(room.unreadCount || 0) > 0 && (

@@ -135,6 +135,36 @@ export const PlotDetailResponseSchema = z.object({
                     aspectRatio: z.number().optional(),
                     fileName: z.string().nullish(),
                   }),
+                  z.object({
+                    type: z.literal("infoBox"),
+                    infoBox: z
+                      .object({
+                        scenes: z
+                          .array(
+                            z.object({
+                              type: z.string().nullish(),
+                              value: z.string().nullish(),
+                            })
+                          )
+                          .optional(),
+                        characters: z
+                          .array(
+                            z.object({
+                              characterId: z.string().nullish(),
+                              items: z
+                                .array(
+                                  z.object({
+                                    type: z.string().nullish(),
+                                    value: z.string().nullish(),
+                                  })
+                                )
+                                .optional(),
+                            })
+                          )
+                          .optional(),
+                      })
+                      .optional(),
+                  }),
                 ])
               ),
           })

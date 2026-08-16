@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CachedImage } from "@/components/cached-image"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
+import { formatMessageText } from "@/lib/format-message"
+import { InfoBox } from "@/components/info-box"
 import { getPlot } from "@/lib/api"
 import { stripBackticks } from "@/lib/utils"
 
@@ -25,6 +27,15 @@ function formatCount(n: number | undefined) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
+}
+
+const INFO_BOX_LABELS: Record<string, string> = {
+  CONDITION: "❤️🩹 状態",
+  INNER_THOUGHT: "💭 本音",
+  MOOD: "🎭 気分",
+  OBJECTIVE: "🎯 目的",
+  APPEARANCE: "👀 外見",
+  HISTORY: "📜 経歴",
 }
 
 export function PlotDetailDialog({
@@ -109,6 +120,10 @@ export function PlotDetailDialog({
   const charMap: Record<string, Character> = {}
   for (const c of characters) {
     if (c.id) charMap[c.id] = c
+  }
+  const charAvatarsFromMap: Record<string, string> = {}
+  for (const c of characters) {
+    if (c.name && c.imageUrl) charAvatarsFromMap[c.name] = c.imageUrl
   }
 
   const handleStart = async () => {
@@ -332,6 +347,36 @@ export function PlotDetailDialog({
                         </div>
                       )
                     }
+                    if (msg.type === "infoBox" && msg.infoBox) {
+                      const infoBoxCharacters = (msg.infoBox.characters || [])
+                        .map((c) => {
+                          const name = c.characterId
+                            ? charMap[c.characterId]?.name || ""
+                            : ""
+                          const items = (c.items || [])
+                            .filter((item) => item.value)
+                            .map((item) => ({
+                              label: INFO_BOX_LABELS[item.type || ""] || item.type || "詳細",
+                              value: item.value || "",
+                            }))
+                          if (!name || items.length === 0) return null
+                          return { name, items }
+                        })
+                        .filter(Boolean) as Array<{ name: string; items: { label: string; value: string }[] }>
+                      if (infoBoxCharacters.length === 0) return null
+                      return (
+                        <div key={i}>
+                          <InfoBox
+                            data={{
+                              type: "INFO_BOX",
+                              scenes: msg.infoBox.scenes || [],
+                              characters: infoBoxCharacters,
+                            }}
+                            charAvatars={charAvatarsFromMap}
+                          />
+                        </div>
+                      )
+                    }
                     const isNarrator = msg.senderId === "_NARRATOR_"
                     const char = msg.senderId ? charMap[msg.senderId] : undefined
                     const msgKey = `intro-${i}`
@@ -346,7 +391,7 @@ export function PlotDetailDialog({
                           <p
                             className={`text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground/70 italic ${isExpanded ? "" : "line-clamp-3"}`}
                           >
-                            {msg.content}
+                            {formatMessageText(msg.content)}
                           </p>
                         ) : (
                           <>
@@ -368,7 +413,7 @@ export function PlotDetailDialog({
                                 <p
                                   className={`text-xs leading-relaxed whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-3"}`}
                                 >
-                                  {msg.content}
+                                  {formatMessageText(msg.content)}
                                 </p>
                               </div>
                             </div>

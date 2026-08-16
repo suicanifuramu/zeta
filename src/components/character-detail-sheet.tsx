@@ -90,9 +90,13 @@ export function CharacterDetailSheet({
     <>
       <div className="flex shrink-0 items-center justify-between bg-popover/95 px-4 py-3 backdrop-blur">
         <div className="flex-1" />
-        <span className="text-center text-base font-medium">
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="cursor-pointer rounded-lg px-3 py-1 -mx-3 text-center text-base font-medium transition-colors hover:bg-muted"
+        >
           {character.name}
-        </span>
+        </button>
         <Button
           variant="ghost"
           size="icon"

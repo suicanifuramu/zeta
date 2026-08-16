@@ -220,7 +220,18 @@ export interface ImageIntroMessage {
   fileName?: string
 }
 
-export type IntroMessage = TextIntroMessage | ImageIntroMessage
+export interface InfoBoxIntroMessage {
+  type: "infoBox"
+  infoBox?: {
+    scenes?: Array<{ type?: string; value?: string }>
+    characters?: Array<{
+      characterId?: string
+      items?: Array<{ type?: string; value?: string }>
+    }>
+  }
+}
+
+export type IntroMessage = TextIntroMessage | ImageIntroMessage | InfoBoxIntroMessage
 
 export interface IntroConversation {
   messages: IntroMessage[]
