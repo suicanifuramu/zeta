@@ -43,6 +43,7 @@ export interface UseChatProfileReturn {
   handleProfileSelect: (profile: UserChatProfile) => Promise<void>
   handlePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateProfile: (profile: UserChatProfile) => Promise<void>
+  handleProfileUpdated: () => Promise<void>
 }
 
 export function useChatProfile(
@@ -179,6 +180,19 @@ export function useChatProfile(
     [handleProfileSelect]
   )
 
+  const handleProfileUpdated = useCallback(async () => {
+    if (!roomId) return
+    try {
+      const profData = await getUserChatProfiles(20, {
+        plotId: plotId || undefined,
+        roomId,
+      })
+      setProfileList(profData.userChatProfiles || [])
+    } catch {
+      // ignore — profile list will refresh on next open
+    }
+  }, [roomId, plotId])
+
   return {
     needsInit,
     setNeedsInit,
@@ -194,5 +208,6 @@ export function useChatProfile(
     handleProfileSelect,
     handlePlotProfileSelect,
     handleCreateProfile,
+    handleProfileUpdated,
   }
 }

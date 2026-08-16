@@ -45,6 +45,7 @@ export interface UseChatDialogsReturn {
   handleChangeProfileSelect: (profile: UserChatProfile) => Promise<void>
   handleChangePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateChangeProfile: (profile: UserChatProfile) => Promise<void>
+  handleProfileUpdated: () => Promise<void>
   handleHeaderClick: () => Promise<void>
 }
 
@@ -194,6 +195,19 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     [handleChangeProfileSelect]
   )
 
+  const handleProfileUpdated = useCallback(async () => {
+    if (!roomId) return
+    try {
+      const profData = await getUserChatProfiles(20, {
+        plotId: plotId || undefined,
+        roomId,
+      })
+      setChangeProfileList(profData.userChatProfiles || [])
+    } catch {
+      // ignore — profile list will refresh on next open
+    }
+  }, [roomId, plotId])
+
   // Latest-ref mirror of plotDetailData so handleHeaderClick stays referentially
   // stable across renders where plotDetailData's identity changes (after
   // initial fetch). Read plotDetailDataRef.current inside the callback for
@@ -252,6 +266,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     handleChangeProfileSelect,
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,
+    handleProfileUpdated,
     handleHeaderClick,
   }
 }

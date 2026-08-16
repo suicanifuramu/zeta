@@ -56,6 +56,7 @@ export function ChatPage() {
     handleChangeProfileSelect,
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,
+    handleProfileUpdated: handleChangeProfileUpdated,
     handleHeaderClick,
   } = useChatDialogs({ roomId, plotId, setPlotId, characters })
   const { releaseBodyLock } = useChatBodyLock()
@@ -89,6 +90,7 @@ export function ChatPage() {
     handleProfileSelect,
     handlePlotProfileSelect,
     handleCreateProfile,
+    handleProfileUpdated,
   } = useChatProfile({
     roomId,
     plotId,
@@ -299,6 +301,8 @@ export function ChatPage() {
         handleChangeProfileSelect={handleChangeProfileSelect}
         handleChangePlotProfileSelect={handleChangePlotProfileSelect}
         handleCreateChangeProfile={handleCreateChangeProfile}
+        handleProfileUpdated={handleProfileUpdated}
+        handleChangeProfileUpdated={handleChangeProfileUpdated}
       />
     </div>
   )

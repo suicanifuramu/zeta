@@ -29,6 +29,8 @@ interface ChatOverlaysProps {
   handleChangeProfileSelect: (profile: UserChatProfile) => Promise<void>
   handleChangePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateChangeProfile: (profile: UserChatProfile) => Promise<void>
+  handleProfileUpdated: () => Promise<void>
+  handleChangeProfileUpdated: () => Promise<void>
 }
 
 export function ChatOverlays({
@@ -56,6 +58,8 @@ export function ChatOverlays({
   handleChangeProfileSelect,
   handleChangePlotProfileSelect,
   handleCreateChangeProfile,
+  handleProfileUpdated,
+  handleChangeProfileUpdated,
 }: ChatOverlaysProps) {
   return (
     <>
@@ -67,6 +71,7 @@ export function ChatOverlays({
         onSelect={handleProfileSelect}
         onPlotSelect={handlePlotProfileSelect}
         onCreateProfile={handleCreateProfile}
+        onProfileUpdated={handleProfileUpdated}
         loading={profileLoading}
       />
 
@@ -79,6 +84,7 @@ export function ChatOverlays({
         onSelect={handleChangeProfileSelect}
         onPlotSelect={handleChangePlotProfileSelect}
         onCreateProfile={handleCreateChangeProfile}
+        onProfileUpdated={handleChangeProfileUpdated}
         loading={changeProfileLoading}
         initialSelectedId={changeProfileInitialId || undefined}
       />

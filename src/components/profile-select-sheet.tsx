@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Camera, Check, Plus } from "lucide-react"
+import { Camera, Check, Pencil, Plus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { UserChatProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,11 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { ImageCropDialog } from "@/components/image-crop-dialog"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { createUserChatProfile, checkUserChatProfileAbuse } from "@/lib/api"
+import {
+  createUserChatProfile,
+  updateUserChatProfile,
+  checkUserChatProfileAbuse,
+} from "@/lib/api"
 import { toast } from "sonner"
 
 export interface PlotProfileItem {
@@ -30,6 +34,7 @@ interface ProfileSelectSheetProps {
   onSelect?: (profile: UserChatProfile) => void
   onPlotSelect?: (profile: PlotProfileItem) => void
   onCreateProfile?: (profile: UserChatProfile) => void
+  onProfileUpdated?: (profile: UserChatProfile) => Promise<void>
   loading?: boolean
   initialSelectedId?: string
 }
@@ -49,11 +54,15 @@ function CreateProfileSheet({
   open,
   onOpenChange,
   onProfileCreated,
+  onProfileUpdated,
+  editProfile,
   variant,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onProfileCreated: (profile: UserChatProfile) => Promise<void>
+  onProfileCreated?: (profile: UserChatProfile) => Promise<void>
+  onProfileUpdated?: (profile: UserChatProfile) => Promise<void>
+  editProfile?: UserChatProfile | null
   variant: "start" | "change"
 }) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -64,6 +73,15 @@ function CreateProfileSheet({
   const [cropOpen, setCropOpen] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isEditing = !!editProfile
+
+  useEffect(() => {
+    if (editProfile) {
+      setName(editProfile.name || "")
+      setDescription(editProfile.description || "")
+      setProfileImageUrl(editProfile.profileImageUrl || "")
+    }
+  }, [editProfile])
 
   useEffect(() => {
     if (!open) {
@@ -95,7 +113,7 @@ function CreateProfileSheet({
     setCropOpen(false)
   }
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast.error("名前を入力してください")
       return
@@ -111,15 +129,30 @@ function CreateProfileSheet({
         setSaving(false)
         return
       }
-      const newProfile = await createUserChatProfile({
-        name: name.trim(),
-        description: description.trim(),
-        profileImageUrl: profileImageUrl || undefined,
-      })
-      await onProfileCreated(newProfile)
+      if (isEditing && editProfile) {
+        await updateUserChatProfile(editProfile.id, {
+          name: name.trim(),
+          description: description.trim(),
+          profileImageUrl: profileImageUrl || undefined,
+        })
+        toast.success("プロフィールを更新しました")
+        await onProfileUpdated?.({
+          ...editProfile,
+          name: name.trim(),
+          description: description.trim(),
+          profileImageUrl: profileImageUrl || undefined,
+        })
+      } else {
+        const newProfile = await createUserChatProfile({
+          name: name.trim(),
+          description: description.trim(),
+          profileImageUrl: profileImageUrl || undefined,
+        })
+        await onProfileCreated?.(newProfile)
+      }
     } catch (e: unknown) {
       toast.error(
-        `作成失敗: ${e instanceof Error ? e.message : String(e)}`
+        `${isEditing ? "更新" : "作成"}失敗: ${e instanceof Error ? e.message : String(e)}`
       )
       setSaving(false)
     }
@@ -128,7 +161,9 @@ function CreateProfileSheet({
   const content = (
     <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
-        <h2 className="text-lg font-semibold">新しいプロフィール</h2>
+        <h2 className="text-lg font-semibold">
+          {isEditing ? "プロフィールを編集" : "新しいプロフィール"}
+        </h2>
       </div>
       <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
         <div className="space-y-4 px-5 py-4">
@@ -193,10 +228,10 @@ function CreateProfileSheet({
         <Button
           className="cursor-pointer"
           disabled={saving}
-          onClick={handleCreate}
+          onClick={handleSave}
         >
           {saving && <Spinner className="mr-1.5 size-4" />}
-          {variant === "change" ? "作成して変更" : "この名前で開始"}
+          {isEditing ? "保存" : variant === "change" ? "作成して変更" : "この名前で開始"}
         </Button>
       </div>
 
@@ -218,7 +253,7 @@ function CreateProfileSheet({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="新しいプロフィール"
+      title={isEditing ? "プロフィールを編集" : "新しいプロフィール"}
       desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh]"
     >
@@ -236,6 +271,7 @@ export function ProfileSelectSheet({
   onSelect,
   onPlotSelect,
   onCreateProfile,
+  onProfileUpdated,
   loading,
   initialSelectedId,
 }: ProfileSelectSheetProps) {
@@ -243,6 +279,7 @@ export function ProfileSelectSheet({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<UserChatProfile | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -284,6 +321,11 @@ export function ProfileSelectSheet({
   const handleProfileCreated = async (profile: UserChatProfile) => {
     setShowCreate(false)
     await onCreateProfile?.(profile)
+  }
+
+  const handleProfileUpdated = async (profile: UserChatProfile) => {
+    setEditingProfile(null)
+    await onProfileUpdated?.(profile)
   }
 
   const content = (
@@ -387,9 +429,8 @@ export function ProfileSelectSheet({
               {profiles.map((p) => {
                 const isSelected = p.id === selectedId
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
                     className={cn(
                       "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors",
                       isSelected
@@ -424,10 +465,23 @@ export function ProfileSelectSheet({
                         </p>
                       )}
                     </div>
-                    {isSelected && (
-                      <Check className="mt-1 size-5 shrink-0 text-primary" />
-                    )}
-                  </button>
+                    <div className="flex shrink-0 flex-col items-center gap-1 self-start mt-1">
+                      {isSelected && (
+                        <Check className="size-5 shrink-0 text-primary" />
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`${p.name}を編集`}
+                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingProfile(p)
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 )
               })}
             </>
@@ -461,6 +515,15 @@ export function ProfileSelectSheet({
         open={showCreate}
         onOpenChange={setShowCreate}
         onProfileCreated={handleProfileCreated}
+      />
+      <CreateProfileSheet
+        variant={variant}
+        editProfile={editingProfile}
+        open={!!editingProfile}
+        onOpenChange={(v) => {
+          if (!v) setEditingProfile(null)
+        }}
+        onProfileUpdated={handleProfileUpdated}
       />
     </div>
   )
