@@ -52,7 +52,7 @@ export function ChatPage() {
     resetConfirmOpen,
     setResetConfirmOpen,
     handleAvatarTap,
-    handleUserMessageTap,
+    handleChangeProfile,
     handleChangeProfileSelect,
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,
@@ -200,6 +200,7 @@ export function ChatPage() {
         roomId={roomId}
         onLongPressHandlers={longPressHandlers}
         onHeaderClick={handleHeaderClick}
+        onProfileClick={handleChangeProfile}
         onResetRoom={handleRoomReset}
         releaseBodyLock={releaseBodyLock}
       />
@@ -222,10 +223,6 @@ export function ChatPage() {
         showScrollBottom={showScrollBottom}
         onSmoothScrollToBottom={smoothScrollToBottom}
         onAvatarTap={handleAvatarTap}
-        onUserMessageTap={() => {
-          void handleUserMessageTap()
-        }}
-        streaming={typewriterContents !== null || isRegenerating}
         onRegen={handleRegen}
         onSwitchCandidate={handleSwitchCandidate}
         onEditMessage={handleEditMessage}

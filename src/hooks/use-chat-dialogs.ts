@@ -41,7 +41,7 @@ export interface UseChatDialogsReturn {
   resetConfirmOpen: boolean
   setResetConfirmOpen: React.Dispatch<React.SetStateAction<boolean>>
   handleAvatarTap: (characterName: string) => void
-  handleUserMessageTap: () => Promise<void>
+  handleChangeProfile: () => Promise<void>
   handleChangeProfileSelect: (profile: UserChatProfile) => Promise<void>
   handleChangePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateChangeProfile: (profile: UserChatProfile) => Promise<void>
@@ -82,7 +82,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     [characters]
   )
 
-  const handleUserMessageTap = useCallback(async () => {
+  const handleChangeProfile = useCallback(async () => {
     if (!roomId) return
     setChangeProfileLoading(true)
     setChangeProfileInitialId(null)
@@ -248,7 +248,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     resetConfirmOpen,
     setResetConfirmOpen,
     handleAvatarTap,
-    handleUserMessageTap,
+    handleChangeProfile,
     handleChangeProfileSelect,
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,

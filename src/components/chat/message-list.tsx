@@ -33,10 +33,8 @@ interface MessageListProps {
     key: number
   }
   showScrollBottom: boolean
-  streaming: boolean
   onSmoothScrollToBottom: () => void
   onAvatarTap: (characterName: string) => void
-  onUserMessageTap: () => void
   onRegen: (msgId: string) => void
   onSwitchCandidate: (msgId: string, direction: "prev" | "next") => Promise<boolean>
   onEditMessage: (msgId: string, candidateId: string, text: string) => void
@@ -59,10 +57,8 @@ export const MessageList = memo(function MessageList({
   candidatesCache,
   lastSwipeDirection,
   showScrollBottom,
-  streaming,
   onSmoothScrollToBottom,
   onAvatarTap,
-  onUserMessageTap,
   onRegen,
   onSwitchCandidate,
   onEditMessage,
@@ -229,9 +225,6 @@ export const MessageList = memo(function MessageList({
             typewriterRegenContents.map((c, ci) =>
               renderContentItem(c, "regen-", ci, {
                 charAvatars,
-                deleteMode,
-                streaming,
-                onUserMessageTap,
                 onAvatarTap,
                 streamMode: true,
               })
@@ -260,9 +253,6 @@ export const MessageList = memo(function MessageList({
               {(msg.contents || []).map((c, ci) =>
                 renderContentItem(c, "", ci, {
                   charAvatars,
-                  deleteMode,
-                  streaming,
-                  onUserMessageTap,
                   onAvatarTap,
                   streamMode: false,
                 })
@@ -346,7 +336,6 @@ export const MessageList = memo(function MessageList({
   }, [
     messages,
     deleteMode,
-    streaming,
     selectedMsgId,
     regenMsgId,
     typewriterRegenContents,
@@ -354,7 +343,6 @@ export const MessageList = memo(function MessageList({
     candidatesCache,
     lastSwipeDirection,
     onAvatarTap,
-    onUserMessageTap,
     onRegen,
     onSwitchCandidate,
     onEditMessage,
@@ -403,9 +391,6 @@ export const MessageList = memo(function MessageList({
                 typewriterContents.map((c, ci) =>
                   renderContentItem(c, "stream-", ci, {
                     charAvatars,
-                    deleteMode,
-                    streaming,
-                    onUserMessageTap,
                     onAvatarTap,
                     streamMode: true,
                   })

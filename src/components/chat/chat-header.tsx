@@ -1,6 +1,6 @@
 import { memo } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft, Trash2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
@@ -39,6 +39,7 @@ interface ChatHeaderProps {
     onClick: (e: React.MouseEvent) => void
   }
   onHeaderClick: () => void
+  onProfileClick?: () => void
   onResetRoom: () => void
   releaseBodyLock: () => void
 }
@@ -55,6 +56,7 @@ export const ChatHeader = memo(function ChatHeader({
   roomId,
   onLongPressHandlers,
   onHeaderClick,
+  onProfileClick,
   onResetRoom,
   releaseBodyLock,
 }: ChatHeaderProps) {
@@ -81,6 +83,14 @@ export const ChatHeader = memo(function ChatHeader({
         <p className="truncate text-sm font-semibold">{plotName}</p>
         <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
       </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="トークプロフィールを変更"
+        onClick={onProfileClick}
+      >
+        <User className="size-4" />
+      </Button>
       <Button
         variant="ghost"
         size="icon"
