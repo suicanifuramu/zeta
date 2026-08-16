@@ -11,6 +11,7 @@ import { CachedImage } from "@/components/cached-image"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { getPlot } from "@/lib/api"
+import { stripBackticks } from "@/lib/utils"
 
 interface PlotDetailDialogProps {
   plot: Plot | null
@@ -271,9 +272,11 @@ export function PlotDetailDialog({
                     const charKey = `char-${char.id || char.name}`
                     const isExpanded = expandedIds.has(charKey)
                     const charDesc =
-                      char.description ||
-                      (char.id ? aboutCharMap[char.id] : null) ||
-                      null
+                      stripBackticks(
+                        char.description ||
+                        (char.id ? aboutCharMap[char.id] : null) ||
+                        ""
+                      ) || null
                     return (
                       <div
                         key={char.id || char.name}

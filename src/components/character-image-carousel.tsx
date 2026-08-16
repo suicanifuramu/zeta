@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { CachedImage } from "@/components/cached-image"
 import { Skeleton } from "@/components/ui/skeleton"
+
+const SLIDE_TRANSITION = "transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1)"
 
 interface CharacterImageCarouselProps {
   images: Array<{ imageUrl: string; aspectRatio: number }>
@@ -82,15 +84,11 @@ export function CharacterImageCarousel({
     (event: React.TransitionEvent) => {
       if (event.target !== event.currentTarget) return
       setIsTransitioning(false)
-      if (displayIndex === 0 || displayIndex === displayCount - 1) {
-        setNavigatedIndex((prev) => {
-          const real = displayToReal(prev)
-          onIndexChange?.(real)
-          return realToDisplay(real)
-        })
-      }
+      const real = displayToReal(displayIndex)
+      setNavigatedIndex(realToDisplay(real))
+      onIndexChange?.(real)
     },
-    [displayIndex, displayCount, displayToReal, realToDisplay, onIndexChange]
+    [displayIndex, displayToReal, realToDisplay, onIndexChange]
   )
 
   const goToPrev = useCallback(() => {
@@ -153,27 +151,42 @@ export function CharacterImageCarousel({
         }
       }
 
-      if (s.isSwiping && scale <= 1) {
-        e.preventDefault()
-        const el = containerRef.current?.firstElementChild as HTMLElement | null
-        if (el) {
-          const offset = t.clientX - s.startX
-          el.style.transition = "none"
-          el.style.transform = `translateX(calc(-${(displayIndex * 100) / displayCount}% + ${offset}px))`
+      if (s.isSwiping && scale <= 1 && total > 1) {
+        if (e.cancelable) {
+          e.preventDefault()
+          const el = containerRef.current?.firstElementChild as HTMLElement | null
+          if (el) {
+            const offset = t.clientX - s.startX
+            el.style.transition = "none"
+            el.style.transform = `translateX(calc(-${(displayIndex * 100) / displayCount}% + ${offset}px))`
+          }
         }
       }
 
-      if (s.isPanning && scale > 1) {
+      if (s.isPanning && scale > 1 && e.cancelable) {
         e.preventDefault()
       }
     },
-    [scale, displayCount, displayIndex]
+    [scale, displayCount, displayIndex, total]
   )
+
+  const handleTouchMoveRef = useRef(handleTouchMove)
+  handleTouchMoveRef.current = handleTouchMove
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || total <= 1) return
+    const onTouchMove = (e: TouchEvent) => {
+      handleTouchMoveRef.current(e as unknown as React.TouchEvent)
+    }
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    return () => el.removeEventListener("touchmove", onTouchMove)
+  }, [total])
 
   function setFlexTransform(translateX: string) {
     const el = containerRef.current?.firstElementChild as HTMLElement | null
     if (!el) return
-    el.style.transition = "transform 0.3s ease-out"
+    el.style.transition = SLIDE_TRANSITION
     el.style.transform = translateX
   }
 
@@ -236,7 +249,7 @@ export function CharacterImageCarousel({
         style={{
           transform: `translateX(-${(displayIndex * 100) / displayCount}%)`,
           width: `${displayCount * 100}%`,
-          transition: isTransitioning ? "transform 0.3s ease-out" : "none",
+          transition: isTransitioning ? SLIDE_TRANSITION : "none",
         }}
         onTransitionEnd={handleTransitionEnd}
       >
@@ -251,7 +264,6 @@ export function CharacterImageCarousel({
                 className="relative flex h-full w-full touch-none items-center justify-center select-none"
                 onDoubleClick={handleDoubleClick}
                 onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
                 {!loadedUrls.has(img.imageUrl) && (

@@ -407,14 +407,14 @@ export function ProfileSelectSheet({
                               プロット
                             </span>
                           </div>
-                          {p.description && (
+                          {(p.description || p.summary) && (
                             <p
                               className={cn(
                                 "mt-0.5 text-xs whitespace-pre-wrap text-muted-foreground",
                                 !isSelected && "line-clamp-2"
                               )}
                             >
-                              {p.description}
+                              {p.description || p.summary}
                             </p>
                           )}
                         </div>

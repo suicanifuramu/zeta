@@ -6,8 +6,8 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
 import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
-import { getCharacterImages } from "@/lib/api"
-import { cn } from "@/lib/utils"
+import { getCharacterImages, getPlot } from "@/lib/api"
+import { cn, stripBackticks } from "@/lib/utils"
 import type { Character } from "@/lib/types"
 
 interface CharacterDetailSheetProps {
@@ -27,7 +27,8 @@ export function CharacterDetailSheet({
     Array<{ imageUrl: string; aspectRatio: number }>
   >([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [showFullDesc, setShowFullDesc] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [fallbackDescription, setFallbackDescription] = useState("")
 
   useEffect(() => {
     if (!open || !character || !plotId) return
@@ -44,28 +45,45 @@ export function CharacterDetailSheet({
     fetchImages()
   }, [open, character, plotId])
 
-  const scrollRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
-    if (showFullDesc) {
-      scrollRef.current?.scrollTo(0, 0)
+    if (!open || !character || !plotId) return
+    if (character.description) {
+      setFallbackDescription("")
+      return
     }
-  }, [showFullDesc])
+    let cancelled = false
+    const fetchDescription = async () => {
+      try {
+        const plot = await getPlot(plotId)
+        if (cancelled) return
+        const about = plot.about?.characters?.find(
+          (c) => c.characterId === character.id
+        )
+        setFallbackDescription(about?.description || "")
+      } catch (e) {
+        if (!cancelled) console.warn("Failed to load character description:", e)
+      }
+    }
+    fetchDescription()
+    return () => {
+      cancelled = true
+    }
+  }, [open, character, plotId])
+
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (!newOpen && showFullDesc) {
-        setShowFullDesc(false)
-        return
-      }
       onOpenChange(newOpen)
     },
-    [showFullDesc, onOpenChange]
+    [onOpenChange]
   )
 
   if (!character || !open) return null
 
-  const desc = character.description || ""
+  const desc = stripBackticks(
+    character.description || fallbackDescription || ""
+  )
   const showReadMore = desc.length > 100 || desc.includes("\n")
 
   const detailContent = (
@@ -78,9 +96,7 @@ export function CharacterDetailSheet({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() =>
-            showFullDesc ? setShowFullDesc(false) : onOpenChange(false)
-          }
+          onClick={() => onOpenChange(false)}
           className="text-muted-foreground hover:text-foreground"
           aria-label="Close"
         >
@@ -89,35 +105,28 @@ export function CharacterDetailSheet({
       </div>
 
       <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain">
-        {showFullDesc ? (
-          <div className="min-h-full bg-popover/95 px-4 py-4 text-sm whitespace-pre-wrap text-muted-foreground backdrop-blur">
-            {desc}
-          </div>
-        ) : (
-          <>
-            <div className="relative aspect-square bg-muted">
-              <CharacterImageCarousel
-                images={images}
-                index={currentIndex}
-                onIndexChange={setCurrentIndex}
-              />
-            </div>
+        <div className="relative aspect-square bg-muted">
+          <CharacterImageCarousel
+            images={images}
+            index={currentIndex}
+            onIndexChange={setCurrentIndex}
+          />
+        </div>
 
-            <div className="px-4 py-4">
-              <CharacterDescription
-                description={desc}
-                showReadMore={showReadMore}
-                onReadMore={() => setShowFullDesc(true)}
-              />
-            </div>
+        <div className="px-4 py-4">
+          <CharacterDescription
+            description={desc}
+            showReadMore={showReadMore}
+            expanded={expanded}
+            onToggle={() => setExpanded((v) => !v)}
+          />
+        </div>
 
-            <CharacterThumbnailStrip
-              images={images}
-              currentIndex={currentIndex}
-              onSelect={setCurrentIndex}
-            />
-          </>
-        )}
+        <CharacterThumbnailStrip
+          images={images}
+          currentIndex={currentIndex}
+          onSelect={setCurrentIndex}
+        />
       </div>
     </>
   )
@@ -139,11 +148,13 @@ export function CharacterDetailSheet({
 function CharacterDescription({
   description,
   showReadMore,
-  onReadMore,
+  expanded,
+  onToggle,
 }: {
   description: string
   showReadMore: boolean
-  onReadMore: () => void
+  expanded: boolean
+  onToggle: () => void
 }) {
   if (!description) return null
 
@@ -152,7 +163,7 @@ function CharacterDescription({
       <div
         className={cn(
           "text-left text-sm break-all whitespace-pre-wrap text-muted-foreground",
-          "line-clamp-5"
+          !expanded && "line-clamp-5"
         )}
       >
         {description}
@@ -160,10 +171,10 @@ function CharacterDescription({
       {showReadMore && (
         <button
           type="button"
-          onClick={onReadMore}
+          onClick={onToggle}
           className="mt-2 block text-center text-sm text-muted-foreground/50 underline"
         >
-          続きを読む
+          {expanded ? "閉じる" : "続きを読む"}
         </button>
       )}
     </div>
