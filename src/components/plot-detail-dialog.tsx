@@ -377,6 +377,7 @@ export function PlotDetailDialog({
                         </div>
                       )
                     }
+                    if (!("content" in msg) || !msg.content) return null
                     const isNarrator = msg.senderId === "_NARRATOR_"
                     const char = msg.senderId ? charMap[msg.senderId] : undefined
                     const msgKey = `intro-${i}`
