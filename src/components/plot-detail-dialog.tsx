@@ -176,7 +176,7 @@ export function PlotDetailDialog({
           size="icon-sm"
           aria-label="プロットIDをコピー"
           onClick={handleCopyId}
-          className="cursor-pointer bg-background/60"
+          className="cursor-pointer"
         >
           <Copy />
         </Button>
