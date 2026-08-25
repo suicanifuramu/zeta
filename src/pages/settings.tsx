@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
 import { ImageCropDialog } from "@/components/image-crop-dialog"
+import { getAccessToken } from "@/lib/auth"
 import { useSettingsSession } from "@/hooks/use-settings-session"
 import { useSettingsOverview } from "@/hooks/use-settings-overview"
 import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
@@ -101,6 +102,16 @@ export function SettingsPage() {
   const { quizStatus, runQuiz } = useSettingsQuiz()
   const { cacheCount, cacheDeleting, clearCache } = useSettingsCache()
 
+  const handleCopyAccessToken = async () => {
+    const token = getAccessToken()
+    if (!token) {
+      toast.error("アクセストークンがありません")
+      return
+    }
+    await navigator.clipboard.writeText(token)
+    toast.success("アクセストークンをコピーしました")
+  }
+
   const handleRunQuiz = async () => {
     const result = await runQuiz()
     if (result.startsWith("エラー") || result.startsWith("失敗")) {
@@ -132,7 +143,32 @@ export function SettingsPage() {
                 ["User ID", authState.userId || "-"],
                 ["Timezone", authState.timezone || "-"],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-secondary/50 p-3">
+                <div
+                  key={label}
+                  role="button"
+                  tabIndex={label === "Access Token" ? 0 : undefined}
+                  aria-label={
+                    label === "Access Token" ? "アクセストークンをコピー" : undefined
+                  }
+                  onClick={
+                    label === "Access Token" ? handleCopyAccessToken : undefined
+                  }
+                  onKeyDown={
+                    label === "Access Token"
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            handleCopyAccessToken()
+                          }
+                        }
+                      : undefined
+                  }
+                  className={
+                    label === "Access Token"
+                      ? "cursor-pointer rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary"
+                      : "rounded-lg bg-secondary/50 p-3"
+                  }
+                >
                   <p className="text-xs text-muted-foreground">{label}</p>
                   <p className="mt-1 truncate text-sm font-medium tabular-nums">
                     {value}
