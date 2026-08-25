@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react"
-import { BookOpen, MessageCircle, ScrollText, Users } from "lucide-react"
+import { BookOpen, Copy, MessageCircle, ScrollText, Users } from "lucide-react"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
@@ -135,6 +135,16 @@ export function PlotDetailDialog({
     }
   }
 
+  const handleCopyId = async () => {
+    const id = d.id || plot?.id
+    if (!id) {
+      toast.error("プロットIDがありません")
+      return
+    }
+    await navigator.clipboard.writeText(id)
+    toast.success("プロットIDをコピーしました")
+  }
+
   // Track expanded items (character descriptions / intro messages)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const toggleExpand = (id: string) => {
@@ -159,7 +169,18 @@ export function PlotDetailDialog({
     setShowPlotImage((prev) => !prev)
   }, [showPlotImage, isDesktop])
   const content = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="absolute top-2 right-10 z-10">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="プロットIDをコピー"
+          onClick={handleCopyId}
+          className="cursor-pointer bg-background/60"
+        >
+          <Copy />
+        </Button>
+      </div>
       <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
       {/* Hero image */}
       {heroImg ? (
