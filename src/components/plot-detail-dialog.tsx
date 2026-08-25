@@ -75,7 +75,6 @@ export function PlotDetailDialog({
   // Single cast (instead of discouraged `as unknown as Record<...>`):
   // typed fields stay typed, undeclared server fields come back as `unknown`.
   const dExtra = d as PlotDetailResponse & Record<string, unknown>
-  const heroImg = (d.imageUrl || d.initialRoomImageUrl || plot?.imageUrl || "") as string
   const plotName = (d.name || dExtra.title || plot?.name || "タイトルなし") as string
   const creatorName =
     d.creator?.nickname || d.creator?.username || ""
@@ -87,6 +86,13 @@ export function PlotDetailDialog({
     dExtra.summary ||
     "") as string
   const characters: Character[] = Array.isArray(d.characters) ? d.characters : []
+  const heroImg = (
+    d.imageUrl ||
+    d.initialRoomImageUrl ||
+    plot?.imageUrl ||
+    characters[0]?.imageUrl ||
+    ""
+  ) as string
   const tagSources: string[] = d.hashtags || dExtra.hashTags as string[] || dExtra.tags as string[] || []
   const tags: string[] = (tagSources || []).filter((t): t is string => typeof t === "string")
 
@@ -181,7 +187,7 @@ export function PlotDetailDialog({
           <Copy />
         </Button>
       </div>
-      <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {/* Hero image */}
       {heroImg ? (
         <div
@@ -483,7 +489,7 @@ export function PlotDetailDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="ストーリー詳細"
-      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      desktopClassName="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh] gap-0 overflow-hidden p-0"
     >
       {content}

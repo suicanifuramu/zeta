@@ -165,7 +165,7 @@ function CreateProfileSheet({
           {isEditing ? "プロフィールを編集" : "新しいプロフィール"}
         </h2>
       </div>
-      <div className="touch-scrollable min-h-0 max-h-[85vh] overflow-y-auto overscroll-contain">
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="space-y-4 px-5 py-4">
           <div className="flex justify-center">
             <button
@@ -254,7 +254,7 @@ function CreateProfileSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? "プロフィールを編集" : "新しいプロフィール"}
-      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      desktopClassName="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh]"
     >
       {content}
@@ -533,7 +533,7 @@ export function ProfileSelectSheet({
       open={open}
       onOpenChange={(v) => onOpenChange?.(v)}
       title={variant === "change" ? "プロフィールを変更" : "プロフィールを選択"}
-      desktopClassName="max-h-[85vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-lg"
+      desktopClassName="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh]"
     >
       {content}
