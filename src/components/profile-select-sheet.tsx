@@ -73,6 +73,7 @@ function CreateProfileSheet({
   const [cropOpen, setCropOpen] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const initialImageUrlRef = useRef("")
   const isEditing = !!editProfile
 
   useEffect(() => {
@@ -80,6 +81,7 @@ function CreateProfileSheet({
       setName(editProfile.name || "")
       setDescription(editProfile.description || "")
       setProfileImageUrl(editProfile.profileImageUrl || "")
+      initialImageUrlRef.current = editProfile.profileImageUrl || ""
     }
   }, [editProfile])
 
@@ -130,10 +132,16 @@ function CreateProfileSheet({
         return
       }
       if (isEditing && editProfile) {
+        // undefined = keep the current image (a stored secret-less URL is
+        // rejected by the API with 403 "Invalid image url"); "" = clear.
+        const imageUrl =
+          profileImageUrl === initialImageUrlRef.current
+            ? undefined
+            : profileImageUrl
         await updateUserChatProfile(editProfile.id, {
           name: name.trim(),
           description: description.trim(),
-          profileImageUrl: profileImageUrl || undefined,
+          profileImageUrl: imageUrl,
         })
         toast.success("プロフィールを更新しました")
         await onProfileUpdated?.({

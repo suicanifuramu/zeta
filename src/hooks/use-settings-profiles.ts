@@ -17,6 +17,7 @@ export function useSettingsProfiles() {
   const [profileName, setProfileName] = useState("")
   const [profileDesc, setProfileDesc] = useState("")
   const [profileImageUrl, setProfileImageUrl] = useState("")
+  const [initialImageUrl, setInitialImageUrl] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
 
   const loadProfiles = async () => {
@@ -37,6 +38,15 @@ export function useSettingsProfiles() {
     setProfileName("")
     setProfileDesc("")
     setProfileImageUrl("")
+    setInitialImageUrl("")
+  }
+
+  // The API only accepts the signed URL returned by the image upload endpoint.
+  // Re-sending a stored (secret-less) URL fails with 403 "Invalid image url",
+  // so omit the field unless the image was actually changed; "" clears it.
+  const resolveImageUrl = (): string | undefined => {
+    if (profileImageUrl === initialImageUrl) return undefined
+    return profileImageUrl
   }
 
   const handleSaveProfile = async () => {
@@ -60,7 +70,7 @@ export function useSettingsProfiles() {
         await updateUserChatProfile(editId, {
           name: profileName,
           description: profileDesc,
-          profileImageUrl: profileImageUrl || undefined,
+          profileImageUrl: resolveImageUrl(),
         })
         toast.success("プロフィールを更新しました")
       } else {
@@ -108,6 +118,7 @@ export function useSettingsProfiles() {
     setProfileName(profile.name || "")
     setProfileDesc(profile.description || "")
     setProfileImageUrl(profile.profileImageUrl || "")
+    setInitialImageUrl(profile.profileImageUrl || "")
   }
 
   return {

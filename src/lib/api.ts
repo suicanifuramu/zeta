@@ -608,7 +608,9 @@ export function updateUserChatProfile(
 ): Promise<unknown> {
   const body: Record<string, unknown> = { name }
   if (description) body.description = description
-  if (profileImageUrl) body.profileImageUrl = profileImageUrl
+  // undefined = leave unchanged (omit), "" = clear, signed upload URL = replace.
+  // A stored secret-less URL is rejected by the API (403 "Invalid image url").
+  if (profileImageUrl !== undefined) body.profileImageUrl = profileImageUrl
   return patch<unknown>(`/v1/user-chat-profiles/${profileId}`, body)
 }
 
