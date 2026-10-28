@@ -1,4 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { PlotCard } from "@/components/plot-card"
@@ -12,9 +13,19 @@ const TABS = [
   { value: "NEW", label: "新着" },
 ] as const
 
+const GENDERS = ["MALE", "FEMALE"] as const
+
 export function RankingPage() {
-  const { tab, setTab, displayed, loading, hasMore, sentinelRef } =
-    useRankingPlots()
+  const {
+    tab,
+    setTab,
+    gender,
+    setGender,
+    displayed,
+    loading,
+    hasMore,
+    sentinelRef,
+  } = useRankingPlots()
   const {
     dialogPlot,
     dialogOpen,
@@ -25,8 +36,23 @@ export function RankingPage() {
 
   return (
     <div className="animate-fade-in">
-      <header className="px-5 pt-[max(18px,env(safe-area-inset-top))] pb-1">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-[max(18px,env(safe-area-inset-top))] pb-1">
         <h1 className="text-2xl font-bold">ランキング</h1>
+        <div role="group" aria-label="ランキングの性別" className="flex gap-1">
+          {GENDERS.map((value) => (
+            <Button
+              key={value}
+              type="button"
+              size="sm"
+              className="min-h-9"
+              variant={gender === value ? "default" : "outline"}
+              aria-pressed={gender === value}
+              onClick={() => setGender(value)}
+            >
+              {value}
+            </Button>
+          ))}
+        </div>
       </header>
 
       <div className="px-5 py-3">

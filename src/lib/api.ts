@@ -234,9 +234,9 @@ export function getGenresRanking(): Promise<GenreRankingResponse> {
 export function getRanking(
   type = "BEST",
   limit = 20,
-  filterValues = "all"
+  filterValues = "all",
+  gender = getGender() || "MALE"
 ): Promise<ApiRankingResponse> {
-  const gender = getGender() || "MALE"
   const apiType = type === "TREND" ? "TRENDING" : type
   return get<ApiRankingResponse>(
     `/v1/plots/ranking?limit=${limit}&gender=${gender}&type=${apiType}&filterType=GENRE&filterValues=${encodeURIComponent(filterValues)}`
