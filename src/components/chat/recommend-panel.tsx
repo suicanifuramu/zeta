@@ -77,7 +77,7 @@ export function RecommendPanel({
         </span>
       </div>
 
-      <div className="flex max-h-[40dvh] flex-col gap-2 overflow-y-auto overscroll-contain">
+      <div className="touch-scrollable flex max-h-[40dvh] flex-col gap-2 overflow-y-auto overscroll-contain">
         {isCyoaPage &&
           cyoaChoices.map((choice, i) => (
             <RecommendCard
