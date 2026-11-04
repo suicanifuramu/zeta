@@ -84,18 +84,12 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
         >
           <Star className="size-5" />
           {cyoaCount > 0 && (
-            <>
-              <span
-                aria-hidden
-                className="absolute -top-0.5 -right-0.5 size-4 animate-ping rounded-full bg-blue-500/60 motion-reduce:hidden"
-              />
-              <span
-                aria-hidden
-                className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] leading-4 font-semibold text-white tabular-nums"
-              >
-                {cyoaCount}
-              </span>
-            </>
+            <span
+              aria-hidden
+              className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] leading-4 font-semibold text-white tabular-nums"
+            >
+              {cyoaCount}
+            </span>
           )}
         </Button>
         <div className="relative flex-1">
