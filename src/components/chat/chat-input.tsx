@@ -10,6 +10,8 @@ interface ChatInputProps {
   onInputChange: (value: string) => void
   sending: boolean
   recVisible: boolean
+  /** Number of live CYOA choices; renders a blue notification badge on the star. */
+  cyoaCount?: number
   onToggleRecommend: () => void
   onSend: () => void
   onInsertAsterisk: () => void
@@ -25,6 +27,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
   onInputChange,
   sending,
   recVisible,
+  cyoaCount = 0,
   onToggleRecommend,
   onSend,
   onInsertAsterisk,
@@ -73,11 +76,27 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
         <Button
           variant="ghost"
           size="icon"
-          className={cn("shrink-0", recVisible && "text-primary")}
+          className={cn("relative shrink-0", recVisible && "text-primary")}
           onClick={onToggleRecommend}
-          aria-label="推薦文"
+          aria-label={
+            cyoaCount > 0 ? `推薦文（選択肢${cyoaCount}件）` : "推薦文"
+          }
         >
           <Star className="size-5" />
+          {cyoaCount > 0 && (
+            <>
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 size-4 animate-ping rounded-full bg-blue-500/60 motion-reduce:hidden"
+              />
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] leading-4 font-semibold text-white tabular-nums"
+              >
+                {cyoaCount}
+              </span>
+            </>
+          )}
         </Button>
         <div className="relative flex-1">
           <Textarea

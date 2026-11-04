@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { MessageList } from "@/components/chat/message-list"
 import { ChatInput } from "@/components/chat/chat-input"
@@ -18,6 +18,7 @@ import { useChatInput } from "@/hooks/use-chat-input"
 import { useChatDialogs } from "@/hooks/use-chat-dialogs"
 import { useChatBodyLock } from "@/hooks/use-chat-body-lock"
 import { useChatActions } from "@/hooks/use-chat-actions"
+import { getActiveCyoaChoices, getCyoaSignature } from "@/lib/cyoa"
 import type { RuntimeMessage } from "@/lib/types"
 
 export function ChatPage() {
@@ -113,6 +114,17 @@ export function ChatPage() {
     onEmptyRoomDetected,
     onClearRecommendations: clearRecItems,
   })
+
+  // CYOA choices attached to the newest turn. They take over page 1 of the
+  // 推薦文 panel, and the star gets a blue notification badge.
+  const cyoaChoices = useMemo(() => getActiveCyoaChoices(messages), [messages])
+  const cyoaSignature = useMemo(
+    () => getCyoaSignature(cyoaChoices),
+    [cyoaChoices]
+  )
+  useEffect(() => {
+    if (cyoaSignature) setRecPage(0)
+  }, [cyoaSignature, setRecPage])
   const {
     deleteMode,
     selectedMsgId,
@@ -245,6 +257,7 @@ export function ChatPage() {
         recPage={recPage}
         recLoading={recLoading}
         recQuota={recQuota}
+        cyoaChoices={cyoaChoices}
         onPageChange={setRecPage}
         onLoadRecommendations={loadRecommendations}
         onSelectItem={(text) => {
@@ -260,6 +273,7 @@ export function ChatPage() {
         onInputChange={setInputValue}
         sending={sending || isRegenerating}
         recVisible={recVisible}
+        cyoaCount={cyoaChoices.length}
         onToggleRecommend={() => {
           setRecVisible((v) => !v)
           if (!recVisible && recItems.length === 0) loadRecommendations()

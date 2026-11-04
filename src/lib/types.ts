@@ -51,6 +51,22 @@ export interface Message {
   createdAt?: string
   candidates?: Candidate[]
   contents?: ContentItem[]
+  /**
+   * Per-message Choose-Your-Own-Adventure choices. Newer API builds attach this
+   * directly to the BOT message (previously only a room-level flag existed via
+   * `/v1/rooms/{roomId}/settings/cyoa`). `title` is usually empty/null; `text`
+   * is what gets sent back as the user's message.
+   */
+  cyoa?: CyoaPayload | null
+}
+
+export interface CyoaChoice {
+  title?: string | null
+  text: string
+}
+
+export interface CyoaPayload {
+  choices?: CyoaChoice[] | null
 }
 
 export interface Candidate {
