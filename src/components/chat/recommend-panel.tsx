@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ListChecks } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { RecommendCard } from "./recommend-card"
@@ -39,9 +39,12 @@ export function RecommendPanel({
   const hasCyoa = cyoaChoices.length > 0
   // Page 1 belongs to the CYOA choices when present; recommendations follow.
   const cyoaPageCount = hasCyoa ? 1 : 0
-  const recPageCount = Math.ceil(recItems.length / REC_PER_PAGE)
-  const totalPages = Math.max(1, cyoaPageCount + recPageCount)
+  // Always expose one recommendation page so page 2 exists while page 1 holds
+  // the choices. Nothing is generated until the user actually opens page 2.
+  const recPageCount = Math.max(1, Math.ceil(recItems.length / REC_PER_PAGE))
+  const totalPages = cyoaPageCount + recPageCount
   const page = Math.min(Math.max(recPage, 0), totalPages - 1)
+  const firstRecPage = cyoaPageCount
   const isCyoaPage = hasCyoa && page === 0
   const recIndex = page - cyoaPageCount
   const pageItems =
@@ -49,29 +52,24 @@ export function RecommendPanel({
       ? recItems.slice(recIndex * REC_PER_PAGE, recIndex * REC_PER_PAGE + REC_PER_PAGE)
       : []
 
+  /** Navigate and lazily fetch/generate recommendations when the rec page opens. */
+  const goToPage = (next: number) => {
+    const target = Math.min(Math.max(next, 0), totalPages - 1)
+    onPageChange(target)
+    if (
+      hasCyoa &&
+      target === firstRecPage &&
+      recItems.length === 0 &&
+      !recLoading
+    ) {
+      onLoadRecommendations()
+    }
+  }
+
   return (
     <div className="border-t border-border bg-card/80 px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium">
-          推薦文
-          {hasCyoa && (
-            <button
-              type="button"
-              onClick={() => onPageChange(0)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-400/40 bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-300 transition-colors hover:bg-blue-500/25"
-              aria-label={`選択肢${cyoaChoices.length}件を1ページ目に表示`}
-            >
-              <span aria-hidden className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-70 motion-reduce:hidden" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-blue-400" />
-              </span>
-              選択肢 {cyoaChoices.length}
-            </button>
-          )}
-          <span role="status" className="sr-only">
-            {hasCyoa ? `選択肢が${cyoaChoices.length}件あります` : ""}
-          </span>
-        </span>
+        <span className="text-xs font-medium">推薦文</span>
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
           {recQuota
             ? `${recQuota.remainCount ?? recQuota.remainingCount ?? "-"}/${recQuota.totalCount ?? "-"}`
@@ -80,37 +78,14 @@ export function RecommendPanel({
       </div>
 
       <div className="flex max-h-[40dvh] flex-col gap-2 overflow-y-auto overscroll-contain">
-        {isCyoaPage && (
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-1 text-[10px] font-medium text-blue-300">
-              <ListChecks className="size-3" aria-hidden />
-              物語の選択肢
-            </span>
-            {cyoaChoices.map((choice, i) => (
-              <button
-                key={`${i}-${choice.text.slice(0, 24)}`}
-                type="button"
-                onClick={() => onSelectItem(choice.text)}
-                className="flex w-full items-start gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2.5 text-left text-xs leading-relaxed text-foreground transition-colors hover:border-blue-400/60 hover:bg-blue-500/20"
-              >
-                <span
-                  aria-hidden
-                  className="mt-px flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white tabular-nums"
-                >
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
-                  {choice.title ? (
-                    <span className="mb-0.5 block text-[10px] font-medium text-blue-300">
-                      {choice.title}
-                    </span>
-                  ) : null}
-                  {choice.text}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {isCyoaPage &&
+          cyoaChoices.map((choice, i) => (
+            <RecommendCard
+              key={`${i}-${choice.text.slice(0, 24)}`}
+              text={choice.text}
+              onClick={() => onSelectItem(choice.text)}
+            />
+          ))}
 
         {recLoading ? (
           <div className="flex items-center justify-center py-3">
@@ -138,7 +113,7 @@ export function RecommendPanel({
           size="icon"
           className="size-7"
           disabled={page <= 0}
-          onClick={() => onPageChange(Math.max(0, page - 1))}
+          onClick={() => goToPage(page - 1)}
           aria-label="前の推薦文"
         >
           <ChevronLeft className="size-4" />
@@ -156,7 +131,7 @@ export function RecommendPanel({
               onLoadRecommendations(true)
               onPageChange(totalPages)
             } else {
-              onPageChange(page + 1)
+              goToPage(page + 1)
             }
           }}
           aria-label="次の推薦文"

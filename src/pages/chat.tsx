@@ -275,8 +275,14 @@ export function ChatPage() {
         recVisible={recVisible}
         cyoaCount={cyoaChoices.length}
         onToggleRecommend={() => {
+          const opening = !recVisible
           setRecVisible((v) => !v)
-          if (!recVisible && recItems.length === 0) loadRecommendations()
+          if (!opening || recItems.length > 0) return
+          // Page 1 with CYOA choices is static: nothing is requested there.
+          // Recommendations are fetched/generated only once page 2 is shown.
+          if (cyoaChoices.length === 0 || recPage >= 1) {
+            loadRecommendations()
+          }
         }}
         onSend={sendMessage}
         onInsertAsterisk={insertAsterisk}
