@@ -18,6 +18,7 @@ interface PlotCardProps {
     isNew?: boolean
   }
   onClick?: () => void
+  onTagClick?: (tag: string) => void
   className?: string
   cached?: boolean
 }
@@ -31,6 +32,7 @@ function formatCount(n: number) {
 export const PlotCard = memo(function PlotCard({
   plot,
   onClick,
+  onTagClick,
   className,
   cached = true,
 }: PlotCardProps) {
@@ -94,15 +96,31 @@ export const PlotCard = memo(function PlotCard({
         </div>
         {tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="outline"
-                className="text-[10px] font-normal"
-              >
-                {tag}
-              </Badge>
-            ))}
+            {tags.map((tag) =>
+              onTagClick ? (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTagClick(tag)
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  className="inline-flex min-h-5 items-center rounded-full border border-border px-2 text-[10px] font-normal text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  aria-label={`#${tag} で検索`}
+                >
+                  {tag}
+                </button>
+              ) : (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className="text-[10px] font-normal"
+                >
+                  {tag}
+                </Badge>
+              )
+            )}
           </div>
         )}
       </CardContent>

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,6 +17,7 @@ const TABS = [
 const GENDERS = ["MALE", "FEMALE"] as const
 
 export function RankingPage() {
+  const navigate = useNavigate()
   const {
     tab,
     setTab,
@@ -88,7 +90,13 @@ export function RankingPage() {
               className="animate-slide-up"
               style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
             >
-              <PlotCard plot={plot} onClick={() => handlePlotClick(plot)} />
+              <PlotCard
+                plot={plot}
+                onClick={() => handlePlotClick(plot)}
+                onTagClick={(tag) =>
+                  navigate(`/search?keyword=${encodeURIComponent(tag)}`)
+                }
+              />
             </div>
           ))}
         </div>

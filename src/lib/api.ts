@@ -42,6 +42,7 @@ import type {
   MyPlotChatProfileResponse,
   NotificationTimeResponse,
   PlotDetailResponse,
+  PlotSearchResponse,
   PromotionEligibilityResponse,
   ProConversionStatusResponse,
   QuizData,
@@ -241,6 +242,47 @@ export function getRanking(
   return get<ApiRankingResponse>(
     `/v1/plots/ranking?limit=${limit}&gender=${gender}&type=${apiType}&filterType=GENRE&filterValues=${encodeURIComponent(filterValues)}`
   )
+}
+
+// Search
+export type PlotSearchOrder =
+  | "RECOMMENDED"
+  | "LATEST"
+  | "MALE_RECOMMENDED"
+  | "FEMALE_RECOMMENDED"
+
+export interface PlotSearchOptions {
+  order?: PlotSearchOrder
+  limit?: number
+  cursor?: string
+  /** Tracking hint the web client sends for keyword chips: RECOMMEND / RELATED */
+  source?: string
+}
+
+export function searchPlots(
+  keyword: string,
+  {
+    order = "RECOMMENDED",
+    limit = 18,
+    cursor = "",
+    source,
+  }: PlotSearchOptions = {}
+): Promise<PlotSearchResponse> {
+  const params = new URLSearchParams({
+    keyword,
+    order,
+    limit: String(limit),
+  })
+  if (cursor) params.set("cursor", cursor)
+  if (source) params.set("source", source)
+  return get<PlotSearchResponse>(`/v2/plots/search?${params.toString()}`)
+}
+
+export async function getPlotSearchCount(keyword: string): Promise<number> {
+  const data = await get<{ count?: number }>(
+    `/v2/plots/search/plot-count?keyword=${encodeURIComponent(keyword)}`
+  )
+  return data?.count ?? 0
 }
 
 // My profile

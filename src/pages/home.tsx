@@ -1,4 +1,5 @@
 import { RefreshCw } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -9,6 +10,7 @@ import { useHomePlots } from "@/hooks/use-home-plots"
 import { usePlotNavigation } from "@/hooks/use-plot-navigation"
 
 export function HomePage() {
+  const navigate = useNavigate()
   const { plots, loading, loadingMore, hasMore, sentinelRef, loadPlots } =
     useHomePlots()
   const {
@@ -64,6 +66,9 @@ export function HomePage() {
                 plot={plot}
                 cached={false}
                 onClick={() => handlePlotClick(plot)}
+                onTagClick={(tag) =>
+                  navigate(`/search?keyword=${encodeURIComponent(tag)}`)
+                }
               />
             </div>
           ))}

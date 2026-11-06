@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
 import { BookOpen, Copy, MessageCircle, ScrollText, Users } from "lucide-react"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import type { Plot, PlotDetailResponse, Character, IntroMessage } from "@/lib/types"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CachedImage } from "@/components/cached-image"
 import { Separator } from "@/components/ui/separator"
@@ -44,6 +44,7 @@ export function PlotDetailDialog({
   onOpenChange,
   onStartChat,
 }: PlotDetailDialogProps) {
+  const navigate = useNavigate()
   const [detail, setDetail] = useState<PlotDetailResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -245,9 +246,18 @@ export function PlotDetailDialog({
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tags.map((label, i) => (
-              <Badge key={i} variant="secondary" className="text-[11px]">
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate(`/search?keyword=${encodeURIComponent(label)}`)
+                }}
+                className="inline-flex min-h-6 items-center rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
+                aria-label={`#${label} で検索`}
+              >
                 #{label}
-              </Badge>
+              </button>
             ))}
           </div>
         )}

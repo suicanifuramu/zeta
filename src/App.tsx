@@ -19,6 +19,9 @@ const RoomsPage = lazy(() =>
 const ChatPage = lazy(() =>
   import("@/pages/chat").then((m) => ({ default: m.ChatPage }))
 )
+const SearchPage = lazy(() =>
+  import("@/pages/search").then((m) => ({ default: m.SearchPage }))
+)
 const SettingsPage = lazy(() =>
   import("@/pages/settings").then((m) => ({ default: m.SettingsPage }))
 )
@@ -40,6 +43,7 @@ function ScrollToTop() {
       : pathname.startsWith("/chat") ? "Chat"
       : pathname === "/ranking" ? "Ranking"
       : pathname === "/rooms" ? "Rooms"
+      : pathname === "/search" ? "Search"
       : pathname === "/settings" ? "Settings"
       : "Unknown"
     startSentryTransaction(page)
@@ -71,6 +75,7 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="ranking" element={<RankingPage />} />
             <Route path="rooms" element={<RoomsPage />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="chat/:roomId" element={<ChatPage />} />

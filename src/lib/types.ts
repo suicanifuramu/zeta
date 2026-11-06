@@ -2,6 +2,7 @@ export interface Plot {
   id: string
   name: string
   imageUrl?: string
+  coverImageUrl?: string
   shortDescription?: string
   interactionCount?: number
   hashtags?: string[]
@@ -137,6 +138,17 @@ export interface ApiHomeResponse {
 export interface ApiRankingResponse {
   rankings?: Plot[]
   roomId?: string
+}
+
+export interface PlotSearchItem {
+  type: string
+  plot: Plot
+}
+
+export interface PlotSearchResponse {
+  items?: PlotSearchItem[]
+  nextCursor?: string | null
+  requestId?: string
 }
 
 export interface ApiRoomsResponse {
