@@ -285,6 +285,23 @@ export async function getPlotSearchCount(keyword: string): Promise<number> {
   return data?.count ?? 0
 }
 
+export interface SearchSuggestion {
+  hashtag: string
+  count?: number
+}
+
+/** Hashtag suggestions for the search box (`/v1/plots/search/autocomplete`). */
+export async function getSearchSuggestions(
+  keyword: string
+): Promise<SearchSuggestion[]> {
+  const data = await get<{ hashtags?: SearchSuggestion[] }>(
+    `/v1/plots/search/autocomplete?keyword=${encodeURIComponent(keyword)}`
+  )
+  return (data.hashtags || []).filter(
+    (item): item is SearchSuggestion => Boolean(item?.hashtag)
+  )
+}
+
 // My profile
 export function getMyProfile(): Promise<MyProfileResponse> {
   return get<MyProfileResponse>("/v1/users/me")

@@ -7,7 +7,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { PlotCard } from "@/components/plot-card"
 import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { usePlotSearch } from "@/hooks/use-plot-search"
+import { useSearchSuggestions } from "@/hooks/use-search-suggestions"
 import { usePlotNavigation } from "@/hooks/use-plot-navigation"
+import { cn } from "@/lib/utils"
 
 const MAX_DISPLAY_COUNT = 9999
 
@@ -16,12 +18,19 @@ function formatTotal(count: number) {
   return new Intl.NumberFormat("ja-JP").format(count)
 }
 
+const countFormatter = new Intl.NumberFormat("ja-JP")
+
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const keyword = (params.get("keyword") || "").trim()
   const [input, setInput] = useState(keyword)
+  const [focused, setFocused] = useState(false)
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+
+  const suggestions = useSearchSuggestions(input, focused)
 
   const { plots, totalCount, loading, loadingMore, hasMore, sentinelRef } =
     usePlotSearch(keyword)
@@ -37,19 +46,58 @@ export function SearchPage() {
     setInput(keyword)
   }, [keyword])
 
+  useEffect(() => {
+    setActiveIndex(-1)
+  }, [suggestions])
+
   const runSearch = (value: string) => {
     const q = value.trim()
     if (!q) {
       inputRef.current?.focus()
       return
     }
+    setSuggestionsOpen(false)
+    setActiveIndex(-1)
     setParams({ keyword: q })
+  }
+
+  const selectSuggestion = (value: string) => {
+    setInput(value)
+    runSearch(value)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     runSearch(input)
   }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      if (suggestions.length === 0) return
+      e.preventDefault()
+      setSuggestionsOpen(true)
+      setActiveIndex((i) => (i + 1) % suggestions.length)
+    } else if (e.key === "ArrowUp") {
+      if (suggestions.length === 0) return
+      e.preventDefault()
+      setSuggestionsOpen(true)
+      setActiveIndex((i) =>
+        i <= 0 ? suggestions.length - 1 : i - 1
+      )
+    } else if (e.key === "Escape") {
+      setSuggestionsOpen(false)
+      setActiveIndex(-1)
+    } else if (e.key === "Enter") {
+      const active = activeIndex >= 0 ? suggestions[activeIndex] : undefined
+      if (suggestionsOpen && active) {
+        e.preventDefault()
+        selectSuggestion(active.hashtag)
+      }
+    }
+  }
+
+  const showSuggestions =
+    focused && suggestionsOpen && suggestions.length > 0
 
   return (
     <div className="animate-fade-in pb-4">
@@ -73,10 +121,33 @@ export function SearchPage() {
               ref={inputRef}
               type="search"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value)
+                setSuggestionsOpen(true)
+              }}
+              onFocus={() => {
+                setFocused(true)
+                if (input.trim()) setSuggestionsOpen(true)
+              }}
+              onBlur={() => {
+                setFocused(false)
+                setSuggestionsOpen(false)
+              }}
+              onKeyDown={handleKeyDown}
+              role="combobox"
+              aria-expanded={showSuggestions}
+              aria-controls="search-suggestions"
+              aria-autocomplete="list"
+              aria-activedescendant={
+                showSuggestions && activeIndex >= 0
+                  ? `search-suggestion-${activeIndex}`
+                  : undefined
+              }
               placeholder="タグ・キーワードで検索…"
               aria-label="検索キーワード"
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
               spellCheck={false}
               enterKeyHint="search"
               className="h-10 w-full rounded-full border border-border bg-secondary/60 pr-9 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -87,6 +158,7 @@ export function SearchPage() {
                 type="button"
                 onClick={() => {
                   setInput("")
+                  setSuggestionsOpen(false)
                   inputRef.current?.focus()
                 }}
                 aria-label="入力をクリア"
@@ -94,6 +166,43 @@ export function SearchPage() {
               >
                 <X className="size-4" />
               </button>
+            )}
+
+            {showSuggestions && (
+              <ul
+                id="search-suggestions"
+                role="listbox"
+                aria-label="検索候補"
+                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover py-1 shadow-lg"
+              >
+                {suggestions.map((suggestion, i) => (
+                  <li
+                    key={suggestion.hashtag}
+                    id={`search-suggestion-${i}`}
+                    role="option"
+                    aria-selected={i === activeIndex}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    onClick={() => selectSuggestion(suggestion.hashtag)}
+                    className={cn(
+                      "flex min-h-10 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm transition-colors",
+                      i === activeIndex
+                        ? "bg-secondary text-foreground"
+                        : "text-foreground/90 hover:bg-secondary/70"
+                    )}
+                  >
+                    <span className="min-w-0 truncate">
+                      <span className="text-muted-foreground">#</span>
+                      {suggestion.hashtag}
+                    </span>
+                    {suggestion.count != null && (
+                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                        {countFormatter.format(suggestion.count)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </form>
         </div>
