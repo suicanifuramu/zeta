@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { ArrowLeft, Search, X } from "lucide-react"
+import { ArrowLeft, ChevronDown, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -9,13 +9,38 @@ import { PlotDetailDialog } from "@/components/plot-detail-dialog"
 import { usePlotSearch } from "@/hooks/use-plot-search"
 import { useSearchSuggestions } from "@/hooks/use-search-suggestions"
 import { usePlotNavigation } from "@/hooks/use-plot-navigation"
+import { getGender } from "@/lib/auth"
+import type { PlotSearchOrder } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const MAX_DISPLAY_COUNT = 9999
+const ORDER_STORAGE_KEY = "zeta_search_order"
+
+const SORT_OPTIONS: Array<{ value: PlotSearchOrder; label: string }> = [
+  { value: "RECOMMENDED", label: "オススメ順" },
+  { value: "MALE_RECOMMENDED", label: "男性向けオススメ順" },
+  { value: "FEMALE_RECOMMENDED", label: "女性向けオススメ順" },
+  { value: "LATEST", label: "作成日(降順)" },
+]
 
 function formatTotal(count: number) {
   if (count > MAX_DISPLAY_COUNT) return "9,999+"
   return new Intl.NumberFormat("ja-JP").format(count)
+}
+
+function readInitialOrder(): PlotSearchOrder {
+  try {
+    const saved = localStorage.getItem(ORDER_STORAGE_KEY)
+    if (saved && SORT_OPTIONS.some((option) => option.value === saved)) {
+      return saved as PlotSearchOrder
+    }
+  } catch {
+    /* storage may be unavailable */
+  }
+  const gender = getGender()
+  if (gender === "MALE") return "MALE_RECOMMENDED"
+  if (gender === "FEMALE") return "FEMALE_RECOMMENDED"
+  return "RECOMMENDED"
 }
 
 const countFormatter = new Intl.NumberFormat("ja-JP")
@@ -24,16 +49,17 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const keyword = (params.get("keyword") || "").trim()
   const [input, setInput] = useState(keyword)
-  const [focused, setFocused] = useState(false)
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [order, setOrder] = useState<PlotSearchOrder>(readInitialOrder)
   const inputRef = useRef<HTMLInputElement>(null)
+  const closeTimerRef = useRef<number | null>(null)
   const navigate = useNavigate()
 
-  const suggestions = useSearchSuggestions(input, focused)
+  const suggestions = useSearchSuggestions(input, suggestionsOpen)
 
   const { plots, totalCount, loading, loadingMore, hasMore, sentinelRef } =
-    usePlotSearch(keyword)
+    usePlotSearch(keyword, order)
   const {
     dialogPlot,
     dialogOpen,
@@ -50,20 +76,54 @@ export function SearchPage() {
     setActiveIndex(-1)
   }, [suggestions])
 
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
+  const cancelScheduledClose = () => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  // Mobile blurs the input before the tap's click lands — delay the close so
+  // tapping a suggestion still selects it.
+  const scheduleClose = () => {
+    cancelScheduledClose()
+    closeTimerRef.current = window.setTimeout(() => {
+      setSuggestionsOpen(false)
+      closeTimerRef.current = null
+    }, 150)
+  }
+
   const runSearch = (value: string) => {
     const q = value.trim()
     if (!q) {
       inputRef.current?.focus()
       return
     }
+    cancelScheduledClose()
     setSuggestionsOpen(false)
     setActiveIndex(-1)
     setParams({ keyword: q })
   }
 
   const selectSuggestion = (value: string) => {
-    setInput(value)
-    runSearch(value)
+    const tag = `#${value.replace(/^#/, "")}`
+    setInput(tag)
+    runSearch(tag)
+  }
+
+  const changeOrder = (value: PlotSearchOrder) => {
+    setOrder(value)
+    try {
+      localStorage.setItem(ORDER_STORAGE_KEY, value)
+    } catch {
+      /* storage may be unavailable */
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -96,8 +156,7 @@ export function SearchPage() {
     }
   }
 
-  const showSuggestions =
-    focused && suggestionsOpen && suggestions.length > 0
+  const showSuggestions = suggestionsOpen && suggestions.length > 0
 
   return (
     <div className="animate-fade-in pb-4">
@@ -119,20 +178,18 @@ export function SearchPage() {
             />
             <input
               ref={inputRef}
-              type="search"
+              type="text"
               value={input}
               onChange={(e) => {
+                cancelScheduledClose()
                 setInput(e.target.value)
                 setSuggestionsOpen(true)
               }}
               onFocus={() => {
-                setFocused(true)
+                cancelScheduledClose()
                 if (input.trim()) setSuggestionsOpen(true)
               }}
-              onBlur={() => {
-                setFocused(false)
-                setSuggestionsOpen(false)
-              }}
+              onBlur={scheduleClose}
               onKeyDown={handleKeyDown}
               role="combobox"
               aria-expanded={showSuggestions}
@@ -149,6 +206,7 @@ export function SearchPage() {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              inputMode="search"
               enterKeyHint="search"
               className="h-10 w-full rounded-full border border-border bg-secondary/60 pr-9 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               style={{ fontSize: "16px" }}
@@ -206,15 +264,43 @@ export function SearchPage() {
             )}
           </form>
         </div>
-        {keyword && (
-          <div className="flex items-center justify-between gap-2 px-1 pt-2 text-xs text-muted-foreground">
-            <span className="truncate">「{keyword}」の検索結果</span>
-            <span className="shrink-0 tabular-nums">
-              {totalCount === null ? "" : `${formatTotal(totalCount)}件`}
-            </span>
-          </div>
-        )}
       </header>
+
+      {keyword && (
+        <div className="flex items-center justify-between gap-2 px-5 pt-3">
+          <span
+            className="truncate text-xs text-muted-foreground tabular-nums"
+            aria-live="polite"
+          >
+            {totalCount === null
+              ? "検索中…"
+              : `${formatTotal(totalCount)}件の検索結果`}
+          </span>
+          <label className="relative flex shrink-0 items-center">
+            <span className="sr-only">検索結果の並び替え</span>
+            <select
+              value={order}
+              onChange={(e) => changeOrder(e.target.value as PlotSearchOrder)}
+              aria-label="検索結果の並び替え"
+              className="appearance-none rounded-md bg-transparent py-1 pr-6 pl-1 text-xs font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                  className="bg-popover text-foreground"
+                >
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute top-1/2 right-1 size-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+          </label>
+        </div>
+      )}
 
       {!keyword ? (
         <div className="flex flex-col items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -250,7 +336,7 @@ export function SearchPage() {
                 plot={plot}
                 cached={false}
                 onClick={() => handlePlotClick(plot)}
-                onTagClick={(tag) => runSearch(tag)}
+                onTagClick={(tag) => runSearch(`#${tag}`)}
               />
             </div>
           ))}

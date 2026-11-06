@@ -251,7 +251,7 @@ export function PlotDetailDialog({
                 type="button"
                 onClick={() => {
                   onOpenChange(false)
-                  navigate(`/search?keyword=${encodeURIComponent(label)}`)
+                  navigate(`/search?keyword=${encodeURIComponent(`#${label}`)}`)
                 }}
                 className="inline-flex min-h-6 items-center rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
                 aria-label={`#${label} で検索`}

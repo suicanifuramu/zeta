@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { getPlotSearchCount, searchPlots } from "@/lib/api"
+import type { PlotSearchOrder } from "@/lib/api"
 import type { Plot } from "@/lib/types"
 
 const PAGE_SIZE = 18
@@ -17,9 +18,12 @@ export interface UsePlotSearchReturn {
 
 /**
  * Cursor-paginated plot search against `/v2/plots/search`.
- * Resets automatically when the keyword changes.
+ * Resets automatically when the keyword or sort order changes.
  */
-export function usePlotSearch(keyword: string): UsePlotSearchReturn {
+export function usePlotSearch(
+  keyword: string,
+  order: PlotSearchOrder = "RECOMMENDED"
+): UsePlotSearchReturn {
   const [plots, setPlots] = useState<Plot[]>([])
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(() => keyword.trim().length > 0)
@@ -53,6 +57,7 @@ export function usePlotSearch(keyword: string): UsePlotSearchReturn {
       try {
         const data = await searchPlots(q, {
           limit: PAGE_SIZE,
+          order,
           cursor: reset ? undefined : cursorRef.current || undefined,
         })
         if (requestId !== requestIdRef.current) return
@@ -86,10 +91,10 @@ export function usePlotSearch(keyword: string): UsePlotSearchReturn {
         inFlightRef.current = false
       }
     },
-    [keyword]
+    [keyword, order]
   )
 
-  // Reset + first page whenever the keyword changes
+  // Reset + first page whenever the keyword or order changes
   useEffect(() => {
     const q = keyword.trim()
     requestIdRef.current += 1
@@ -118,7 +123,7 @@ export function usePlotSearch(keyword: string): UsePlotSearchReturn {
       cancelled = true
       requestIdRef.current += 1
     }
-  }, [keyword, loadPage])
+  }, [keyword, order, loadPage])
 
   // Infinite scroll
   useEffect(() => {

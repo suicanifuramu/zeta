@@ -94,7 +94,7 @@ export function RankingPage() {
                 plot={plot}
                 onClick={() => handlePlotClick(plot)}
                 onTagClick={(tag) =>
-                  navigate(`/search?keyword=${encodeURIComponent(tag)}`)
+                  navigate(`/search?keyword=${encodeURIComponent(`#${tag}`)}`)
                 }
               />
             </div>

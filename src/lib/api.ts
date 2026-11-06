@@ -130,9 +130,12 @@ async function request<T>(
   return (text ? JSON.parse(text) : {}) as T
 }
 
-async function get<T>(path: string): Promise<T> {
+async function get<T>(
+  path: string,
+  headers?: Record<string, string>
+): Promise<T> {
   await ensureAccessToken()
-  return request<T>(path)
+  return request<T>(path, headers ? { headers } : {})
 }
 
 /**
@@ -295,7 +298,10 @@ export async function getSearchSuggestions(
   keyword: string
 ): Promise<SearchSuggestion[]> {
   const data = await get<{ hashtags?: SearchSuggestion[] }>(
-    `/v1/plots/search/autocomplete?keyword=${encodeURIComponent(keyword)}`
+    `/v1/plots/search/autocomplete?keyword=${encodeURIComponent(keyword)}`,
+    // The autocomplete endpoint is the web client's; the android client type
+    // gets APP_UPDATE_REQUIRED there, so ask for it as a web client.
+    { "x-client-type": "web", "x-device-type": "pc_web" }
   )
   return (data.hashtags || []).filter(
     (item): item is SearchSuggestion => Boolean(item?.hashtag)

@@ -67,7 +67,7 @@ export function HomePage() {
                 cached={false}
                 onClick={() => handlePlotClick(plot)}
                 onTagClick={(tag) =>
-                  navigate(`/search?keyword=${encodeURIComponent(tag)}`)
+                  navigate(`/search?keyword=${encodeURIComponent(`#${tag}`)}`)
                 }
               />
             </div>
