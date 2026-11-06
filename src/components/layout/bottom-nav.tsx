@@ -19,7 +19,7 @@ export function BottomNav() {
       role="navigation"
       aria-label="メインナビゲーション"
     >
-      <div className="mx-auto flex h-16 max-w-lg items-center justify-around">
+      <div className="mx-auto flex h-16 w-full max-w-lg items-stretch">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
@@ -32,15 +32,17 @@ export function BottomNav() {
             }}
             className={({ isActive }: { isActive: boolean }) =>
               cn(
-                "flex min-h-11 min-w-11 flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors",
+                "flex min-h-11 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-[11px] transition-colors",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               )
             }
           >
-            <Icon className="size-5" />
-            <span>{label}</span>
+            <Icon className="size-5 shrink-0" />
+            <span className="max-w-full truncate whitespace-nowrap">
+              {label}
+            </span>
           </NavLink>
         ))}
       </div>
