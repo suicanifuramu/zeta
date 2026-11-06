@@ -65,6 +65,7 @@ export function HomePage() {
               <PlotCard
                 plot={plot}
                 cached={false}
+                priority={i < 4}
                 onClick={() => handlePlotClick(plot)}
                 onTagClick={(tag) =>
                   navigate(`/search?keyword=${encodeURIComponent(`#${tag}`)}`)

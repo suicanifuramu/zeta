@@ -1,6 +1,7 @@
 "use client"
 
 import { CachedImage } from "@/components/cached-image"
+import { optimizeImageUrl } from "@/lib/image-url"
 import { cn } from "@/lib/utils"
 
 interface CharacterThumbnailStripProps {
@@ -38,7 +39,7 @@ export function CharacterThumbnailStrip({
             aria-current={i === currentIndex ? "true" : "false"}
           >
             <CachedImage
-              src={images[i].imageUrl}
+              src={optimizeImageUrl(images[i].imageUrl, 192)}
               alt={`Thumbnail ${i + 1}`}
               className="aspect-square h-full w-full object-cover"
             />

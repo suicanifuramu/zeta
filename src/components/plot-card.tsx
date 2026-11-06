@@ -3,6 +3,7 @@ import { MessageCircle } from "lucide-react"
 import { CachedImage } from "@/components/cached-image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { optimizeImageUrl } from "@/lib/image-url"
 import { cn } from "@/lib/utils"
 
 interface PlotCardProps {
@@ -21,6 +22,8 @@ interface PlotCardProps {
   onTagClick?: (tag: string) => void
   className?: string
   cached?: boolean
+  /** Eager-load the cover (use for the first visible row). */
+  priority?: boolean
 }
 
 function formatCount(n: number) {
@@ -35,8 +38,10 @@ export const PlotCard = memo(function PlotCard({
   onTagClick,
   className,
   cached = true,
+  priority = false,
 }: PlotCardProps) {
   const tags = (plot.hashtags || []).slice(0, 3)
+  const coverSrc = optimizeImageUrl(plot.imageUrl, 384)
 
   return (
     <Card
@@ -58,9 +63,11 @@ export const PlotCard = memo(function PlotCard({
       {plot.imageUrl && (
         <div className="aspect-[3/4] overflow-hidden">
           <CachedImage
-            src={plot.imageUrl}
+            src={coverSrc}
             alt={plot.name}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : undefined}
+            decoding="async"
             noCache={!cached}
             className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

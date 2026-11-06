@@ -421,6 +421,7 @@ export function SearchPage() {
               <PlotCard
                 plot={plot}
                 cached={false}
+                priority={i < 4}
                 onClick={() => handlePlotClick(plot)}
                 onTagClick={(tag) => runSearch(`#${tag}`)}
               />

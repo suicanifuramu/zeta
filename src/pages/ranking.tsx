@@ -92,6 +92,7 @@ export function RankingPage() {
             >
               <PlotCard
                 plot={plot}
+                priority={i < 4}
                 onClick={() => handlePlotClick(plot)}
                 onTagClick={(tag) =>
                   navigate(`/search?keyword=${encodeURIComponent(`#${tag}`)}`)

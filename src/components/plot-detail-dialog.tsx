@@ -8,6 +8,7 @@ import type { Plot, PlotDetailResponse, Character, IntroMessage } from "@/lib/ty
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CachedImage } from "@/components/cached-image"
+import { optimizeImageUrl } from "@/lib/image-url"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { formatMessageText } from "@/lib/format-message"
@@ -197,7 +198,7 @@ export function PlotDetailDialog({
           onClick={toggleImage}
         >
           <CachedImage
-            src={heroImg}
+            src={optimizeImageUrl(heroImg, 768)}
             alt={plotName}
             className={
               showPlotImage
@@ -336,7 +337,7 @@ export function PlotDetailDialog({
                         onClick={() => charDesc && toggleExpand(charKey)}
                       >
                         <Avatar className="mt-0.5 size-9 shrink-0">
-                          <AvatarImage src={char.imageUrl} />
+                          <AvatarImage src={optimizeImageUrl(char.imageUrl, 96)} />
                           <AvatarFallback>
                             {(char.name || "?")[0]}
                           </AvatarFallback>
@@ -377,7 +378,7 @@ export function PlotDetailDialog({
                       return (
                         <div key={i} className="overflow-hidden rounded-2xl border border-border">
                           <CachedImage
-                            src={msg.url}
+                            src={optimizeImageUrl(msg.url, 768)}
                             alt={msg.caption || "イントロ画像"}
                             className="w-full object-cover"
                           />
@@ -435,7 +436,7 @@ export function PlotDetailDialog({
                           <>
                             {char?.imageUrl && (
                               <Avatar className="mt-0.5 size-7 shrink-0">
-                                <AvatarImage src={char.imageUrl} />
+                                <AvatarImage src={optimizeImageUrl(char.imageUrl, 96)} />
                                 <AvatarFallback>
                                   {(char.name || "?")[0]}
                                 </AvatarFallback>

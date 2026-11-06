@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { CachedImage } from "@/components/cached-image"
+import { optimizeImageUrl } from "@/lib/image-url"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const SLIDE_TRANSITION = "transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1)"
@@ -270,7 +271,7 @@ export function CharacterImageCarousel({
                   <Skeleton className="absolute inset-0 h-full w-full" />
                 )}
                 <CachedImage
-                  src={img.imageUrl}
+                  src={optimizeImageUrl(img.imageUrl, 1024)}
                   alt=""
                   className="max-h-full max-w-full object-contain"
                   style={{
