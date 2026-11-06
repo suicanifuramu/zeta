@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { ArrowLeft, ChevronDown, Search, X } from "lucide-react"
+import { ArrowLeft, ChevronDown, History, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils"
 
 const MAX_DISPLAY_COUNT = 9999
 const ORDER_STORAGE_KEY = "zeta_search_order"
+const RECENT_STORAGE_KEY = "zeta_recent_searches"
+const MAX_RECENT_SEARCHES = 10
 
 const SORT_OPTIONS: Array<{ value: PlotSearchOrder; label: string }> = [
   { value: "RECOMMENDED", label: "オススメ順" },
@@ -43,6 +45,22 @@ function readInitialOrder(): PlotSearchOrder {
   return "RECOMMENDED"
 }
 
+function readRecentSearches(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .slice(0, MAX_RECENT_SEARCHES)
+  } catch {
+    return []
+  }
+}
+
 const countFormatter = new Intl.NumberFormat("ja-JP")
 
 export function SearchPage() {
@@ -52,6 +70,8 @@ export function SearchPage() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [order, setOrder] = useState<PlotSearchOrder>(readInitialOrder)
+  const [recentSearches, setRecentSearches] =
+    useState<string[]>(readRecentSearches)
   const inputRef = useRef<HTMLInputElement>(null)
   const closeTimerRef = useRef<number | null>(null)
   const navigate = useNavigate()
@@ -99,12 +119,39 @@ export function SearchPage() {
     }, 150)
   }
 
+  const rememberSearch = (value: string) => {
+    const query = value.trim()
+    if (!query) return
+    setRecentSearches((prev) => {
+      const next = [
+        query,
+        ...prev.filter((item) => item !== query),
+      ].slice(0, MAX_RECENT_SEARCHES)
+      try {
+        localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        /* storage may be unavailable */
+      }
+      return next
+    })
+  }
+
+  const clearRecentSearches = () => {
+    setRecentSearches([])
+    try {
+      localStorage.removeItem(RECENT_STORAGE_KEY)
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
+
   const runSearch = (value: string) => {
     const q = value.trim()
     if (!q) {
       inputRef.current?.focus()
       return
     }
+    rememberSearch(q)
     cancelScheduledClose()
     setSuggestionsOpen(false)
     setActiveIndex(-1)
@@ -303,9 +350,48 @@ export function SearchPage() {
       )}
 
       {!keyword ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-24 text-muted-foreground">
-          <Search className="size-8 opacity-40" aria-hidden />
-          <p className="text-sm">タグかキーワードで検索してね</p>
+        <div className="px-5 pt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-medium text-muted-foreground">
+              最近の検索
+            </h2>
+            {recentSearches.length > 0 && (
+              <button
+                type="button"
+                onClick={clearRecentSearches}
+                className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                履歴を消す
+              </button>
+            )}
+          </div>
+          {recentSearches.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
+              <Search className="size-8 opacity-40" aria-hidden />
+              <p className="text-sm">タグかキーワードで検索してね</p>
+            </div>
+          ) : (
+            <ul className="mt-1 flex flex-col">
+              {recentSearches.map((query) => (
+                <li key={query}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput(query)
+                      runSearch(query)
+                    }}
+                    className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-foreground/90 transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <History
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <span className="truncate">{query}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : loading ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-5 pt-3">
