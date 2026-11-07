@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CachedImage } from "@/components/cached-image"
 import { optimizeImageUrl } from "@/lib/image-url"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -23,10 +23,6 @@ const SWIPE_TRIGGER_PX = 56
 const DIRECTION_SLOP_PX = 10
 const MIN_SCALE = 1
 const MAX_SCALE = 4
-
-/** Custom property carrying the live drag offset. React never owns it, so the
- *  per-frame write cannot fight the transform React renders. */
-const DRAG_VAR = "--carousel-drag"
 
 type Slide = { imageUrl: string; aspectRatio: number }
 type Phase = "idle" | "dragging" | "settle" | "snapping"
@@ -55,6 +51,69 @@ function usePrefersReducedMotion(): boolean {
 
   return reduced
 }
+
+interface SlideViewProps {
+  imageUrl: string
+  loaded: boolean
+  scale: number
+  hidden: boolean
+  onLoad: (url: string) => void
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
+  onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void
+  onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void
+  onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => void
+  onLostPointerCapture: (event: React.PointerEvent<HTMLDivElement>) => void
+  onDoubleClick: () => void
+}
+
+/**
+ * One picture in the strip. Memoised: dragging re-renders the track on every
+ * pointer move, and the pictures must not re-render with it.
+ */
+const SlideView = memo(function SlideView({
+  imageUrl,
+  loaded,
+  scale,
+  hidden,
+  onLoad,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onLostPointerCapture,
+  onDoubleClick,
+}: SlideViewProps) {
+  return (
+    <div
+      className="flex h-full w-full items-center justify-center"
+      aria-hidden={hidden}
+    >
+      <div
+        className="relative flex h-full w-full touch-none items-center justify-center overflow-hidden select-none"
+        onDoubleClick={onDoubleClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onLostPointerCapture={onLostPointerCapture}
+      >
+        {!loaded && <Skeleton className="absolute inset-0 h-full w-full" />}
+        <CachedImage
+          src={optimizeImageUrl(imageUrl, 1024)}
+          alt=""
+          draggable={false}
+          className="max-h-full max-w-full object-contain"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: "center center",
+            transition: "transform 0.1s ease-out",
+          }}
+          onLoad={() => onLoad(imageUrl)}
+        />
+      </div>
+    </div>
+  )
+})
 
 export function CharacterImageCarousel({
   images,
@@ -96,11 +155,15 @@ export function CharacterImageCarousel({
   )
   const [phase, setPhase] = useState<Phase>("idle")
   const [scale, setScale] = useState(1)
+  // Live finger offset. It has to be React state, not a CSS variable: the
+  // release must clear it in the *same* style commit that moves the track to
+  // the next slide, otherwise the transition starts from the undragged
+  // position and the picture travels "finger + one full slide".
+  const [dragPx, setDragPx] = useState(0)
   const [loadedUrls, setLoadedUrls] = useState<Set<string>>(() => new Set())
   const [syncedImages, setSyncedImages] = useState(images)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<Gesture | null>(null)
   const dragOffsetRef = useRef(0)
   const pendingStepsRef = useRef(0)
@@ -112,7 +175,13 @@ export function CharacterImageCarousel({
    * between renders (a transition can end at any moment), so reading state
    * directly would act on a stale slide.
    */
-  const latest = useRef({ track, phase, total, displayCount, index })
+  const latest = useRef({
+    track,
+    phase,
+    total,
+    displayCount,
+    index,
+  })
   latest.current = { track, phase, total, displayCount, index }
 
   const emitIndex = useCallback(
@@ -261,17 +330,22 @@ export function CharacterImageCarousel({
 
       const offset = dragOffsetRef.current
       dragOffsetRef.current = 0
-      trackRef.current?.style.removeProperty(DRAG_VAR)
+      // Same batch as the step below: the transform React renders goes from
+      // `slide + offset` to `next slide + 0` in one commit, so the transition
+      // picks up exactly where the finger let go.
+      setDragPx(0)
+
       if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
 
       if (latest.current.phase !== "dragging") return
 
-      const travelled = Math.abs(offset)
-      if (cancelled || gesture.mode !== "h" || travelled < SWIPE_TRIGGER_PX) {
-        // Springs back: re-enabling the transition and clearing the drag
-        // offset in the same commit animates from where the finger left it.
+      if (
+        cancelled ||
+        gesture.mode !== "h" ||
+        Math.abs(offset) < SWIPE_TRIGGER_PX
+      ) {
         setPhase("idle")
         return
       }
@@ -302,11 +376,7 @@ export function CharacterImageCarousel({
         mode: "pending",
       }
       dragOffsetRef.current = 0
-      const element = trackRef.current
-      if (element) {
-        element.style.transition = "none"
-        element.style.setProperty(DRAG_VAR, "0px")
-      }
+      setDragPx(0)
       try {
         event.currentTarget.setPointerCapture?.(event.pointerId)
       } catch {
@@ -335,9 +405,10 @@ export function CharacterImageCarousel({
         gesture.mode = "h"
       }
       if (gesture.mode !== "h" || scale > 1) return
+      if (dx === dragOffsetRef.current) return
 
       dragOffsetRef.current = dx
-      trackRef.current?.style.setProperty(DRAG_VAR, `${dx}px`)
+      setDragPx(dx)
     },
     [scale]
   )
@@ -404,6 +475,8 @@ export function CharacterImageCarousel({
     track.instant || phase === "dragging" || reducedMotion
       ? "none"
       : SLIDE_TRANSITION
+  const slideWidth = 100 / Math.max(1, displayCount)
+  const pictureScale = Math.max(MIN_SCALE, scale)
 
   return (
     <div
@@ -419,49 +492,29 @@ export function CharacterImageCarousel({
       onKeyDown={handleKeyDown}
     >
       <div
-        ref={trackRef}
         className="flex h-full"
         style={{
-          transform: `translateX(calc(-${
-            (displayIndex * 100) / Math.max(1, displayCount)
-          }% + var(${DRAG_VAR}, 0px)))`,
+          transform: `translateX(calc(-${displayIndex * slideWidth}% + ${dragPx}px))`,
           width: `${displayCount * 100}%`,
           transition,
         }}
         onTransitionEnd={handleTransitionEnd}
       >
         {displayImages.map((img, i) => (
-          <div
-            key={i}
-            className="flex h-full w-full items-center justify-center"
-            style={{ width: `${100 / displayCount}%` }}
-            aria-hidden={i !== displayIndex}
-          >
-            <div
-              className="relative flex h-full w-full touch-none items-center justify-center overflow-hidden select-none"
-              onDoubleClick={handleDoubleClick}
+          <div key={i} style={{ width: `${slideWidth}%` }}>
+            <SlideView
+              imageUrl={img.imageUrl}
+              loaded={loadedUrls.has(img.imageUrl)}
+              scale={pictureScale}
+              hidden={i !== displayIndex}
+              onLoad={handleImageLoad}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
               onLostPointerCapture={handleLostPointerCapture}
-            >
-              {!loadedUrls.has(img.imageUrl) && (
-                <Skeleton className="absolute inset-0 h-full w-full" />
-              )}
-              <CachedImage
-                src={optimizeImageUrl(img.imageUrl, 1024)}
-                alt=""
-                draggable={false}
-                className="max-h-full max-w-full object-contain"
-                style={{
-                  transform: `scale(${Math.max(MIN_SCALE, scale)})`,
-                  transformOrigin: "center center",
-                  transition: "transform 0.1s ease-out",
-                }}
-                onLoad={() => handleImageLoad(img.imageUrl)}
-              />
-            </div>
+              onDoubleClick={handleDoubleClick}
+            />
           </div>
         ))}
       </div>
