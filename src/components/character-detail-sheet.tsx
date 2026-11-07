@@ -33,16 +33,23 @@ export function CharacterDetailSheet({
   useEffect(() => {
     if (!open || !character || !plotId) return
 
+    // A late response from a previous character must not overwrite the image
+    // set the viewer is currently showing (it would reset the carousel).
+    let cancelled = false
     const fetchImages = async () => {
       try {
         const data = await getCharacterImages(plotId, character.id)
+        if (cancelled) return
         setImages(data.images)
         setCurrentIndex(0)
       } catch (e) {
-        console.warn("Failed to load character images:", e)
+        if (!cancelled) console.warn("Failed to load character images:", e)
       }
     }
     fetchImages()
+    return () => {
+      cancelled = true
+    }
   }, [open, character, plotId])
 
   useEffect(() => {
