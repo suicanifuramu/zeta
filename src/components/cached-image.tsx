@@ -17,7 +17,12 @@ export function CachedImage({
   ...props
 }: CachedImageProps) {
   const { cachedSrc } = useImageCache(src, noCache)
-  const [imgLoaded, setImgLoaded] = useState(false)
+  // Track *which* source finished loading, not just "something loaded".
+  // React reuses this component when only `src` changes (carousel slides,
+  // thumbnails); a bare boolean stays `true` and keeps the previous picture
+  // at full opacity while the new one decodes.
+  const [loadedSrc, setLoadedSrc] = useState<string | undefined>(undefined)
+  const imgLoaded = src !== undefined && loadedSrc === src
 
   if (!cachedSrc) return null
 
@@ -31,7 +36,7 @@ export function CachedImage({
         className
       )}
       onLoad={(e) => {
-        setImgLoaded(true)
+        setLoadedSrc(src)
         onLoad?.(e)
       }}
       onError={(e) => {

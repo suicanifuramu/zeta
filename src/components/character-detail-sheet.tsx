@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { X } from "lucide-react"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { CharacterImageCarousel } from "@/components/character-image-carousel"
 import { CharacterThumbnailStrip } from "@/components/character-thumbnail-strip"
 import { getCharacterImages, getPlot } from "@/lib/api"
@@ -29,6 +30,22 @@ export function CharacterDetailSheet({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [fallbackDescription, setFallbackDescription] = useState("")
+  /** Character the image set currently in state belongs to. */
+  const [imagesFor, setImagesFor] = useState<string | null>(null)
+  const [imagesLoading, setImagesLoading] = useState(false)
+
+  // The sheet stays mounted while closed, so every bit of state survives into
+  // the next character. Drop it here (during render, before the commit) or the
+  // previous character's pictures are painted for a frame and until the fetch
+  // lands.
+  if (character && imagesFor !== character.id) {
+    setImagesFor(character.id)
+    setImages([])
+    setImagesLoading(true)
+    setCurrentIndex(0)
+    setExpanded(false)
+    setFallbackDescription("")
+  }
 
   useEffect(() => {
     if (!open || !character || !plotId) return
@@ -44,6 +61,8 @@ export function CharacterDetailSheet({
         setCurrentIndex(0)
       } catch (e) {
         if (!cancelled) console.warn("Failed to load character images:", e)
+      } finally {
+        if (!cancelled) setImagesLoading(false)
       }
     }
     fetchImages()
@@ -117,7 +136,11 @@ export function CharacterDetailSheet({
 
       <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div className="relative aspect-square bg-muted">
+          {imagesLoading && (
+            <Skeleton className="absolute inset-0 h-full w-full" />
+          )}
           <CharacterImageCarousel
+            key={character.id}
             images={images}
             index={currentIndex}
             onIndexChange={setCurrentIndex}
