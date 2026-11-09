@@ -189,7 +189,10 @@ export function PlotDetailDialog({
           <Copy />
         </Button>
       </div>
-      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {/* `bg-popover` here is deliberate: the scroll area paints its own
+          background so a sub-pixel seam between it and the sheet never shows
+          the page behind through during fast scrolls. */}
+      <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain bg-popover">
       {/* Hero image */}
       {heroImg ? (
         <div
@@ -375,12 +378,30 @@ export function PlotDetailDialog({
                 {introMessages.map(
                   (msg, i) => {
                     if (msg.type === "image") {
+                      // Reserve the box before the bytes arrive. Without this the
+                      // image is 0px tall until it decodes, the sheet's content
+                      // height jumps mid-scroll, and the scroll position visibly
+                      // snaps — the "laggy" part of the report.
+                      const ratio =
+                        typeof msg.aspectRatio === "number" && msg.aspectRatio > 0
+                          ? msg.aspectRatio
+                          : undefined
                       return (
-                        <div key={i} className="overflow-hidden rounded-2xl border border-border">
+                        <div
+                          key={i}
+                          className="overflow-hidden rounded-2xl border border-border bg-secondary/30"
+                          style={ratio ? { aspectRatio: String(ratio) } : undefined}
+                        >
                           <CachedImage
                             src={optimizeImageUrl(msg.url, 768)}
                             alt={msg.caption || "イントロ画像"}
-                            className="w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            className={
+                              ratio
+                                ? "size-full object-cover"
+                                : "h-auto w-full object-cover"
+                            }
                           />
                         </div>
                       )
@@ -469,8 +490,9 @@ export function PlotDetailDialog({
       </div>
       </div>
 
-      {/* Action footer */}
-      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+      {/* Action footer — safe-area padding keeps the button clear of the home
+          indicator instead of letting the sheet grow taller than the viewport. */}
+      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {isDesktop && (
           <Button
             variant="outline"
@@ -496,12 +518,17 @@ export function PlotDetailDialog({
   )
 
   return (
+    // Mobile sheet keeps `overflow` visible on purpose: vaul paints an
+    // `::after` filler below the panel so the page never shows through when the
+    // sheet shifts (drag, URL-bar resize, momentum bounce). Clipping the drawer
+    // cut that filler off — the black band under the sheet while scrolling.
+    // The scroll area clips its own content.
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
       title="ストーリー詳細"
-      desktopClassName="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
-      mobileClassName="max-h-[85vh] gap-0 overflow-hidden p-0"
+      desktopClassName="flex max-h-[85dvh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+      mobileClassName="gap-0 p-0"
     >
       {content}
     </ResponsiveDialog>
