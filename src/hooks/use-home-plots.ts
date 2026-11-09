@@ -68,9 +68,14 @@ export function useHomePlots(): UseHomePlotsReturn {
     }
   }, [])
 
-  // Sync module-level cache when plots change
+  // Sync module-level cache when plots change.
+  // Only store a non-empty result: this effect runs before the mount effect
+  // below, so writing the initial `[]` made `cachedPlots` truthy and the
+  // `if (!cachedPlots) loadPlots(true)` guard skipped the very first request —
+  // the home page sat on skeletons until the sentinel or the refresh button
+  // fired.
   useEffect(() => {
-    cachedPlots = plots
+    if (plots.length > 0) cachedPlots = plots
   }, [plots])
 
   useEffect(() => {
