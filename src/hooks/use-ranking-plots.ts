@@ -56,9 +56,17 @@ export function useRankingPlots(): UseRankingPlotsReturn {
           })
         }
 
-        setAllItems(items)
-        setDisplayed(items.slice(0, BATCH_SIZE))
-        setHasMore(items.length > BATCH_SIZE)
+        // Match the official app: the badge is the row position, not the
+        // server rank. Server ranks skip numbers when plots get hidden.
+        // rankDiff stays the server value (it is relative to the server rank).
+        const ranked = items.map((p, i) => ({
+          ...p,
+          rank: i + 1,
+        }))
+
+        setAllItems(ranked)
+        setDisplayed(ranked.slice(0, BATCH_SIZE))
+        setHasMore(ranked.length > BATCH_SIZE)
       } catch (e: unknown) {
         if (requestId !== requestIdRef.current) return
         toast.error(
