@@ -1,4 +1,4 @@
-import { memoryCache, fetchPromises } from "@/lib/image-cache"
+import { PLOT_IMAGE_CACHE, memoryCache, fetchPromises } from "@/lib/image-cache"
 
 interface PreloadOptions {
   concurrency?: number
@@ -19,8 +19,16 @@ interface PreloadOptions {
   idleMinTimeRemainingMs?: number
 }
 
-async function getPlotImageCache(): Promise<Cache> {
-  return caches.open("plot-images")
+/** A preload must never hold a slot forever. */
+const PRELOAD_TIMEOUT_MS = 15000
+
+async function getPlotImageCache(): Promise<Cache | null> {
+  if (typeof caches === "undefined") return null
+  try {
+    return await caches.open(PLOT_IMAGE_CACHE)
+  } catch {
+    return null
+  }
 }
 
 async function preloadSingle(
@@ -45,20 +53,29 @@ async function preloadSingle(
 
   const promise = (async (): Promise<string> => {
     const cache = await getPlotImageCache()
-    let res = await cache.match(url)
+
+    let res = cache ? await cache.match(url) : undefined
     if (!res) {
-      res = await fetch(url, { priority })
-      if (res.ok) {
-        cache.put(url, res.clone())
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), PRELOAD_TIMEOUT_MS)
+      try {
+        res = await fetch(url, { priority, signal: controller.signal })
+      } finally {
+        clearTimeout(timer)
+      }
+      if (res.ok && cache) {
+        void cache.put(url, res.clone()).catch(() => {})
       }
     }
-    if (res.ok) {
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      memoryCache.set(url, objectUrl)
-      return objectUrl
-    }
-    throw new Error(`Failed to load: ${res.status}`)
+
+    if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
+
+    const blob = await res.blob()
+    if (blob.size === 0) throw new Error("Empty image")
+
+    const objectUrl = URL.createObjectURL(blob)
+    memoryCache.set(url, objectUrl)
+    return objectUrl
   })()
 
   fetchPromises.set(url, promise)

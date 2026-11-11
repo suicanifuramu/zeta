@@ -100,7 +100,8 @@ export function SettingsPage() {
   }
 
   const { quizStatus, runQuiz } = useSettingsQuiz()
-  const { cacheCount, cacheDeleting, clearCache } = useSettingsCache()
+  const { cacheCount, memoryCount, cacheDeleting, clearCache } =
+    useSettingsCache()
 
   const handleCopyAccessToken = async () => {
     const token = getAccessToken()
@@ -450,11 +451,21 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               キャッシュされた画像:{" "}
               <span className="font-medium tabular-nums">{cacheCount}</span> 件
+              {memoryCount > 0 && (
+                <>
+                  {" "}
+                  （メモリ{" "}
+                  <span className="font-medium tabular-nums">
+                    {memoryCount}
+                  </span>{" "}
+                  件）
+                </>
+              )}
             </p>
             <Button
               variant="destructive"
               size="sm"
-              disabled={cacheDeleting || cacheCount === 0}
+              disabled={cacheDeleting}
               onClick={clearCache}
             >
               {cacheDeleting && <Spinner className="mr-1 size-3" />}

@@ -3,10 +3,13 @@ import { toast } from "sonner"
 import { getRanking } from "@/lib/api"
 import { getGender } from "@/lib/auth"
 import { preloadImagesAsync } from "@/lib/image-preloader"
+import { optimizeImageUrl } from "@/lib/image-url"
 import type { Plot } from "@/lib/types"
 
 const BATCH_SIZE = 20
 const MAX_ITEMS = 100
+/** Warm only the first screenful; the rest loads as the user scrolls. */
+const PRELOAD_LIMIT = 12
 
 type RankingGender = "MALE" | "FEMALE"
 
@@ -46,11 +49,14 @@ export function useRankingPlots(): UseRankingPlotsReturn {
         if (requestId !== requestIdRef.current) return
         const items = data.rankings || []
 
+        // Preload the same URL the cards request. Preloading the raw
+        // `imageUrl` pulled multi-megabyte originals (0.6–5.5 MB each) for up
+        // to 100 plots and never shared a cache entry with the thumbnails.
         const imageUrls = items
-          .map((p: Plot) => p.imageUrl)
-          .filter((u: string | undefined): u is string => typeof u === "string")
+          .map((p: Plot) => optimizeImageUrl(p.imageUrl, 384))
+          .filter((u): u is string => typeof u === "string")
         if (imageUrls.length > 0) {
-          preloadImagesAsync(imageUrls, {
+          preloadImagesAsync(imageUrls.slice(0, PRELOAD_LIMIT), {
             priority: "low",
             scheduling: "idle",
           })

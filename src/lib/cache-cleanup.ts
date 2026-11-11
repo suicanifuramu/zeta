@@ -1,5 +1,5 @@
 import { cacheManager, clearAllUrls } from "./cache-db"
-import { clearMemoryCache } from "./image-cache"
+import { PLOT_IMAGE_CACHE, clearMemoryCache } from "./image-cache"
 import type { CleanupResult } from "./cache-types"
 import { logger } from "./log"
 
@@ -12,9 +12,10 @@ let visibilityHandler: (() => void) | null = null
 
 async function deleteFromCacheAPI(urls: string[]): Promise<string[]> {
   if (urls.length === 0) return []
+  if (typeof caches === "undefined") return []
 
   try {
-    const cache = await caches.open("plot-images")
+    const cache = await caches.open(PLOT_IMAGE_CACHE)
     const deleted: string[] = []
 
     for (const url of urls) {
@@ -29,6 +30,22 @@ async function deleteFromCacheAPI(urls: string[]): Promise<string[]> {
     return deleted
   } catch {
     return []
+  }
+}
+
+/** Empty the whole cover bucket. Returns how many entries were removed. */
+async function clearPlotImageCache(): Promise<number> {
+  if (typeof caches === "undefined") return 0
+
+  try {
+    const cache = await caches.open(PLOT_IMAGE_CACHE)
+    const keys = await cache.keys()
+    await Promise.all(
+      keys.map((request) => cache.delete(request).catch(() => false))
+    )
+    return keys.length
+  } catch {
+    return 0
   }
 }
 
@@ -113,7 +130,14 @@ export function runStartupCleanup(): void {
   }, 1000)
 }
 
-export async function clearAllCache(): Promise<{ deletedCount: number }> {
+export interface ClearAllCacheResult {
+  /** Object URLs revoked from the in-memory map. */
+  deletedCount: number
+  /** Entries removed from the Cache API bucket. */
+  cacheEntries: number
+}
+
+export async function clearAllCache(): Promise<ClearAllCacheResult> {
   const deletedCount = clearMemoryCache()
 
   try {
@@ -122,8 +146,12 @@ export async function clearAllCache(): Promise<{ deletedCount: number }> {
     console.warn("[CacheCleanup] IndexedDB clear failed:", e)
   }
 
+  // The Cache API holds the actual image bodies; leaving it alone meant a
+  // single bad response could never be cleared from the app.
+  const cacheEntries = await clearPlotImageCache()
+
   logger.debug(
-    `[CacheCleanup] Memory cache cleared: ${deletedCount} items (Cache API kept intact)`
+    `[CacheCleanup] Cache cleared: ${deletedCount} memory, ${cacheEntries} cache API`
   )
-  return { deletedCount }
+  return { deletedCount, cacheEntries }
 }

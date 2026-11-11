@@ -1,3 +1,6 @@
+/** Shared Cache API bucket for plot covers. */
+export const PLOT_IMAGE_CACHE = "plot-images"
+
 const MAX_SIZE = 100
 const _map = new Map<string, string>()
 const _fetchPromises = new Map<string, Promise<string>>()
@@ -6,6 +9,10 @@ const _clearListeners = new Set<() => void>()
 export function subscribeToCacheClear(listener: () => void): () => void {
   _clearListeners.add(listener)
   return () => _clearListeners.delete(listener)
+}
+
+function notifyListeners(): void {
+  _clearListeners.forEach((fn) => fn())
 }
 
 function evictIfNeeded(): void {
@@ -26,8 +33,42 @@ export function clearMemoryCache(): number {
   }
   _map.clear()
   _fetchPromises.clear()
-  _clearListeners.forEach((fn) => fn())
+  notifyListeners()
   return count
+}
+
+/**
+ * Drop every trace of one URL: the object URL, the in-flight promise and the
+ * Cache API entry. Without this a single bad response sticks forever — the
+ * `<img>` keeps failing at opacity 0 and nothing ever asks the network again.
+ */
+export function forgetImage(url: string): void {
+  const objectUrl = _map.get(url)
+  if (objectUrl) {
+    URL.revokeObjectURL(objectUrl)
+    _map.delete(url)
+  }
+  _fetchPromises.delete(url)
+}
+
+/**
+ * Forget a broken image and wake every mounted hook so it fetches again.
+ * Safe to call when the Cache API is unavailable (insecure origin, private
+ * mode): the memory cache is still cleared.
+ */
+export async function invalidateImage(url: string): Promise<void> {
+  forgetImage(url)
+
+  if (typeof caches !== "undefined") {
+    try {
+      const cache = await caches.open(PLOT_IMAGE_CACHE)
+      await cache.delete(url)
+    } catch {
+      // storage unavailable or quota errors — the memory eviction stands
+    }
+  }
+
+  notifyListeners()
 }
 
 export const memoryCache = {
@@ -39,6 +80,8 @@ export const memoryCache = {
   },
   set(url: string, objectUrl: string): void {
     if (!_map.has(url)) evictIfNeeded()
+    const previous = _map.get(url)
+    if (previous && previous !== objectUrl) URL.revokeObjectURL(previous)
     _map.set(url, objectUrl)
   },
   delete(url: string): void {
