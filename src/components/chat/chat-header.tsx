@@ -63,7 +63,7 @@ export const ChatHeader = memo(function ChatHeader({
   const navigate = useNavigate()
 
   return (
-    <header className="glass sticky top-0 z-20 flex items-center gap-3 border-b border-border px-3 py-2">
+    <header className="glass sticky top-0 z-20 flex items-center gap-3 border-b border-border px-3 py-2 select-none [-webkit-tap-highlight-color:transparent]">
       <Button
         variant="ghost"
         size="icon"
@@ -76,13 +76,21 @@ export const ChatHeader = memo(function ChatHeader({
         <CachedAvatarImage src={plotImg} alt={plotName} />
         <AvatarFallback>{plotName[0]}</AvatarFallback>
       </Avatar>
-      <div
-        className="min-w-0 flex-1 cursor-pointer"
+      {/* A real button, not a div: the title is a tap target, so a long press
+          must not start a text selection and drag the platform's blue handles
+          across the header. `touch-manipulation` also drops the double-tap
+          delay that makes the flash visible in the first place. */}
+      <button
+        type="button"
+        aria-haspopup="dialog"
         onClick={onHeaderClick}
+        className="min-w-0 flex-1 cursor-pointer touch-manipulation rounded-lg text-left outline-none select-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <p className="truncate text-sm font-semibold">{plotName}</p>
-        <p className="truncate text-xs text-muted-foreground">{headerSub}</p>
-      </div>
+        <span className="block truncate text-sm font-semibold">{plotName}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {headerSub}
+        </span>
+      </button>
       <Button
         variant="ghost"
         size="icon"
