@@ -28,7 +28,9 @@ export function CharacterDetailSheet({
     Array<{ imageUrl: string; aspectRatio: number }>
   >([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [expanded, setExpanded] = useState(false)
+  // The sheet is a reading view, so the description starts open; "閉じる" is
+  // there for anyone who wants the picture back in view.
+  const [expanded, setExpanded] = useState(true)
   const [fallbackDescription, setFallbackDescription] = useState("")
   /** Character the image set currently in state belongs to. */
   const [imagesFor, setImagesFor] = useState<string | null>(null)
@@ -43,7 +45,7 @@ export function CharacterDetailSheet({
     setImages([])
     setImagesLoading(true)
     setCurrentIndex(0)
-    setExpanded(false)
+    setExpanded(true)
     setFallbackDescription("")
   }
 

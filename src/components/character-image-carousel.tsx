@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CachedImage } from "@/components/cached-image"
 import { optimizeImageUrl } from "@/lib/image-url"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 /**
  * Travel time of one slide.
@@ -26,7 +27,14 @@ const MAX_SCALE = 4
 
 type Slide = { imageUrl: string; aspectRatio: number }
 type Phase = "idle" | "dragging" | "settle" | "snapping"
-type Gesture = { id: number; x: number; y: number; mode: "pending" | "h" | "v" }
+type Gesture = {
+  id: number
+  x: number
+  y: number
+  mode: "pending" | "h" | "v" | "pan"
+  /** Picture offset the drag started from (zoomed pan only). */
+  startPan?: { x: number; y: number }
+}
 
 interface CharacterImageCarouselProps {
   images: Slide[]
@@ -56,6 +64,9 @@ interface SlideViewProps {
   imageUrl: string
   loaded: boolean
   scale: number
+  panX: number
+  panY: number
+  panning: boolean
   hidden: boolean
   onLoad: (url: string) => void
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
@@ -74,6 +85,9 @@ const SlideView = memo(function SlideView({
   imageUrl,
   loaded,
   scale,
+  panX,
+  panY,
+  panning,
   hidden,
   onLoad,
   onPointerDown,
@@ -83,13 +97,23 @@ const SlideView = memo(function SlideView({
   onLostPointerCapture,
   onDoubleClick,
 }: SlideViewProps) {
+  const zoomed = scale > MIN_SCALE
   return (
     <div
       className="flex h-full w-full items-center justify-center"
       aria-hidden={hidden}
     >
       <div
-        className="relative flex h-full w-full touch-none items-center justify-center overflow-hidden select-none"
+        // `touch-pan-y` while unzoomed leaves vertical gestures to the sheet's
+        // scroller, so the description can be reached by dragging the picture,
+        // while horizontal ones still reach the swipe handler. Once zoomed, JS
+        // owns every direction because the same drag pans the picture instead.
+        className={cn(
+          "relative flex h-full w-full items-center justify-center overflow-hidden select-none",
+          zoomed
+            ? "cursor-grab touch-none active:cursor-grabbing"
+            : "touch-pan-y"
+        )}
         onDoubleClick={onDoubleClick}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -104,9 +128,9 @@ const SlideView = memo(function SlideView({
           draggable={false}
           className="max-h-full max-w-full object-contain"
           style={{
-            transform: `scale(${scale})`,
+            transform: `translate(${panX}px, ${panY}px) scale(${scale})`,
             transformOrigin: "center center",
-            transition: "transform 0.1s ease-out",
+            transition: panning ? "none" : "transform 0.1s ease-out",
           }}
           onLoad={() => onLoad(imageUrl)}
         />
@@ -131,6 +155,7 @@ export function CharacterImageCarousel({
   )
   const displayCount = displayImages.length
   const lastDisplay = Math.max(0, displayCount - 1)
+  const aspects = useMemo(() => images.map((img) => img.aspectRatio), [images])
 
   const realToDisplay = useCallback(
     (real: number) => (total > 1 ? real + 1 : real),
@@ -160,6 +185,10 @@ export function CharacterImageCarousel({
   // the next slide, otherwise the transition starts from the undragged
   // position and the picture travels "finger + one full slide".
   const [dragPx, setDragPx] = useState(0)
+  // Zoomed-in picture offset, in screen pixels. It sits in front of `scale` in
+  // the transform list, so a finger moving 40px moves the picture 40px.
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [panning, setPanning] = useState(false)
   const [loadedUrls, setLoadedUrls] = useState<Set<string>>(() => new Set())
   const [syncedImages, setSyncedImages] = useState(images)
 
@@ -169,6 +198,8 @@ export function CharacterImageCarousel({
   const pendingStepsRef = useRef(0)
   const lastEmittedRef = useRef(index)
   const prevIndexRef = useRef(index)
+  const panRef = useRef(pan)
+  panRef.current = pan
 
   /**
    * Latest committed values for event handlers and timers. Handlers fire
@@ -178,11 +209,64 @@ export function CharacterImageCarousel({
   const latest = useRef({
     track,
     phase,
+    scale,
     total,
     displayCount,
     index,
+    aspects: [] as number[],
   })
-  latest.current = { track, phase, total, displayCount, index }
+  latest.current = {
+    track,
+    phase,
+    scale,
+    total,
+    displayCount,
+    index,
+    aspects,
+  }
+
+  /**
+   * Keep the zoomed picture inside its own frame. The limits come from the
+   * rendered size of *this* slide (object-contain, so a portrait picture is
+   * narrower than the frame), otherwise panning would drift into empty space
+   * at the edges of a picture that is not square.
+   */
+  const clampPan = useCallback(
+    (next: { x: number; y: number }, zoom: number) => {
+      const element = containerRef.current
+      if (!element || zoom <= MIN_SCALE) return { x: 0, y: 0 }
+      const width = element.clientWidth
+      const height = element.clientHeight
+      if (!width || !height) return next
+
+      const state = latest.current
+      const ratio = state.aspects[displayToReal(state.track.display)]
+      const aspect =
+        Number.isFinite(ratio) && ratio > 0 ? ratio : width / height
+      const fitsWidth = aspect > width / height
+      const containedWidth = fitsWidth ? width : height * aspect
+      const containedHeight = fitsWidth ? width / aspect : height
+      const limitX = Math.max(0, (containedWidth * zoom - width) / 2)
+      const limitY = Math.max(0, (containedHeight * zoom - height) / 2)
+      return {
+        x: Math.max(-limitX, Math.min(limitX, next.x)),
+        y: Math.max(-limitY, Math.min(limitY, next.y)),
+      }
+    },
+    [displayToReal]
+  )
+
+  /** Zoom to `next`, dropping the offset when the picture goes back to 1:1. */
+  const applyScale = useCallback(
+    (next: number) => {
+      const zoom = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next))
+      setScale(zoom)
+      setPan((current) =>
+        zoom <= MIN_SCALE ? { x: 0, y: 0 } : clampPan(current, zoom)
+      )
+    },
+    [clampPan]
+  )
 
   const emitIndex = useCallback(
     (real: number) => {
@@ -200,7 +284,8 @@ export function CharacterImageCarousel({
     const max = Math.max(0, state.displayCount - 1)
     const base = Math.min(state.track.display, max)
     const next = Math.max(0, Math.min(max, base + direction))
-    setScale(1)
+    setScale(MIN_SCALE)
+    setPan({ x: 0, y: 0 })
     if (next === base) {
       if (state.phase === "settle") setPhase("idle")
       return
@@ -339,6 +424,13 @@ export function CharacterImageCarousel({
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
 
+      // A pan is already committed where the finger left it; there is no slide
+      // to settle and nothing to snap back.
+      if (gesture.mode === "pan") {
+        setPanning(false)
+        return
+      }
+
       if (latest.current.phase !== "dragging") return
 
       if (
@@ -358,6 +450,27 @@ export function CharacterImageCarousel({
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.pointerType === "mouse" && event.button !== 0) return
       const state = latest.current
+
+      // Zoomed in: the same drag moves the picture inside its frame instead of
+      // flipping slides. A single picture is still pannable, so this branch
+      // runs before the `total <= 1` shortcut.
+      if (state.scale > MIN_SCALE) {
+        gestureRef.current = {
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          mode: "pan",
+          startPan: panRef.current,
+        }
+        setPanning(true)
+        try {
+          event.currentTarget.setPointerCapture?.(event.pointerId)
+        } catch {
+          // Capture is a nicety; a refusal must not kill the drag.
+        }
+        return
+      }
+
       if (state.total <= 1) return
       // Catch a moving slide instead of fighting it: finish it, then drag from
       // a known slide.
@@ -396,6 +509,14 @@ export function CharacterImageCarousel({
       const dx = event.clientX - gesture.x
       const dy = event.clientY - gesture.y
 
+      if (gesture.mode === "pan") {
+        const start = gesture.startPan ?? { x: 0, y: 0 }
+        setPan(
+          clampPan({ x: start.x + dx, y: start.y + dy }, latest.current.scale)
+        )
+        return
+      }
+
       if (gesture.mode === "pending") {
         if (Math.abs(dy) > Math.abs(dx) + DIRECTION_SLOP_PX) {
           gesture.mode = "v"
@@ -404,13 +525,13 @@ export function CharacterImageCarousel({
         if (Math.abs(dx) <= DIRECTION_SLOP_PX) return
         gesture.mode = "h"
       }
-      if (gesture.mode !== "h" || scale > 1) return
+      if (gesture.mode !== "h") return
       if (dx === dragOffsetRef.current) return
 
       dragOffsetRef.current = dx
       setDragPx(dx)
     },
-    [scale]
+    [clampPan]
   )
 
   const handlePointerUp = useCallback(
@@ -427,8 +548,8 @@ export function CharacterImageCarousel({
   )
 
   const handleDoubleClick = useCallback(() => {
-    setScale((current) => (current > MIN_SCALE ? MIN_SCALE : 2))
-  }, [])
+    applyScale(latest.current.scale > MIN_SCALE ? MIN_SCALE : 2)
+  }, [applyScale])
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -443,21 +564,41 @@ export function CharacterImageCarousel({
     [requestStep]
   )
 
-  // Ctrl/⌘ + wheel zoom. React's `onWheel` is passive at the root, so the
-  // browser would zoom the whole app instead of the picture.
+  // Ctrl/⌘ + wheel zooms. Plain wheel, once zoomed, scrolls the picture:
+  // React's `onWheel` is passive at the root, so the browser would zoom or
+  // scroll the page instead of the picture.
   useEffect(() => {
     const element = containerRef.current
     if (!element) return
     const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        applyScale(latest.current.scale - event.deltaY * 0.01)
+        return
+      }
+      const zoom = latest.current.scale
+      if (zoom <= MIN_SCALE) return
+      // At 1:1 there is nothing to reveal, so the wheel keeps scrolling the
+      // sheet behind the picture.
       event.preventDefault()
-      setScale((current) =>
-        Math.max(MIN_SCALE, Math.min(MAX_SCALE, current - event.deltaY * 0.01))
+      setPan((current) =>
+        clampPan(
+          { x: current.x - event.deltaX, y: current.y - event.deltaY },
+          zoom
+        )
       )
     }
     element.addEventListener("wheel", onWheel, { passive: false })
     return () => element.removeEventListener("wheel", onWheel)
-  }, [])
+  }, [applyScale, clampPan])
+
+  // A different picture always starts at 1:1. Without this, stepping with the
+  // arrows or a thumbnail while zoomed would inherit the old offset.
+  useEffect(() => {
+    setScale(MIN_SCALE)
+    setPan({ x: 0, y: 0 })
+    setPanning(false)
+  }, [index])
 
   const handleImageLoad = useCallback((url: string) => {
     setLoadedUrls((previous) => {
@@ -506,6 +647,9 @@ export function CharacterImageCarousel({
               imageUrl={img.imageUrl}
               loaded={loadedUrls.has(img.imageUrl)}
               scale={pictureScale}
+              panX={pan.x}
+              panY={pan.y}
+              panning={panning}
               hidden={i !== displayIndex}
               onLoad={handleImageLoad}
               onPointerDown={handlePointerDown}
