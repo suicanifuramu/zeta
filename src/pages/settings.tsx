@@ -22,6 +22,7 @@ import { useSettingsOverview } from "@/hooks/use-settings-overview"
 import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
 import { useSettingsQuiz } from "@/hooks/use-settings-quiz"
 import { useSettingsCache } from "@/hooks/use-settings-cache"
+import { MessageExportDialog } from "@/components/message-export-dialog"
 
 function formatDate(ms: number) {
   if (!ms) return "-"
@@ -102,6 +103,7 @@ export function SettingsPage() {
   const { quizStatus, runQuiz } = useSettingsQuiz()
   const { cacheCount, memoryCount, cacheDeleting, clearCache } =
     useSettingsCache()
+  const [exportOpen, setExportOpen] = useState(false)
 
   const handleCopyAccessToken = async () => {
     const token = getAccessToken()
@@ -428,6 +430,25 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Message Export Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>メッセージエクスポート</CardTitle>
+            <CardDescription>
+              ルームの全メッセージをJSON形式で保存
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+            >
+              メッセージエクスポート
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* App Info */}
         <Card>
           <CardHeader>
@@ -474,6 +495,8 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <MessageExportDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   )
 }
