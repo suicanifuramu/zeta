@@ -106,6 +106,8 @@ export function useChatProfile(
       )
       const resolvedPlotProfiles: PlotProfileItem[] = []
       if (myProfile) {
+        // Once the room has a `/me` record, it is the only plot profile the
+        // UI shows (matching the official web/android clients).
         resolvedPlotProfiles.push({
           id: myProfile.id,
           name: myProfile.name,
@@ -114,25 +116,26 @@ export function useChatProfile(
           profileImageUrl: myProfile.imageUrl,
           kind: "mine",
         })
-      }
-      // The room response embeds the plot (including creator-defined chat
-      // profiles), so no extra `/v1/plots/:id` round trip is needed.
-      const rawProfiles: PlotChatProfile[] =
-        roomData?.plot?.chatProfiles || []
-      for (const cp of rawProfiles) {
-        const usesDefaultName =
-          cp.isUsingDefaultName || cp.name === "{{user}}"
-        resolvedPlotProfiles.push({
-          id: cp.id,
-          name:
-            usesDefaultName && defaultProfile
-              ? defaultProfile.name
-              : cp.name,
-          description: cp.description,
-          summary: cp.summary,
-          profileImageUrl: cp.imageUrl,
-          kind: "preset",
-        })
+      } else {
+        // New room: show the creator-defined presets so the user can edit
+        // one and start the chat with it.
+        const rawProfiles: PlotChatProfile[] =
+          roomData?.plot?.chatProfiles || []
+        for (const cp of rawProfiles) {
+          const usesDefaultName =
+            cp.isUsingDefaultName || cp.name === "{{user}}"
+          resolvedPlotProfiles.push({
+            id: cp.id,
+            name:
+              usesDefaultName && defaultProfile
+                ? defaultProfile.name
+                : cp.name,
+            description: cp.description,
+            summary: cp.summary,
+            profileImageUrl: cp.imageUrl,
+            kind: "preset",
+          })
+        }
       }
       setPlotChatProfiles(resolvedPlotProfiles)
       setProfileSheetOpen(true)
@@ -204,8 +207,7 @@ export function useChatProfile(
     const myProfile = await getMyPlotChatProfile(roomId).catch(() => null)
     setMyPlotProfile(myProfile)
     setPlotChatProfiles((prev) => {
-      const others = prev.filter((p) => p.kind !== "mine")
-      if (!myProfile) return others
+      if (!myProfile) return prev
       return [
         {
           id: myProfile.id,
@@ -215,10 +217,14 @@ export function useChatProfile(
           profileImageUrl: myProfile.imageUrl,
           kind: "mine" as const,
         },
-        ...others,
       ]
     })
-  }, [roomId])
+    // A preset edit on a brand-new room creates `/me`; finish starting the
+    // chat once the record exists.
+    if (needsInit && myProfile) {
+      await finalizeProfileStart(myProfile.name)
+    }
+  }, [roomId, needsInit, finalizeProfileStart])
 
   const handleCreateProfile = useCallback(
     async (profile: UserChatProfile) => {

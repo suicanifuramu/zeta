@@ -111,6 +111,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
       )
       const plotProfiles: PlotProfileItem[] = []
       if (myProfile) {
+        // `/me` is the only plot profile shown once it exists.
         plotProfiles.push({
           id: myProfile.id,
           name: myProfile.name,
@@ -119,25 +120,25 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
           profileImageUrl: myProfile.imageUrl,
           kind: "mine",
         })
-      }
-      // Read the presets from `room.plot.chatProfiles` (embedded in the room
-      // response) instead of a separate `/v1/plots/:id` request.
-      const rawProfiles: PlotChatProfile[] =
-        roomData?.plot?.chatProfiles || []
-      for (const cp of rawProfiles) {
-        const usesDefaultName =
-          cp.isUsingDefaultName || cp.name === "{{user}}"
-        plotProfiles.push({
-          id: cp.id,
-          name:
-            usesDefaultName && defaultProfile
-              ? defaultProfile.name
-              : cp.name,
-          description: cp.description,
-          summary: cp.summary,
-          profileImageUrl: cp.imageUrl,
-          kind: "preset",
-        })
+      } else {
+        // New room: expose the presets so they can be edited before starting.
+        const rawProfiles: PlotChatProfile[] =
+          roomData?.plot?.chatProfiles || []
+        for (const cp of rawProfiles) {
+          const usesDefaultName =
+            cp.isUsingDefaultName || cp.name === "{{user}}"
+          plotProfiles.push({
+            id: cp.id,
+            name:
+              usesDefaultName && defaultProfile
+                ? defaultProfile.name
+                : cp.name,
+            description: cp.description,
+            summary: cp.summary,
+            profileImageUrl: cp.imageUrl,
+            kind: "preset",
+          })
+        }
       }
       setChangePlotProfiles(plotProfiles)
 
@@ -214,8 +215,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     const myProfile = await getMyPlotChatProfile(roomId).catch(() => null)
     setChangeMyPlotProfile(myProfile)
     setChangePlotProfiles((prev) => {
-      const others = prev.filter((p) => p.kind !== "mine")
-      if (!myProfile) return others
+      if (!myProfile) return prev
       return [
         {
           id: myProfile.id,
@@ -225,7 +225,6 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
           profileImageUrl: myProfile.imageUrl,
           kind: "mine" as const,
         },
-        ...others,
       ]
     })
   }, [roomId])
