@@ -733,6 +733,73 @@ export function getMyPlotChatProfile(
   )
 }
 
+/**
+ * Uploads a profile image for the user's room-scoped plot chat profile.
+ * The android client posts the same multipart fields (`image` +
+ * `cropCoordinates`) to this endpoint. Minimum source/crop size is 256px.
+ */
+export async function uploadUserPlotChatProfileImage(
+  file: File | Blob,
+  cropCoordinates?: string
+): Promise<ImageUploadResponse> {
+  await ensureAccessToken()
+  const formData = new FormData()
+  formData.append("image", file)
+  if (cropCoordinates) {
+    formData.append("cropCoordinates", cropCoordinates)
+  }
+  return request<ImageUploadResponse>("/v1/user-plot-chat-profiles/images", {
+    method: "POST",
+    body: formData,
+    headers: {},
+  }).then(
+    (data) =>
+      validate(
+        ImageUploadResponseSchema,
+        data,
+        "uploadUserPlotChatProfileImage"
+      ) as ImageUploadResponse
+  )
+}
+
+/**
+ * Selects an already-created user plot chat profile (the `/me` record).
+ * Unlike `selectPlotChatProfile` (POST `/selected`, which creates a record
+ * from a plot preset), this updates the room's selection in place.
+ */
+export function selectMyPlotChatProfile(
+  roomId: string,
+  plotChatProfileId: string,
+  plotId: string
+): Promise<SelectPlotChatProfileResponse> {
+  return put<SelectPlotChatProfileResponse>(
+    `/v1/rooms/${roomId}/user-plot-chat-profiles/${plotChatProfileId}/selected`,
+    { plotId }
+  )
+}
+
+/**
+ * Updates the user's room-scoped plot chat profile. The android client sends
+ * only the fields that changed; an omitted `imageUrl` keeps the current image.
+ */
+export function updateMyPlotChatProfile(
+  roomId: string,
+  { name, description, imageUrl }: {
+    name?: string
+    description?: string
+    imageUrl?: string
+  }
+): Promise<unknown> {
+  const body: Record<string, unknown> = {}
+  if (name !== undefined) body.name = name
+  if (description !== undefined) body.description = description
+  if (imageUrl !== undefined) body.imageUrl = imageUrl
+  return patch<unknown>(
+    `/v1/rooms/${roomId}/user-plot-chat-profiles/me`,
+    body
+  )
+}
+
 export function getSelectedUserPersona(
   plotId: string,
   roomId: string

@@ -7,9 +7,11 @@ import {
   getUserChatProfiles,
   selectUserChatProfile,
   selectPlotChatProfile,
+  selectMyPlotChatProfile,
 } from "@/lib/api"
 import type {
   Character,
+  MyPlotChatProfileResponse,
   PlotDetailResponse,
   PlotChatProfile,
   UserChatProfile,
@@ -34,6 +36,7 @@ export interface UseChatDialogsReturn {
   setChangeProfileSheetOpen: React.Dispatch<React.SetStateAction<boolean>>
   changeProfileList: UserChatProfile[]
   changePlotProfiles: PlotProfileItem[]
+  changeMyPlotProfile: MyPlotChatProfileResponse | null
   changeProfileLoading: boolean
   changeProfileInitialId: string | null
   exitConfirmOpen: boolean
@@ -46,6 +49,7 @@ export interface UseChatDialogsReturn {
   handleChangePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateChangeProfile: (profile: UserChatProfile) => Promise<void>
   handleProfileUpdated: () => Promise<void>
+  handleChangeMyPlotProfileSaved: () => Promise<void>
   handleHeaderClick: () => Promise<void>
 }
 
@@ -66,6 +70,8 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
   const [changePlotProfiles, setChangePlotProfiles] = useState<
     PlotProfileItem[]
   >([])
+  const [changeMyPlotProfile, setChangeMyPlotProfile] =
+    useState<MyPlotChatProfileResponse | null>(null)
   const [changeProfileLoading, setChangeProfileLoading] = useState(false)
   const [changeProfileInitialId, setChangeProfileInitialId] = useState<
     string | null
@@ -88,51 +94,62 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     setChangeProfileLoading(true)
     setChangeProfileInitialId(null)
     try {
-      const profData = await getUserChatProfiles(20, {
-        plotId: plotId || undefined,
-        roomId,
-      })
+      const [roomData, profData] = await Promise.all([
+        getRoom(roomId),
+        getUserChatProfiles(20, {
+          plotId: plotId || undefined,
+          roomId,
+        }),
+      ])
       setChangeProfileList(profData.userChatProfiles || [])
 
-      let plotProfiles: PlotProfileItem[] = []
-      if (plotId) {
-        try {
-          const plotDetail = await getPlot(plotId)
-          const rawProfiles: PlotChatProfile[] = plotDetail.chatProfiles || []
-          if (rawProfiles.length > 0) {
-            const defaultProfile = (
-              profData.userChatProfiles || []
-            ).find((p) => p.isDefault || p.selected)
-            plotProfiles = rawProfiles.map((cp) => ({
-              id: cp.id,
-              name:
-                cp.name === "{{user}}" && defaultProfile
-                  ? defaultProfile.name
-                  : cp.name,
-              description: cp.description,
-              summary: cp.summary,
-              profileImageUrl: cp.imageUrl,
-            }))
-          }
-        } catch {
-          /* ignore */
-        }
+      const myProfile = await getMyPlotChatProfile(roomId).catch(() => null)
+      setChangeMyPlotProfile(myProfile)
+
+      const defaultProfile = (profData.userChatProfiles || []).find(
+        (p) => p.isDefault || p.selected
+      )
+      const plotProfiles: PlotProfileItem[] = []
+      if (myProfile) {
+        plotProfiles.push({
+          id: myProfile.id,
+          name: myProfile.name,
+          description: myProfile.description,
+          summary: myProfile.summary,
+          profileImageUrl: myProfile.imageUrl,
+          kind: "mine",
+        })
+      }
+      // Read the presets from `room.plot.chatProfiles` (embedded in the room
+      // response) instead of a separate `/v1/plots/:id` request.
+      const rawProfiles: PlotChatProfile[] =
+        roomData?.plot?.chatProfiles || []
+      for (const cp of rawProfiles) {
+        const usesDefaultName =
+          cp.isUsingDefaultName || cp.name === "{{user}}"
+        plotProfiles.push({
+          id: cp.id,
+          name:
+            usesDefaultName && defaultProfile
+              ? defaultProfile.name
+              : cp.name,
+          description: cp.description,
+          summary: cp.summary,
+          profileImageUrl: cp.imageUrl,
+          kind: "preset",
+        })
       }
       setChangePlotProfiles(plotProfiles)
 
-      // Determine currently active profile ID
-      try {
-        const currentProfile = await getMyPlotChatProfile(roomId)
-        if (currentProfile.plotChatProfileId) {
-          setChangeProfileInitialId(currentProfile.plotChatProfileId)
-        } else {
-          const matched = (profData.userChatProfiles || []).find(
-            (p) => p.selected
-          )
-          if (matched) setChangeProfileInitialId(matched.id)
-        }
-      } catch {
-        /* ignore — auto-selection fallback */
+      // Determine currently active profile ID. The `/me` record wins because
+      // it is the profile actually attached to this room.
+      if (myProfile) {
+        setChangeProfileInitialId(myProfile.id)
+      } else {
+        const matched = (profData.userChatProfiles || []).find(
+          (p) => p.selected
+        )
+        if (matched) setChangeProfileInitialId(matched.id)
       }
 
       setChangeProfileSheetOpen(true)
@@ -168,15 +185,19 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     async (profile: PlotProfileItem) => {
       if (!roomId || !plotId) return
       try {
-        await selectPlotChatProfile({
-          roomId,
-          plotChatProfileId: profile.id,
-          plotId,
-          name: profile.name,
-          profileImageUrl: profile.profileImageUrl || "",
-          summary: profile.summary || "",
-          description: profile.description || "",
-        })
+        if (profile.kind === "mine") {
+          await selectMyPlotChatProfile(roomId, profile.id, plotId)
+        } else {
+          await selectPlotChatProfile({
+            roomId,
+            plotChatProfileId: profile.id,
+            plotId,
+            name: profile.name,
+            profileImageUrl: profile.profileImageUrl || "",
+            summary: profile.summary || "",
+            description: profile.description || "",
+          })
+        }
         toast.success(`「${profile.name}」に変更しました`)
         setChangeProfileSheetOpen(false)
       } catch (e: unknown) {
@@ -187,6 +208,27 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     },
     [roomId, plotId]
   )
+
+  const handleChangeMyPlotProfileSaved = useCallback(async () => {
+    if (!roomId) return
+    const myProfile = await getMyPlotChatProfile(roomId).catch(() => null)
+    setChangeMyPlotProfile(myProfile)
+    setChangePlotProfiles((prev) => {
+      const others = prev.filter((p) => p.kind !== "mine")
+      if (!myProfile) return others
+      return [
+        {
+          id: myProfile.id,
+          name: myProfile.name,
+          description: myProfile.description,
+          summary: myProfile.summary,
+          profileImageUrl: myProfile.imageUrl,
+          kind: "mine" as const,
+        },
+        ...others,
+      ]
+    })
+  }, [roomId])
 
   const handleCreateChangeProfile = useCallback(
     async (profile: UserChatProfile) => {
@@ -255,6 +297,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     setChangeProfileSheetOpen,
     changeProfileList,
     changePlotProfiles,
+    changeMyPlotProfile,
     changeProfileLoading,
     changeProfileInitialId,
     exitConfirmOpen,
@@ -267,6 +310,7 @@ export function useChatDialogs(deps: UseChatDialogsDeps): UseChatDialogsReturn {
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,
     handleProfileUpdated,
+    handleChangeMyPlotProfileSaved,
     handleHeaderClick,
   }
 }

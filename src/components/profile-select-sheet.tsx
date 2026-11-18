@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { Camera, Check, Pencil, Plus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import type { UserChatProfile } from "@/lib/types"
+import type {
+  MyPlotChatProfileResponse,
+  UserChatProfile,
+} from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,6 +17,9 @@ import {
   createUserChatProfile,
   updateUserChatProfile,
   checkUserChatProfileAbuse,
+  updateMyPlotChatProfile,
+  selectMyPlotChatProfile,
+  uploadUserPlotChatProfileImage,
 } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -23,6 +29,12 @@ export interface PlotProfileItem {
   description?: string
   summary?: string
   profileImageUrl?: string
+  /**
+   * "mine" is the room-scoped user plot chat profile (`/me`), selectable via
+   * `PUT /:id/selected`. "preset" is a creator-defined plot chat profile,
+   * which creates a new record via `POST /selected`.
+   */
+  kind?: "preset" | "mine"
 }
 
 interface ProfileSelectSheetProps {
@@ -37,13 +49,30 @@ interface ProfileSelectSheetProps {
   onProfileUpdated?: (profile: UserChatProfile) => Promise<void>
   loading?: boolean
   initialSelectedId?: string
+  /** Required to edit the room-scoped plot profile. */
+  roomId?: string
+  plotId?: string
+  myPlotProfile?: MyPlotChatProfileResponse | null
+  onMyPlotProfileSaved?: () => Promise<void> | void
 }
 
-function validateImageDimensions(file: File): Promise<boolean> {
+const USER_IMAGE_MIN_DIMENSION = 224
+/** Android uses 256px for user plot chat profile images. */
+const PLOT_IMAGE_MIN_DIMENSION = 256
+/** Japanese/Korean bounds from `getEditPlotChatProfileSchema`. */
+const PLOT_NAME_MAX_LENGTH = 20
+const PLOT_DESCRIPTION_MAX_LENGTH = 1000
+const PLOT_NAME_REGEX =
+  /^[ \x2D.0-9A-Z_a-z\u1100-\u11FF\u3000\u3002\u3005\u3040-\u30FF\u3130-\u318F\u31F0-\u32FF\u3400-\u4DBF\u4E00-\u9FFF\uA960-\uA97F\uAC00-\uD7FF\uF900-\uFAFF\uFF10-\uFF19\uFF66-\uFF9F]+$/
+
+function validateImageDimensions(
+  file: File,
+  minDimension = USER_IMAGE_MIN_DIMENSION
+): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
-      resolve(img.width >= 224 && img.height >= 224)
+      resolve(img.width >= minDimension && img.height >= minDimension)
     }
     img.onerror = () => resolve(false)
     img.src = URL.createObjectURL(file)
@@ -57,6 +86,11 @@ function CreateProfileSheet({
   onProfileUpdated,
   editProfile,
   variant,
+  plotProfile,
+  roomId,
+  plotId,
+  onPlotProfileSaved,
+  onPlotProfileSelect,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -64,26 +98,46 @@ function CreateProfileSheet({
   onProfileUpdated?: (profile: UserChatProfile) => Promise<void>
   editProfile?: UserChatProfile | null
   variant: "start" | "change"
+  /** When set, edits the room-scoped user plot profile (`/me`). */
+  plotProfile?: MyPlotChatProfileResponse | null
+  roomId?: string
+  plotId?: string
+  onPlotProfileSaved?: () => Promise<void> | void
+  onPlotProfileSelect?: () => Promise<void> | void
 }) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [profileImageUrl, setProfileImageUrl] = useState("")
   const [saving, setSaving] = useState(false)
+  const [selecting, setSelecting] = useState(false)
   const [cropOpen, setCropOpen] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const initialImageUrlRef = useRef("")
-  const isEditing = !!editProfile
+  const isPlotProfile = !!plotProfile
+  const isPlotMode = isPlotProfile
+  const isEditing = !!editProfile || isPlotProfile
+  const imageMinDimension = isPlotMode
+    ? PLOT_IMAGE_MIN_DIMENSION
+    : USER_IMAGE_MIN_DIMENSION
+  const busy = saving || selecting
 
   useEffect(() => {
+    if (plotProfile) {
+      setName(plotProfile.name || "")
+      setDescription(plotProfile.description || "")
+      setProfileImageUrl(plotProfile.imageUrl || "")
+      initialImageUrlRef.current = plotProfile.imageUrl || ""
+      return
+    }
     if (editProfile) {
       setName(editProfile.name || "")
       setDescription(editProfile.description || "")
       setProfileImageUrl(editProfile.profileImageUrl || "")
       initialImageUrlRef.current = editProfile.profileImageUrl || ""
     }
-  }, [editProfile])
+  }, [plotProfile, editProfile])
 
   useEffect(() => {
     if (!open) {
@@ -98,9 +152,9 @@ function CreateProfileSheet({
     const file = e.target.files?.[0]
     if (!file) return
 
-    const valid = await validateImageDimensions(file)
+    const valid = await validateImageDimensions(file, imageMinDimension)
     if (!valid) {
-      toast.error("画像は224px以上である必要があります")
+      toast.error(`画像は${imageMinDimension}px以上である必要があります`)
       return
     }
 
@@ -115,15 +169,89 @@ function CreateProfileSheet({
     setCropOpen(false)
   }
 
+  const handlePlotProfileSelect = async () => {
+    if (!plotProfile || !roomId || !plotId) return
+    setSelecting(true)
+    try {
+      await selectMyPlotChatProfile(roomId, plotProfile.id, plotId)
+      toast.success("プロフィールを選択しました")
+      await onPlotProfileSelect?.()
+      onOpenChange(false)
+    } catch (e: unknown) {
+      toast.error(
+        `選択失敗: ${e instanceof Error ? e.message : String(e)}`
+      )
+    } finally {
+      setSelecting(false)
+    }
+  }
+
   const handleSave = async () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim()
+
+    if (isPlotMode) {
+      if (!trimmedName) {
+        toast.error("名前を入力してください")
+        return
+      }
+      if (trimmedName.length > PLOT_NAME_MAX_LENGTH) {
+        toast.error(
+          `名前は${PLOT_NAME_MAX_LENGTH}文字以内で入力してください`
+        )
+        return
+      }
+      if (!PLOT_NAME_REGEX.test(trimmedName)) {
+        toast.error("名前に使用できない文字が含まれています")
+        return
+      }
+      if (description.length > PLOT_DESCRIPTION_MAX_LENGTH) {
+        toast.error(
+          `説明は${PLOT_DESCRIPTION_MAX_LENGTH}文字以内で入力してください`
+        )
+        return
+      }
+
+      // Existing `/me` record: PATCH only the fields that changed.
+      if (!plotProfile || !roomId) return
+      const body: {
+        name?: string
+        description?: string
+        imageUrl?: string
+      } = {}
+      if (trimmedName !== plotProfile.name) body.name = trimmedName
+      if (description !== (plotProfile.description || "")) {
+        body.description = description
+      }
+      if (profileImageUrl !== initialImageUrlRef.current) {
+        body.imageUrl = profileImageUrl
+      }
+
+      setSaving(true)
+      try {
+        if (Object.keys(body).length > 0) {
+          await updateMyPlotChatProfile(roomId, body)
+        }
+        toast.success("プロットプロフィールを更新しました")
+        await onPlotProfileSaved?.()
+        onOpenChange(false)
+      } catch (e: unknown) {
+        toast.error(
+          `更新失敗: ${e instanceof Error ? e.message : String(e)}`
+        )
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    if (!trimmedName) {
       toast.error("名前を入力してください")
       return
     }
     setSaving(true)
     try {
       const data = await checkUserChatProfileAbuse({
-        name: name.trim(),
+        name: trimmedName,
         description: description.trim(),
       })
       if (data.isAbusing) {
@@ -139,20 +267,20 @@ function CreateProfileSheet({
             ? undefined
             : profileImageUrl
         await updateUserChatProfile(editProfile.id, {
-          name: name.trim(),
+          name: trimmedName,
           description: description.trim(),
           profileImageUrl: imageUrl,
         })
         toast.success("プロフィールを更新しました")
         await onProfileUpdated?.({
           ...editProfile,
-          name: name.trim(),
+          name: trimmedName,
           description: description.trim(),
           profileImageUrl: profileImageUrl || undefined,
         })
       } else {
         const newProfile = await createUserChatProfile({
-          name: name.trim(),
+          name: trimmedName,
           description: description.trim(),
           profileImageUrl: profileImageUrl || undefined,
         })
@@ -170,7 +298,11 @@ function CreateProfileSheet({
     <div className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-5 pt-4 pb-2">
         <h2 className="text-lg font-semibold">
-          {isEditing ? "プロフィールを編集" : "新しいプロフィール"}
+          {isPlotProfile
+            ? "プロットプロフィールを編集"
+            : isEditing
+              ? "プロフィールを編集"
+              : "新しいプロフィール"}
         </h2>
       </div>
       <div className="touch-scrollable min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -180,7 +312,7 @@ function CreateProfileSheet({
               type="button"
               className="group relative cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
-              disabled={saving}
+              disabled={busy}
             >
               <Avatar className="size-20">
                 <AvatarImage src={profileImageUrl || undefined} />
@@ -202,44 +334,85 @@ function CreateProfileSheet({
           />
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">プロフィール名</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">プロフィール名</label>
+              {isPlotMode && (
+                <span className="text-[11px] text-muted-foreground">
+                  {name.trim().length}/{PLOT_NAME_MAX_LENGTH}
+                </span>
+              )}
+            </div>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="プロフィール名を入力"
-              disabled={saving}
+              maxLength={isPlotMode ? PLOT_NAME_MAX_LENGTH : undefined}
+              disabled={busy}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">説明</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">説明</label>
+              {isPlotMode && (
+                <span className="text-[11px] text-muted-foreground">
+                  {description.length}/{PLOT_DESCRIPTION_MAX_LENGTH}
+                </span>
+              )}
+            </div>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="説明を入力（任意）"
               rows={3}
-              disabled={saving}
+              maxLength={
+                isPlotMode ? PLOT_DESCRIPTION_MAX_LENGTH : undefined
+              }
+              disabled={busy}
             />
           </div>
         </div>
       </div>
-      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+      <div className="shrink-0 flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-4">
+        {isPlotProfile && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mr-auto cursor-pointer"
+            disabled={busy}
+            onClick={handlePlotProfileSelect}
+          >
+            {selecting ? (
+              <Spinner className="mr-1.5 size-4" />
+            ) : (
+              <Check className="mr-1.5 size-4" />
+            )}
+            このプロフィールを選択
+          </Button>
+        )}
         {isDesktop && (
           <Button
             variant="outline"
             size="sm"
             className="cursor-pointer"
             onClick={() => onOpenChange(false)}
+            disabled={busy}
           >
             閉じる
           </Button>
         )}
         <Button
           className="cursor-pointer"
-          disabled={saving}
+          disabled={busy || (isPlotMode && !name.trim())}
           onClick={handleSave}
         >
           {saving && <Spinner className="mr-1.5 size-4" />}
-          {isEditing ? "保存" : variant === "change" ? "作成して変更" : "この名前で開始"}
+          {isPlotProfile
+            ? "保存"
+            : isEditing
+              ? "保存"
+              : variant === "change"
+                ? "作成して変更"
+                : "この名前で開始"}
         </Button>
       </div>
 
@@ -251,6 +424,10 @@ function CreateProfileSheet({
             if (!v) setCropFile(null)
           }}
           file={cropFile}
+          minDimension={imageMinDimension}
+          uploadImage={
+            isPlotProfile ? uploadUserPlotChatProfileImage : undefined
+          }
           onCropComplete={handleCropComplete}
         />
       )}
@@ -261,7 +438,13 @@ function CreateProfileSheet({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "プロフィールを編集" : "新しいプロフィール"}
+      title={
+        isPlotProfile
+          ? "プロットプロフィールを編集"
+          : isEditing
+            ? "プロフィールを編集"
+            : "新しいプロフィール"
+      }
       desktopClassName="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       mobileClassName="max-h-[85vh]"
     >
@@ -282,12 +465,17 @@ export function ProfileSelectSheet({
   onProfileUpdated,
   loading,
   initialSelectedId,
+  roomId,
+  plotId,
+  myPlotProfile,
+  onMyPlotProfileSaved,
 }: ProfileSelectSheetProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [editingProfile, setEditingProfile] = useState<UserChatProfile | null>(null)
+  const [editingMyProfile, setEditingMyProfile] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -390,9 +578,10 @@ export function ProfileSelectSheet({
                   {plotProfiles.map((p) => {
                     const isSelected = p.id === selectedId
                     return (
-                      <button
+                      <div
                         key={p.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         className={cn(
                           "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors",
                           isSelected
@@ -400,8 +589,15 @@ export function ProfileSelectSheet({
                             : "bg-secondary/30 hover:bg-secondary/60"
                         )}
                         onClick={() => setSelectedId(p.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setSelectedId(p.id)
+                          }
+                        }}
                       >
                         <Avatar className="mt-0.5 size-10 shrink-0">
+                          <AvatarImage src={p.profileImageUrl} />
                           <AvatarFallback className="text-sm">
                             {(p.name || "?")[0]}
                           </AvatarFallback>
@@ -426,10 +622,30 @@ export function ProfileSelectSheet({
                             </p>
                           )}
                         </div>
-                        {isSelected && (
-                          <Check className="mt-1 size-5 shrink-0 text-primary" />
-                        )}
-                      </button>
+                        <div className="flex shrink-0 flex-col items-center gap-1 self-start mt-1">
+                          {isSelected && (
+                            <Check className="size-5 shrink-0 text-primary" />
+                          )}
+                          {(p.kind === "mine" ||
+                            (p.kind === "preset" &&
+                              myPlotProfile?.plotChatProfileId === p.id)) &&
+                            roomId &&
+                            plotId &&
+                            myPlotProfile && (
+                              <button
+                                type="button"
+                                aria-label="プロットプロフィールを編集"
+                                className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/80"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingMyProfile(true)
+                                }}
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                            )}
+                        </div>
+                      </div>
                     )
                   })}
                 </>
@@ -533,6 +749,21 @@ export function ProfileSelectSheet({
         }}
         onProfileUpdated={handleProfileUpdated}
       />
+      {roomId && plotId && myPlotProfile && (
+        <CreateProfileSheet
+          variant={variant}
+          open={editingMyProfile}
+          onOpenChange={setEditingMyProfile}
+          plotProfile={myPlotProfile}
+          roomId={roomId}
+          plotId={plotId}
+          onPlotProfileSaved={onMyPlotProfileSaved}
+          onPlotProfileSelect={async () => {
+            const mine = plotProfiles?.find((p) => p.kind === "mine")
+            if (mine) await onPlotSelect?.(mine)
+          }}
+        />
+      )}
     </div>
   )
 

@@ -4,6 +4,7 @@ import { SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { uploadUserChatProfileImage } from "@/lib/api"
+import type { ImageUploadResponse } from "@/lib/types"
 import { toast } from "sonner"
 import "react-easy-crop/react-easy-crop.css"
 
@@ -12,6 +13,13 @@ interface ImageCropDialogProps {
   onOpenChange: (open: boolean) => void
   file: File
   onCropComplete: (imageUrl: string) => void
+  /** Upload endpoint override (e.g. user plot chat profiles use 256px). */
+  uploadImage?: (
+    file: File | Blob,
+    cropCoordinates?: string
+  ) => Promise<ImageUploadResponse>
+  /** Minimum width/height of the cropped result. Defaults to 224px. */
+  minDimension?: number
 }
 
 export function ImageCropDialog({
@@ -19,6 +27,8 @@ export function ImageCropDialog({
   onOpenChange,
   file,
   onCropComplete,
+  uploadImage = uploadUserChatProfileImage,
+  minDimension = 224,
 }: ImageCropDialogProps) {
   const [imageSrc, setImageSrc] = useState<string>("")
   const [crop, setCrop] = useState({ x: 0, y: 0 })
@@ -53,8 +63,10 @@ export function ImageCropDialog({
     try {
       const w = Math.round(croppedAreaPixels.width)
       const h = Math.round(croppedAreaPixels.height)
-      if (w < 224 || h < 224) {
-        throw new Error("切り取った画像が小さすぎます（224px以上必要）")
+      if (w < minDimension || h < minDimension) {
+        throw new Error(
+          `切り取った画像が小さすぎます（${minDimension}px以上必要）`
+        )
       }
 
       const cropCoordinates = JSON.stringify({
@@ -64,7 +76,7 @@ export function ImageCropDialog({
         maxY: Math.round(croppedAreaPixels.y + croppedAreaPixels.height),
       })
 
-      const result = await uploadUserChatProfileImage(file, cropCoordinates)
+      const result = await uploadImage(file, cropCoordinates)
       onCropComplete(result.imageUrl)
       onOpenChange(false)
     } catch (e: unknown) {

@@ -10,6 +10,12 @@ export interface Plot {
   rankDiff?: number
   isNew?: boolean
   characters?: Character[]
+  /**
+   * Preset chat profiles defined by the plot creator. The android client reads
+   * these from `room.plot.chatProfiles` (the room response embeds the plot)
+   * rather than fetching `/v1/plots/:id` separately.
+   */
+  chatProfiles?: PlotChatProfile[]
 }
 
 export interface Character {

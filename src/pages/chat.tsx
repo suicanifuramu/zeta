@@ -46,6 +46,7 @@ export function ChatPage() {
     setChangeProfileSheetOpen,
     changeProfileList,
     changePlotProfiles,
+    changeMyPlotProfile,
     changeProfileLoading,
     changeProfileInitialId,
     exitConfirmOpen,
@@ -58,6 +59,7 @@ export function ChatPage() {
     handleChangePlotProfileSelect,
     handleCreateChangeProfile,
     handleProfileUpdated: handleChangeProfileUpdated,
+    handleChangeMyPlotProfileSaved,
     handleHeaderClick,
   } = useChatDialogs({ roomId, plotId, setPlotId, characters })
   const { releaseBodyLock } = useChatBodyLock()
@@ -87,11 +89,13 @@ export function ChatPage() {
     profileList,
     profileLoading,
     plotChatProfiles,
+    myPlotProfile,
     onEmptyRoomDetected,
     handleProfileSelect,
     handlePlotProfileSelect,
     handleCreateProfile,
     handleProfileUpdated,
+    handleMyPlotProfileSaved,
   } = useChatProfile({
     roomId,
     plotId,
@@ -297,15 +301,18 @@ export function ChatPage() {
       />
 
       <ChatOverlays
+        roomId={roomId}
         plotId={plotId}
         profileSheetOpen={profileSheetOpen}
         setProfileSheetOpen={setProfileSheetOpen}
         profileList={profileList}
         plotChatProfiles={plotChatProfiles}
+        myPlotProfile={myPlotProfile}
         profileLoading={profileLoading}
         handleProfileSelect={handleProfileSelect}
         handlePlotProfileSelect={handlePlotProfileSelect}
         handleCreateProfile={handleCreateProfile}
+        handleMyPlotProfileSaved={handleMyPlotProfileSaved}
         plotDetailData={plotDetailData}
         plotDetailOpen={plotDetailOpen}
         setPlotDetailOpen={setPlotDetailOpen}
@@ -316,12 +323,14 @@ export function ChatPage() {
         setChangeProfileSheetOpen={setChangeProfileSheetOpen}
         changeProfileList={changeProfileList}
         changePlotProfiles={changePlotProfiles}
+        changeMyPlotProfile={changeMyPlotProfile}
         changeProfileLoading={changeProfileLoading}
         changeProfileInitialId={changeProfileInitialId}
         handleChangeProfileSelect={handleChangeProfileSelect}
         handleChangePlotProfileSelect={handleChangePlotProfileSelect}
         handleCreateChangeProfile={handleCreateChangeProfile}
         handleProfileUpdated={handleProfileUpdated}
+        handleChangeMyPlotProfileSaved={handleChangeMyPlotProfileSaved}
         handleChangeProfileUpdated={handleChangeProfileUpdated}
       />
     </div>

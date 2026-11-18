@@ -3,16 +3,18 @@ import { toast } from "sonner"
 import {
   getIntroBeforeSelection,
   getRoom,
-  getPlot,
+  getMyPlotChatProfile,
   getUserChatProfiles,
   getMessages,
   createIntro,
   selectUserChatProfile,
   selectPlotChatProfile,
+  selectMyPlotChatProfile,
 } from "@/lib/api"
 import type {
   UserChatProfile,
   PlotChatProfile,
+  MyPlotChatProfileResponse,
   RuntimeMessage,
 } from "@/lib/types"
 import type { PlotProfileItem } from "@/components/profile-select-sheet"
@@ -39,11 +41,13 @@ export interface UseChatProfileReturn {
   setProfileLoading: React.Dispatch<React.SetStateAction<boolean>>
   plotChatProfiles: PlotProfileItem[]
   setPlotChatProfiles: React.Dispatch<React.SetStateAction<PlotProfileItem[]>>
+  myPlotProfile: MyPlotChatProfileResponse | null
   onEmptyRoomDetected: () => Promise<void>
   handleProfileSelect: (profile: UserChatProfile) => Promise<void>
   handlePlotProfileSelect: (profile: PlotProfileItem) => Promise<void>
   handleCreateProfile: (profile: UserChatProfile) => Promise<void>
   handleProfileUpdated: () => Promise<void>
+  handleMyPlotProfileSaved: () => Promise<void>
 }
 
 export function useChatProfile(
@@ -64,6 +68,8 @@ export function useChatProfile(
   const [plotChatProfiles, setPlotChatProfiles] = useState<PlotProfileItem[]>(
     []
   )
+  const [myPlotProfile, setMyPlotProfile] =
+    useState<MyPlotChatProfileResponse | null>(null)
 
   const onEmptyRoomDetected = useCallback(async () => {
     if (!roomId) return
@@ -84,34 +90,49 @@ export function useChatProfile(
       setCharAvatars(avatars)
 
       setProfileLoading(true)
-      const profData = await getUserChatProfiles(20, {
-        plotId: pid,
-        roomId,
-      })
+      const [profData, myProfile] = await Promise.all([
+        getUserChatProfiles(20, {
+          plotId: pid,
+          roomId,
+        }),
+        getMyPlotChatProfile(roomId).catch(() => null),
+      ])
       setProfileList(profData.userChatProfiles || [])
+      setMyPlotProfile(myProfile)
       setProfileLoading(false)
 
-      let resolvedPlotProfiles: PlotProfileItem[] = []
-      try {
-        const plotDetail = await getPlot(pid)
-        const rawProfiles: PlotChatProfile[] = plotDetail.chatProfiles || []
-        if (rawProfiles.length > 0) {
-          const defaultProfile = (profData.userChatProfiles || []).find(
-            (p) => p.isDefault || p.selected
-          )
-          resolvedPlotProfiles = rawProfiles.map((cp) => ({
-            id: cp.id,
-            name:
-              cp.name === "{{user}}" && defaultProfile
-                ? defaultProfile.name
-                : cp.name,
-            description: cp.description,
-            summary: cp.summary,
-            profileImageUrl: cp.imageUrl,
-          }))
-        }
-      } catch {
-        /* ignore — plot chat profiles are optional */
+      const defaultProfile = (profData.userChatProfiles || []).find(
+        (p) => p.isDefault || p.selected
+      )
+      const resolvedPlotProfiles: PlotProfileItem[] = []
+      if (myProfile) {
+        resolvedPlotProfiles.push({
+          id: myProfile.id,
+          name: myProfile.name,
+          description: myProfile.description,
+          summary: myProfile.summary,
+          profileImageUrl: myProfile.imageUrl,
+          kind: "mine",
+        })
+      }
+      // The room response embeds the plot (including creator-defined chat
+      // profiles), so no extra `/v1/plots/:id` round trip is needed.
+      const rawProfiles: PlotChatProfile[] =
+        roomData?.plot?.chatProfiles || []
+      for (const cp of rawProfiles) {
+        const usesDefaultName =
+          cp.isUsingDefaultName || cp.name === "{{user}}"
+        resolvedPlotProfiles.push({
+          id: cp.id,
+          name:
+            usesDefaultName && defaultProfile
+              ? defaultProfile.name
+              : cp.name,
+          description: cp.description,
+          summary: cp.summary,
+          profileImageUrl: cp.imageUrl,
+          kind: "preset",
+        })
       }
       setPlotChatProfiles(resolvedPlotProfiles)
       setProfileSheetOpen(true)
@@ -154,15 +175,20 @@ export function useChatProfile(
     async (profile: PlotProfileItem) => {
       if (!roomId || !plotId) return
       try {
-        await selectPlotChatProfile({
-          roomId,
-          plotChatProfileId: profile.id,
-          plotId,
-          name: profile.name,
-          profileImageUrl: profile.profileImageUrl || "",
-          summary: profile.summary || "",
-          description: profile.description || "",
-        })
+        if (profile.kind === "mine") {
+          // Already-created room profile: switch the selection in place.
+          await selectMyPlotChatProfile(roomId, profile.id, plotId)
+        } else {
+          await selectPlotChatProfile({
+            roomId,
+            plotChatProfileId: profile.id,
+            plotId,
+            name: profile.name,
+            profileImageUrl: profile.profileImageUrl || "",
+            summary: profile.summary || "",
+            description: profile.description || "",
+          })
+        }
         await finalizeProfileStart(profile.name)
       } catch (e: unknown) {
         toast.error(
@@ -172,6 +198,27 @@ export function useChatProfile(
     },
     [roomId, plotId, finalizeProfileStart]
   )
+
+  const handleMyPlotProfileSaved = useCallback(async () => {
+    if (!roomId) return
+    const myProfile = await getMyPlotChatProfile(roomId).catch(() => null)
+    setMyPlotProfile(myProfile)
+    setPlotChatProfiles((prev) => {
+      const others = prev.filter((p) => p.kind !== "mine")
+      if (!myProfile) return others
+      return [
+        {
+          id: myProfile.id,
+          name: myProfile.name,
+          description: myProfile.description,
+          summary: myProfile.summary,
+          profileImageUrl: myProfile.imageUrl,
+          kind: "mine" as const,
+        },
+        ...others,
+      ]
+    })
+  }, [roomId])
 
   const handleCreateProfile = useCallback(
     async (profile: UserChatProfile) => {
@@ -204,10 +251,12 @@ export function useChatProfile(
     setProfileLoading,
     plotChatProfiles,
     setPlotChatProfiles,
+    myPlotProfile,
     onEmptyRoomDetected,
     handleProfileSelect,
     handlePlotProfileSelect,
     handleCreateProfile,
     handleProfileUpdated,
+    handleMyPlotProfileSaved,
   }
 }
