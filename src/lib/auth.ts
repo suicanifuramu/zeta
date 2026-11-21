@@ -1,6 +1,6 @@
 // ===== Auth Module =====
-// deviceId / refreshToken / accessToken are stored in localStorage.
-// accessToken is also kept in sessionStorage for immediate access.
+// deviceId / refreshToken are stored in localStorage.
+// accessToken is kept in memory and sessionStorage only (never localStorage).
 
 import { getCommonHeaders } from "./headers"
 import { logger } from "./log"
@@ -236,23 +236,7 @@ export async function refreshSession(forceNetwork = false): Promise<string> {
   if (refreshPromise) return refreshPromise
   refreshPromise = (async () => {
     try {
-      const oldToken = accessToken
       await loadLocalAuth(true)
-
-      if (
-        accessToken !== oldToken &&
-        accessToken &&
-        getTokenExpiry(accessToken) > Date.now() + 600000
-      ) {
-        logger.debug("[Auth] Token was updated from local auth")
-        scheduleRefresh()
-        window.dispatchEvent(
-          new CustomEvent("zeta-auth-updated", {
-            detail: getAuthState(),
-          })
-        )
-        return accessToken
-      }
 
       if (
         !forceNetwork &&

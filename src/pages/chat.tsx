@@ -69,7 +69,18 @@ export function ChatPage() {
     scrollToBottom?: () => void
     getViewport?: () => HTMLElement | null
     setMessages?: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
+    invalidateCandidates?: (msgId?: string) => void
+    reloadLatestMessages?: () => Promise<void>
   }>({})
+
+  // One controller per page: leaving the room cancels in-flight SSE streams.
+  const streamAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    streamAbortRef.current = controller
+    return () => controller.abort()
+  }, [])
+  const getStreamSignal = useCallback(() => streamAbortRef.current?.signal, [])
 
   const {
     recItems,
@@ -111,12 +122,14 @@ export function ChatPage() {
     hasMoreHistory,
     streamContents,
     setMessages,
+    reloadLatestMessages,
     loadOlderMessagesRef,
     sendMessage: sendChatMessage,
   } = useChatMessages(roomId, {
     chatRefs,
     onEmptyRoomDetected,
     onClearRecommendations: clearRecItems,
+    getStreamSignal,
   })
 
   // CYOA choices attached to the newest turn. They take over page 1 of the
@@ -137,7 +150,7 @@ export function ChatPage() {
     handleDeleteMessages,
     exitDeleteMode,
     enterDeleteMode,
-  } = useChatDeleteMode(roomId, setMessages)
+  } = useChatDeleteMode(roomId, reloadLatestMessages)
   const {
     candidatesCache,
     regenMsgId,
@@ -145,7 +158,15 @@ export function ChatPage() {
     lastSwipeDirection,
     handleRegen,
     handleSwitchCandidate,
-  } = useChatCandidates(roomId, messages, setMessages, () => {})
+    invalidateCandidates,
+  } = useChatCandidates(
+    roomId,
+    messages,
+    setMessages,
+    reloadLatestMessages,
+    sending,
+    getStreamSignal
+  )
   const {
     containerRef,
     scrollRef,
@@ -165,6 +186,7 @@ export function ChatPage() {
   // Bind refs
   chatRefs.current.scrollToBottom = scrollToBottom
   chatRefs.current.getViewport = getViewport
+  chatRefs.current.invalidateCandidates = invalidateCandidates
 
   const typewriterContents = useTypewriter(streamContents)
   const typewriterRegenContents = useTypewriter(regenContents) ?? []
@@ -233,6 +255,7 @@ export function ChatPage() {
         deleteMode={deleteMode}
         selectedMsgId={selectedMsgId}
         regenMsgId={regenMsgId}
+        busy={sending || isRegenerating}
         typewriterRegenContents={typewriterRegenContents}
         typewriterContents={typewriterContents}
         charAvatars={charAvatars}
@@ -253,6 +276,7 @@ export function ChatPage() {
         deleting={deleting}
         onDelete={handleDeleteMessages}
         onCancel={exitDeleteMode}
+        onReset={handleResetConfirmOpen}
       />
 
       <RecommendPanel

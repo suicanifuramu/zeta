@@ -138,7 +138,7 @@ export function ImageCropDialog({
             disabled={saving || !croppedAreaPixels}
             onClick={handleConfirm}
           >
-            {saving ? "アップロード中..." : "適用"}
+            {saving ? "アップロード中…" : "適用"}
           </Button>
         </div>
       </DialogContent>

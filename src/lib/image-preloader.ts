@@ -1,4 +1,5 @@
 import { PLOT_IMAGE_CACHE, memoryCache, fetchPromises } from "@/lib/image-cache"
+import { cacheManager } from "@/lib/cache-db"
 
 interface PreloadOptions {
   concurrency?: number
@@ -75,6 +76,8 @@ async function preloadSingle(
 
     const objectUrl = URL.createObjectURL(blob)
     memoryCache.set(url, objectUrl)
+    // Track preloaded entries too; untracked ones are never cleaned up from the Cache API.
+    cacheManager.recordAccess(url).catch(() => {})
     return objectUrl
   })()
 

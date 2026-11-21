@@ -1,6 +1,6 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { toast } from "sonner"
-import { getCandidates, getMessages, regenMessageStream, selectCandidate } from "@/lib/api"
+import { getCandidates, regenMessageStream, selectCandidate } from "@/lib/api"
 import type { Candidate, ContentItem, RuntimeMessage } from "@/lib/types"
 
 type SwipeDirection = "prev" | "next" | "regen" | null
@@ -9,7 +9,9 @@ export function useChatCandidates(
   roomId: string | undefined,
   messages: RuntimeMessage[],
   setMessages: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>,
-  scrollToBottom: () => void
+  reloadLatestMessages: () => Promise<void>,
+  sending: boolean,
+  getStreamSignal: () => AbortSignal | undefined
 ) {
   const [candidatesCache, setCandidatesCache] = useState<
     Record<string, { candidates: Candidate[]; currentIdx: number }>
@@ -17,6 +19,8 @@ export function useChatCandidates(
 
   const [regenMsgId, setRegenMsgId] = useState<string | null>(null)
   const [regenContents, setRegenContents] = useState<ContentItem[]>([])
+  // State is async; the ref stops a second regen started before React re-renders.
+  const regenBusyRef = useRef(false)
 
   const [lastSwipeDirection, setLastSwipeDirection] = useState<{
     id: string
@@ -24,6 +28,17 @@ export function useChatCandidates(
     key: number
   }>({ id: "", direction: null, key: 0 })
   const swipeKeyRef = useRef(0)
+
+  // Drop cached candidates so the next swipe refetches (after edit or full reload).
+  const invalidateCandidates = useCallback((msgId?: string) => {
+    setCandidatesCache((prev) => {
+      if (msgId === undefined) return {}
+      if (!(msgId in prev)) return prev
+      const next = { ...prev }
+      delete next[msgId]
+      return next
+    })
+  }, [])
 
   // Ensure candidates are cached for a message (lazy-load on first interaction)
   async function ensureCandidatesCached(
@@ -59,7 +74,8 @@ export function useChatCandidates(
 
   // Regen: generate a new candidate via SSE, shown inline at the message position
   async function handleRegen(msgId: string) {
-    if (!roomId) return
+    if (!roomId || sending || regenBusyRef.current) return
+    regenBusyRef.current = true
     const el = document.getElementById(`msg-swipe-${msgId}`)
     if (el) {
       el.style.transition = "none"
@@ -97,75 +113,86 @@ export function useChatCandidates(
           setRegenContents([...accumulated])
         },
         async () => {
-          if (streamErrored) {
-            toast.error("再生成に失敗しました")
+          // Runs even when the post-stream fetches fail, so the regen UI never sticks.
+          try {
+            if (streamErrored) {
+              toast.error("再生成に失敗しました")
+              return
+            }
+            // After stream ends, fetch the candidates list and select the newest one
+            try {
+              const candData = await getCandidates(roomId, msgId)
+              const candidates = candData.candidates || []
+              const newestIdx = candidates.length - 1
+              if (candidates.length > 0) {
+                const newest = candidates[newestIdx]
+                await selectCandidate(roomId, msgId, newest.id)
+                // Update cache with fresh data
+                setCandidatesCache((prev) => ({
+                  ...prev,
+                  [msgId]: { candidates, currentIdx: newestIdx },
+                }))
+                // Optimistic local update: apply newest candidate contents to the message
+                const newestContents = newest.contents || newest.content
+                if (newestContents) {
+                  const normalizedContents: ContentItem[] = Array.isArray(
+                    newestContents
+                  )
+                    ? newestContents
+                    : [{ text: newestContents, position: "LEFT" }]
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === msgId
+                        ? {
+                            ...m,
+                            contents: normalizedContents,
+                            candidateId: newest.id,
+                          }
+                        : m
+                    )
+                  )
+                } else {
+                  // Fallback: use streamed content
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === msgId
+                        ? { ...m, contents: accumulated, candidateId: newest.id }
+                        : m
+                    )
+                  )
+                }
+              }
+            } catch (e: unknown) {
+              console.warn(
+                "selectCandidate after regen:",
+                e instanceof Error ? e.message : String(e)
+              )
+              // Fallback: reload all messages
+              await reloadLatestMessages()
+            }
+            toast.success("再生成しました")
+          } catch (e: unknown) {
+            toast.error(
+              `再生成後の更新に失敗しました: ${e instanceof Error ? e.message : String(e)}`
+            )
+          } finally {
             setRegenMsgId(null)
             setRegenContents([])
-            return
           }
-          // After stream ends, fetch the candidates list and select the newest one
-          try {
-            const candData = await getCandidates(roomId, msgId)
-            const candidates = candData.candidates || []
-            const newestIdx = candidates.length - 1
-            if (candidates.length > 0) {
-              const newest = candidates[newestIdx]
-              await selectCandidate(roomId, msgId, newest.id)
-              // Update cache with fresh data
-              setCandidatesCache((prev) => ({
-                ...prev,
-                [msgId]: { candidates, currentIdx: newestIdx },
-              }))
-              // Optimistic local update: apply newest candidate contents to the message
-              const newestContents = newest.contents || newest.content
-              if (newestContents) {
-                const normalizedContents: ContentItem[] = Array.isArray(
-                  newestContents
-                )
-                  ? newestContents
-                  : [{ text: newestContents, position: "LEFT" }]
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === msgId
-                      ? {
-                          ...m,
-                          contents: normalizedContents,
-                          candidateId: newest.id,
-                        }
-                      : m
-                  )
-                )
-              } else {
-                // Fallback: use streamed content
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === msgId
-                      ? { ...m, contents: accumulated, candidateId: newest.id }
-                      : m
-                  )
-                )
-              }
-            }
-          } catch (e: unknown) {
-            console.warn(
-              "selectCandidate after regen:",
-              e instanceof Error ? e.message : String(e)
-            )
-            // Fallback: reload all messages
-            const data = await getMessages(roomId, 50)
-            setMessages(data.messages || [])
-          }
-          setRegenMsgId(null)
-          setRegenContents([])
-          toast.success("再生成しました")
-        }
+        },
+        getStreamSignal()
       )
     } catch (e: unknown) {
-      toast.error(
-        `再生成失敗: ${e instanceof Error ? e.message : String(e)}`
-      )
+      // Leaving the room aborts the stream; that is not a failure.
+      if (!getStreamSignal()?.aborted) {
+        toast.error(
+          `再生成失敗: ${e instanceof Error ? e.message : String(e)}`
+        )
+      }
       setRegenMsgId(null)
       setRegenContents([])
+    } finally {
+      regenBusyRef.current = false
     }
   }
 
@@ -174,7 +201,7 @@ export function useChatCandidates(
     msgId: string,
     direction: "prev" | "next"
   ): Promise<boolean> {
-    if (!roomId) return false
+    if (!roomId || sending || regenBusyRef.current) return false
     try {
       const cached = await ensureCandidatesCached(msgId)
       if (!cached) return false
@@ -256,7 +283,6 @@ export function useChatCandidates(
         el.style.transform = "translateX(0px)"
       }
 
-      setTimeout(scrollToBottom, 50)
       return true
     } catch (e: unknown) {
       toast.error(
@@ -273,5 +299,6 @@ export function useChatCandidates(
     lastSwipeDirection,
     handleRegen,
     handleSwitchCandidate,
+    invalidateCandidates,
   }
 }

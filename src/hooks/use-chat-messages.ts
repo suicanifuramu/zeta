@@ -18,9 +18,12 @@ export interface UseChatMessagesDeps {
     scrollToBottom?: () => void
     getViewport?: () => HTMLElement | null
     setMessages?: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
+    invalidateCandidates?: (msgId?: string) => void
+    reloadLatestMessages?: () => Promise<void>
   }>
   onEmptyRoomDetected: () => void
   onClearRecommendations: () => void
+  getStreamSignal: () => AbortSignal | undefined
 }
 
 export interface UseChatMessagesReturn {
@@ -32,9 +35,12 @@ export interface UseChatMessagesReturn {
   streamContents: ContentItem[] | null
   setMessages: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
   loadInitialMessages: () => Promise<void>
+  reloadLatestMessages: () => Promise<void>
   loadOlderMessagesRef: React.MutableRefObject<(() => Promise<void>) | undefined>
   sendMessage: (options: SendMessageOptions) => Promise<boolean>
 }
+
+const PAGE_SIZE = 50
 
 export function useChatMessages(
   roomId: string | undefined,
@@ -44,6 +50,7 @@ export function useChatMessages(
     chatRefs,
     onEmptyRoomDetected,
     onClearRecommendations,
+    getStreamSignal,
   } = deps
 
   const [messages, setMessages] = useState<RuntimeMessage[]>([])
@@ -63,13 +70,13 @@ export function useChatMessages(
     setStreamContents(null)
 
     try {
-      const data = await getMessages(roomId, 50)
+      const data = await getMessages(roomId, PAGE_SIZE)
       const msgs = data.messages || []
       if (msgs.length === 0) {
         await onEmptyRoomDetected()
       } else {
         setMessages(msgs)
-        if (msgs.length < 50) setHasMoreHistory(false)
+        if (msgs.length < PAGE_SIZE) setHasMoreHistory(false)
       }
     } catch (e: unknown) {
       toast.error(
@@ -79,6 +86,17 @@ export function useChatMessages(
       setLoading(false)
     }
   }, [roomId, onEmptyRoomDetected])
+
+  // Replaces the list with the latest page. Keeps hasMoreHistory consistent with
+  // the new window; a stale `false` would hide older history after an edit/delete.
+  const reloadLatestMessages = useCallback(async () => {
+    if (!roomId) return
+    const data = await getMessages(roomId, PAGE_SIZE)
+    const msgs = data.messages || []
+    setMessages(msgs)
+    setHasMoreHistory(msgs.length >= PAGE_SIZE)
+    chatRefs.current.invalidateCandidates?.()
+  }, [roomId, chatRefs])
 
   const loadOlderMessagesRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
@@ -122,8 +140,9 @@ export function useChatMessages(
 
   loadOlderMessagesRef.current = loadOlderMessages
 
-  // Update late-binding setMessages hook ref
+  // Update late-binding hook refs
   chatRefs.current.setMessages = setMessages
+  chatRefs.current.reloadLatestMessages = reloadLatestMessages
 
   // Auto-load initial messages on room change
   useEffect(() => {
@@ -142,19 +161,26 @@ export function useChatMessages(
         let editFailed = false
         try {
           await editMessage(roomId, editing.id, editing.candidateId, text)
-          const data = await getMessages(roomId, 50)
-          setMessages(data.messages || [])
-          toast.success("メッセージを編集しました")
-          onClearRecommendations()
-          setTimeout(() => chatRefs.current.scrollToBottom?.(), 50)
         } catch (e: unknown) {
           toast.error(
             `編集失敗: ${e instanceof Error ? e.message : String(e)}`
           )
           editFailed = true
-        } finally {
-          setSending(false)
         }
+        if (!editFailed) {
+          chatRefs.current.invalidateCandidates?.(editing.id)
+          try {
+            await reloadLatestMessages()
+            toast.success("メッセージを編集しました")
+          } catch (e: unknown) {
+            toast.error(
+              `履歴の更新に失敗しました: ${e instanceof Error ? e.message : String(e)}`
+            )
+          }
+          onClearRecommendations()
+          setTimeout(() => chatRefs.current.scrollToBottom?.(), 50)
+        }
+        setSending(false)
         return !editFailed
       }
 
@@ -206,41 +232,59 @@ export function useChatMessages(
             setTimeout(() => chatRefs.current.scrollToBottom?.(), 10)
           },
           async () => {
-            setStreamContents(null)
-            if (streamErrored) {
-              toast.error("送信に失敗しました")
-              failed = true
-              if (tempMsgId) {
-                setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+            // The send itself succeeded once the stream ends. A failed follow-up
+            // fetch must not look like a send failure or drop the user's message.
+            try {
+              if (streamErrored) {
+                toast.error("送信に失敗しました")
+                failed = true
+                if (tempMsgId) {
+                  setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+                }
+                return
               }
-              return
+              if (finalMessage) {
+                const msg = finalMessage
+                setMessages((prev) => [...prev, msg])
+              } else {
+                await reloadLatestMessages()
+              }
+              onClearRecommendations()
+              setTimeout(() => chatRefs.current.scrollToBottom?.(), 50)
+            } catch (e: unknown) {
+              toast.error(
+                `メッセージの更新に失敗しました: ${e instanceof Error ? e.message : String(e)}`
+              )
+            } finally {
+              setStreamContents(null)
             }
-            if (finalMessage) {
-              const msg = finalMessage
-              setMessages((prev) => [...prev, msg])
-            } else {
-              const data = await getMessages(roomId, 50)
-              setMessages(data.messages || [])
-            }
-            onClearRecommendations()
-            setTimeout(() => chatRefs.current.scrollToBottom?.(), 50)
-          }
+          },
+          getStreamSignal()
         )
         return !failed
       } catch (e: unknown) {
-        toast.error(
-          `送信失敗: ${e instanceof Error ? e.message : String(e)}`
-        )
         setStreamContents(null)
         if (tempMsgId) {
           setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
         }
+        // Leaving the room aborts the stream; that is not a failure.
+        if (getStreamSignal()?.aborted) return false
+        toast.error(
+          `送信失敗: ${e instanceof Error ? e.message : String(e)}`
+        )
         return false
       } finally {
         setSending(false)
       }
     },
-    [roomId, sending, chatRefs, onClearRecommendations]
+    [
+      roomId,
+      sending,
+      chatRefs,
+      onClearRecommendations,
+      reloadLatestMessages,
+      getStreamSignal,
+    ]
   )
 
   return {
@@ -252,6 +296,7 @@ export function useChatMessages(
     streamContents,
     setMessages,
     loadInitialMessages,
+    reloadLatestMessages,
     loadOlderMessagesRef,
     sendMessage,
   }

@@ -77,6 +77,71 @@ function buildHeaders(
   }
 }
 
+/** Returns the minimum app version when the body is an APP_UPDATE_REQUIRED error. */
+function getRequiredMinVersion(text: string): string | null {
+  try {
+    const body = JSON.parse(text) as {
+      code?: string
+      data?: string | Record<string, unknown>
+    }
+    if (body.code !== "APP_UPDATE_REQUIRED") return null
+    const raw =
+      typeof body.data === "string" ? JSON.parse(body.data) : body.data || {}
+    return (
+      (raw as { minimumRequiredVersion?: string }).minimumRequiredVersion ||
+      null
+    )
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Shared POST for SSE endpoints. Uses the same common headers and the same
+ * 401-refresh / APP_UPDATE_REQUIRED retry as `request()`; only `accept` differs.
+ */
+async function fetchEventStream(
+  path: string,
+  body: string | undefined,
+  signal?: AbortSignal,
+  retry = true,
+  versionRetry = true
+): Promise<Response> {
+  await ensureAccessToken()
+  const token = getAccessToken()
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: {
+      ...getCommonHeaders(),
+      // Overrides the lowercase `accept` from getCommonHeaders; a second
+      // `Accept` key would be merged into one header value.
+      accept: "text/event-stream",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+    signal,
+  })
+
+  if (res.status === 401 && retry) {
+    await refreshSession(true)
+    return fetchEventStream(path, body, signal, false, versionRetry)
+  }
+
+  if (res.status === 400 && versionRetry) {
+    const text = await res.text().catch(() => "")
+    const minVersion = getRequiredMinVersion(text)
+    if (minVersion && minVersion !== APP_VERSION) {
+      setAppVersion(minVersion)
+      return fetchEventStream(path, body, signal, retry, false)
+    }
+    throw new Error(`POST ${path} -> 400: ${text.slice(0, 160)}`)
+  }
+
+  if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`)
+  return res
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { headers?: Record<string, string> } = {},
@@ -95,24 +160,10 @@ async function request<T>(
 
   if (res.status === 400 && versionRetry) {
     const text = await res.text().catch(() => "")
-    try {
-      const body = JSON.parse(text) as {
-        code?: string
-        data?: string | Record<string, unknown>
-      }
-      if (body.code === "APP_UPDATE_REQUIRED") {
-        const raw =
-          typeof body.data === "string"
-            ? JSON.parse(body.data)
-            : (body.data || {})
-        const minVersion = (raw as { minimumRequiredVersion?: string }).minimumRequiredVersion
-        if (minVersion && minVersion !== APP_VERSION) {
-          setAppVersion(minVersion)
-          return request<T>(path, options, retry, false)
-        }
-      }
-    } catch {
-      // ignore
+    const minVersion = getRequiredMinVersion(text)
+    if (minVersion && minVersion !== APP_VERSION) {
+      setAppVersion(minVersion)
+      return request<T>(path, options, retry, false)
     }
     throw new Error(
       `${options.method || "GET"} ${path} -> 400: ${text.slice(0, 160)}`
@@ -357,10 +408,15 @@ export function createRoom(plotId: string): Promise<CreateRoomResponse> {
   return post<CreateRoomResponse>("/v1/rooms", { plotId })
 }
 
-export function getRooms(limit = 30): Promise<ApiRoomsResponse> {
+export function getRooms(limit = 30, cursor = ""): Promise<ApiRoomsResponse> {
   return get<ApiRoomsResponse>(
-    `/v1/rooms?limit=${limit}&orderBy.property=LAST_MESSAGE_TIME&orderBy.direction=DESC`
+    `/v1/rooms?limit=${limit}&orderBy.property=LAST_MESSAGE_TIME&orderBy.direction=DESC${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`
   )
+}
+
+/** Cursor for the next page of rooms; null when the API returned none (single page). */
+export function getNextRoomsCursor(data: ApiRoomsResponse): string | null {
+  return data.nextCursor || data.cursor || null
 }
 
 export function getRoom(roomId: string): Promise<RoomDetailResponse> {
@@ -427,27 +483,15 @@ export async function sendMessageStream<T = unknown>(
   roomId: string,
   text: string,
   onEvent: (event: T) => void,
-  onDone?: () => void,
-  retry = true
+  onDone?: () => void | Promise<void>,
+  signal?: AbortSignal
 ): Promise<void> {
-  await ensureAccessToken()
-  const res = await fetch(`${BASE}/v1/rooms/${roomId}/messages/stream`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-      Accept: "text/event-stream",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ type: "TEXT", text }),
-  })
-
-  if (res.status === 401 && retry) {
-    await refreshSession(true)
-    return sendMessageStream<T>(roomId, text, onEvent, onDone, false)
-  }
-
-  if (!res.ok) throw new Error(`Send failed: ${res.status}`)
-  await readSSE<T>(res, onEvent, onDone)
+  const res = await fetchEventStream(
+    `/v1/rooms/${roomId}/messages/stream`,
+    JSON.stringify({ type: "TEXT", text }),
+    signal
+  )
+  await readSSE<T>(res, onEvent, onDone, signal)
 }
 
 // Regen (SSE stream)
@@ -455,29 +499,15 @@ export async function regenMessageStream<T = unknown>(
   roomId: string,
   messageId: string,
   onEvent: (event: T) => void,
-  onDone?: () => void,
-  retry = true
+  onDone?: () => void | Promise<void>,
+  signal?: AbortSignal
 ): Promise<void> {
-  await ensureAccessToken()
-  const res = await fetch(
-    `${BASE}/v1/rooms/${roomId}/messages/${messageId}/candidates/stream`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getAccessToken()}`,
-        Accept: "text/event-stream",
-        "Content-Type": "application/json",
-      },
-    }
+  const res = await fetchEventStream(
+    `/v1/rooms/${roomId}/messages/${messageId}/candidates/stream`,
+    undefined,
+    signal
   )
-
-  if (res.status === 401 && retry) {
-    await refreshSession(true)
-    return regenMessageStream<T>(roomId, messageId, onEvent, onDone, false)
-  }
-
-  if (!res.ok) throw new Error(`Regen failed: ${res.status}`)
-  await readSSE<T>(res, onEvent, onDone)
+  await readSSE<T>(res, onEvent, onDone, signal)
 }
 
 // Candidates
@@ -672,7 +702,8 @@ export function updateUserChatProfile(
   { name, description, profileImageUrl }: { name: string; description?: string; profileImageUrl?: string }
 ): Promise<unknown> {
   const body: Record<string, unknown> = { name }
-  if (description) body.description = description
+  // "" clears the description; undefined leaves it unchanged (omitted).
+  if (description !== undefined) body.description = description
   // undefined = leave unchanged (omit), "" = clear, signed upload URL = replace.
   // A stored secret-less URL is rejected by the API (403 "Invalid image url").
   if (profileImageUrl !== undefined) body.profileImageUrl = profileImageUrl
@@ -838,14 +869,23 @@ export function claimQuiz(quizId: string | number): Promise<ClaimQuizResponse> {
 async function readSSE<T>(
   res: Response,
   onEvent: (event: T) => void,
-  onDone?: () => void
+  onDone?: () => void | Promise<void>,
+  signal?: AbortSignal
 ): Promise<void> {
   const reader = res.body!.getReader()
   const decoder = new TextDecoder()
   let buffer = ""
 
   while (true) {
-    const { done, value } = await reader.read()
+    let chunk: ReadableStreamReadResult<Uint8Array>
+    try {
+      chunk = await reader.read()
+    } catch (e) {
+      // Aborting the request (e.g. leaving the room) is not an error.
+      if (signal?.aborted) return
+      throw e
+    }
+    const { done, value } = chunk
     if (done) break
 
     buffer += decoder.decode(value, { stream: true })
@@ -887,5 +927,5 @@ async function readSSE<T>(
     }
   }
 
-  if (onDone) onDone()
+  if (onDone) await onDone()
 }

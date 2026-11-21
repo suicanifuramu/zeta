@@ -108,27 +108,33 @@ pnpm preview
 ## Project Structure
 
 ```
-zeta-dev/app/
+.
 ├── src/
+│   ├── App.tsx         # ルーティング（HashRouter）
 │   ├── pages/          # 画面コンポーネント
 │   │   ├── home.tsx    # ホーム（おすすめ一覧）
-│   │   ├── chat.tsx    # チャット画面
+│   │   ├── chat.tsx    # チャット画面（ルームごとに再マウント）
+│   │   ├── search.tsx  # 検索
 │   │   ├── ranking.tsx # ランキング
 │   │   ├── rooms.tsx   # チャットルーム一覧
 │   │   └── settings.tsx# 設定
 │   ├── components/     # UI 部品
 │   │   ├── ui/         # shadcn/ui コンポーネント
+│   │   ├── chat/       # チャット画面の部品（メッセージ一覧・入力欄など）
 │   │   ├── layout/     # AppShell, BottomNav
 │   │   ├── plot-card.tsx
 │   │   ├── info-box.tsx
 │   │   └── ...
-│   ├── lib/            # ビジネスロジック
-│   │   ├── api.js      # API クライアント
-│   │   ├── auth.js     # 認証管理
-│   │   ├── quiz-client.ts # クイズ自動化
-│   │   ├── types.ts    # 型定義
-│   │   └── ...
-│   └── hooks/          # カスタムフック
+│   ├── hooks/          # カスタムフック（use-chat-*.ts など）
+│   └── lib/            # ビジネスロジック
+│       ├── api.ts      # API クライアント（REST / SSE）
+│       ├── auth.ts     # 認証管理（トークン更新）
+│       ├── headers.ts  # 共通リクエストヘッダ
+│       ├── image-cache.ts    # 画像のメモリキャッシュ
+│       ├── cache-db.ts       # IndexedDB によるアクセス記録
+│       ├── quiz-client.ts    # クイズ自動化
+│       ├── types.ts    # 型定義
+│       └── ...
 ├── scripts/            # ビルド前処理
 └── package.json
 ```

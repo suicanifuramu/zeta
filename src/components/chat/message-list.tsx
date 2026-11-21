@@ -23,6 +23,8 @@ interface MessageListProps {
   deleteMode: boolean
   selectedMsgId: string | null
   regenMsgId: string | null
+  /** True while a send or regen is in flight; disables regen/candidate/edit controls. */
+  busy: boolean
   typewriterRegenContents: ContentItem[] | null
   typewriterContents: ContentItem[] | null
   charAvatars: Record<string, string>
@@ -51,6 +53,7 @@ export const MessageList = memo(function MessageList({
   deleteMode,
   selectedMsgId,
   regenMsgId,
+  busy,
   typewriterRegenContents,
   typewriterContents,
   charAvatars,
@@ -106,7 +109,7 @@ export const MessageList = memo(function MessageList({
         runtimeMsgs.indexOf(prevMsg) >= selectedIdx
 
       const handleTouchStart = (e: React.TouchEvent) => {
-        if (!deleteMode && isLastBot && !isIntro) {
+        if (!deleteMode && !busy && isLastBot && !isIntro) {
           const el = document.getElementById(`msg-swipe-${msg.id}`)
           if (el) el.style.transition = "none"
           touchStateRef.current = {
@@ -119,7 +122,13 @@ export const MessageList = memo(function MessageList({
       }
 
       const handleTouchMove = (e: React.TouchEvent) => {
-        if (!deleteMode && isLastBot && !isIntro && touchStateRef.current) {
+        if (
+          !deleteMode &&
+          !busy &&
+          isLastBot &&
+          !isIntro &&
+          touchStateRef.current
+        ) {
           const state = touchStateRef.current
           const diffX = e.touches[0].clientX - state.x
           const diffY = e.touches[0].clientY - state.y
@@ -145,7 +154,8 @@ export const MessageList = memo(function MessageList({
         if (!deleteMode && isLastBot && !isIntro && touchStateRef.current) {
           const state = touchStateRef.current
           const el = document.getElementById(`msg-swipe-${msg.id}`)
-          if (state.isSwiping && !state.isScrolling) {
+          // Busy state can start mid-gesture; a swipe that began then just snaps back.
+          if (state.isSwiping && !state.isScrolling && !busy) {
             const diffX = e.changedTouches[0].clientX - state.x
             if (Math.abs(diffX) > 50) {
               if (el) {
@@ -274,6 +284,7 @@ export const MessageList = memo(function MessageList({
                     variant="ghost"
                     size="icon"
                     className="size-7 text-muted-foreground"
+                    disabled={busy}
                     onClick={() => onRegen(msg.id)}
                     aria-label="再生成"
                   >
@@ -283,6 +294,7 @@ export const MessageList = memo(function MessageList({
                     variant="ghost"
                     size="icon"
                     className="size-7 text-muted-foreground"
+                    disabled={busy}
                     onClick={() => onSwitchCandidate(msg.id, "prev")}
                     aria-label="前の候補"
                   >
@@ -297,6 +309,7 @@ export const MessageList = memo(function MessageList({
                     variant="ghost"
                     size="icon"
                     className="size-7 text-muted-foreground"
+                    disabled={busy}
                     onClick={() => onSwitchCandidate(msg.id, "next")}
                     aria-label="次の候補"
                   >
@@ -306,6 +319,7 @@ export const MessageList = memo(function MessageList({
                     variant="ghost"
                     size="icon"
                     className="size-7 text-muted-foreground"
+                    disabled={busy}
                     onClick={() => {
                       const txt =
                         msg.contents
@@ -338,6 +352,7 @@ export const MessageList = memo(function MessageList({
     deleteMode,
     selectedMsgId,
     regenMsgId,
+    busy,
     typewriterRegenContents,
     charAvatars,
     candidatesCache,

@@ -195,6 +195,8 @@ export function SearchPage() {
       setSuggestionsOpen(false)
       setActiveIndex(-1)
     } else if (e.key === "Enter") {
+      // Enter while composing (IME) confirms the conversion, not the suggestion.
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return
       const active = activeIndex >= 0 ? suggestions[activeIndex] : undefined
       if (suggestionsOpen && active) {
         e.preventDefault()

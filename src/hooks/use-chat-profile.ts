@@ -5,7 +5,6 @@ import {
   getRoom,
   getMyPlotChatProfile,
   getUserChatProfiles,
-  getMessages,
   createIntro,
   selectUserChatProfile,
   selectPlotChatProfile,
@@ -27,6 +26,7 @@ export interface UseChatProfileDeps {
   chatRefs: React.MutableRefObject<{
     scrollToBottom?: () => void
     setMessages?: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
+    reloadLatestMessages?: () => Promise<void>
   }>
 }
 
@@ -96,10 +96,9 @@ export function useChatProfile(
           roomId,
         }),
         getMyPlotChatProfile(roomId).catch(() => null),
-      ])
+      ]).finally(() => setProfileLoading(false))
       setProfileList(profData.userChatProfiles || [])
       setMyPlotProfile(myProfile)
-      setProfileLoading(false)
 
       const defaultProfile = (profData.userChatProfiles || []).find(
         (p) => p.isDefault || p.selected
@@ -149,8 +148,7 @@ export function useChatProfile(
   const finalizeProfileStart = useCallback(
     async (name: string) => {
       await createIntro(roomId!)
-      const data = await getMessages(roomId!, 50)
-      chatRefs.current.setMessages?.(data.messages || [])
+      await chatRefs.current.reloadLatestMessages?.()
       setNeedsInit(false)
       setProfileSheetOpen(false)
       toast.success(`「${name}」で開始しました`)

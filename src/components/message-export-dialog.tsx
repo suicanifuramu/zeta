@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
-import { getRooms } from "@/lib/api"
+import { getNextRoomsCursor, getRooms } from "@/lib/api"
 import {
   buildExportRoomJson,
   downloadRoomJson,
@@ -17,6 +17,31 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 interface MessageExportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+const ROOM_PAGE_SIZE = 100
+// Upper bound so a misbehaving cursor can't loop forever.
+const MAX_ROOM_PAGES = 50
+
+/** Fetches every room page. Stops when there is no cursor, it repeats, or a page adds nothing new. */
+async function fetchAllRooms(): Promise<Room[]> {
+  const all: Room[] = []
+  const seen = new Set<string>()
+  let cursor: string | undefined
+  for (let page = 0; page < MAX_ROOM_PAGES; page++) {
+    const data = await getRooms(ROOM_PAGE_SIZE, cursor)
+    let added = 0
+    for (const room of data.rooms || []) {
+      if (seen.has(room.id)) continue
+      seen.add(room.id)
+      all.push(room)
+      added++
+    }
+    const next = getNextRoomsCursor(data)
+    if (!next || next === cursor || added === 0) break
+    cursor = next
+  }
+  return all
 }
 
 export function MessageExportDialog({
@@ -33,15 +58,25 @@ export function MessageExportDialog({
 
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     setLoading(true)
-    getRooms(100)
-      .then((data) => setRooms(data.rooms || []))
-      .catch((e: unknown) =>
-        toast.error(
-          `ルーム一覧の取得に失敗: ${e instanceof Error ? e.message : String(e)}`
-        )
-      )
-      .finally(() => setLoading(false))
+    fetchAllRooms()
+      .then((all) => {
+        if (!cancelled) setRooms(all)
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          toast.error(
+            `ルーム一覧の取得に失敗: ${e instanceof Error ? e.message : String(e)}`
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [open ])
 
   useEffect(() => {

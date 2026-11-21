@@ -4,6 +4,8 @@ import {
   PLOT_IMAGE_CACHE,
   fetchPromises,
   memoryCache,
+  releaseObjectUrl,
+  retainObjectUrl,
   subscribeToCacheClear,
 } from "@/lib/image-cache"
 import { runStartupCleanup, startPeriodicCleanup } from "@/lib/cache-cleanup"
@@ -81,7 +83,9 @@ export function useImageCache(
   noCache = false
 ): { cachedSrc: string | undefined } {
   const [cacheTick, setCacheTick] = useState(0)
-  const [asyncKey, setAsyncKey] = useState(() => `${src}|${noCache}`)
+  const [asyncKey, setAsyncKey] = useState(
+    () => `${src}|${noCache}|${cacheTick}`
+  )
   const [asyncObjectUrl, setAsyncObjectUrl] = useState<string | undefined>()
 
   const newKey = `${src}|${noCache}|${cacheTick}`
@@ -93,9 +97,22 @@ export function useImageCache(
   const syncCachedSrc = !src || noCache ? src : memoryCache.get(src) || src
   const cachedSrc = asyncObjectUrl ?? syncCachedSrc
 
+  // Hold the object URL while it is on screen so cache eviction can't revoke it.
+  const heldObjectUrl = cachedSrc?.startsWith("blob:") ? cachedSrc : undefined
   useEffect(() => {
-    return subscribeToCacheClear(() => setCacheTick((t) => t + 1))
-  }, [])
+    if (!heldObjectUrl) return
+    retainObjectUrl(heldObjectUrl)
+    return () => releaseObjectUrl(heldObjectUrl)
+  }, [heldObjectUrl])
+
+  useEffect(() => {
+    // Only this image's own invalidation (or a full clear) should reset it.
+    return subscribeToCacheClear((changedUrl) => {
+      if (changedUrl === undefined || changedUrl === src) {
+        setCacheTick((t) => t + 1)
+      }
+    })
+  }, [src])
 
   useEffect(() => {
     if (!cleanupInitialized) {

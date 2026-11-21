@@ -61,7 +61,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
     <div className="glass border-t border-border px-3 py-2">
       {editingMsg && (
         <div className="mb-2 flex items-center justify-between px-1 text-xs text-primary">
-          <span>メッセージを編集中...</span>
+          <span>メッセージを編集中…</span>
           <Button
             variant="ghost"
             size="sm"
@@ -98,13 +98,18 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                ;(inputRef as React.RefObject<HTMLTextAreaElement | null>)?.current?.focus({ preventScroll: true })
-                onSend()
-              }
+              if (e.key !== "Enter") return
+              // Enter during IME composition confirms the conversion, not the message.
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return
+              // Touch keyboards have no Shift, so plain Enter inserts a newline there.
+              const isTouch = window.matchMedia("(pointer: coarse)").matches
+              const isModifiedSend = e.ctrlKey || e.metaKey
+              if (!isModifiedSend && (isTouch || e.shiftKey)) return
+              e.preventDefault()
+              ;(inputRef as React.RefObject<HTMLTextAreaElement | null>)?.current?.focus({ preventScroll: true })
+              onSend()
             }}
-            placeholder="メッセージを入力..."
+            placeholder="メッセージを入力…"
             className="max-h-28 min-h-10 resize-none overscroll-contain border-0 bg-secondary/50 pr-9 text-sm"
             rows={1}
             style={{ fontSize: "16px" }}

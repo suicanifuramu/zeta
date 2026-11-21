@@ -159,6 +159,9 @@ export interface PlotSearchResponse {
 
 export interface ApiRoomsResponse {
   rooms?: Room[]
+  /** Cursor for the next page; the exact field name is unverified, so both are accepted. */
+  nextCursor?: string | null
+  cursor?: string | null
 }
 
 export interface ApiMessagesResponse {

@@ -1,4 +1,10 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useParams,
+} from "react-router-dom"
 import { Suspense, lazy, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useQuizAutomation } from "@/hooks/use-quiz-automation"
@@ -51,6 +57,13 @@ function ScrollToTop() {
   return null
 }
 
+// Keyed by room so switching rooms remounts the page and drops per-room state
+// (input, recommendations, in-flight streams) instead of carrying it over.
+function ChatRoute() {
+  const { roomId } = useParams<{ roomId: string }>()
+  return <ChatPage key={roomId} />
+}
+
 export default function App() {
   const { ready } = useAuth()
   useQuizAutomation()
@@ -78,7 +91,7 @@ export default function App() {
             <Route path="search" element={<SearchPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-          <Route path="chat/:roomId" element={<ChatPage />} />
+          <Route path="chat/:roomId" element={<ChatRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CachedAvatarImage } from "@/components/cached-avatar-image"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
-import { getRooms } from "@/lib/api"
+import { getNextRoomsCursor, getRooms } from "@/lib/api"
 import { formatMessageText } from "@/lib/format-message"
 import type { Room, Message } from "@/lib/types"
+
+const PAGE_SIZE = 30
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -29,27 +31,85 @@ function getPreview(lastMessage: Message | undefined) {
   return name ? `${name}: ${text}` : text
 }
 
+function appendUniqueRooms(prev: Room[], incoming: Room[]): Room[] {
+  const seen = new Set(prev.map((r) => r.id))
+  const fresh: Room[] = []
+  for (const room of incoming) {
+    if (seen.has(room.id)) continue
+    seen.add(room.id)
+    fresh.push(room)
+  }
+  return [...prev, ...fresh]
+}
+
 export function RoomsPage() {
-  const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    getRooms(30)
-      .then((data) => setRooms(data.rooms || []))
-      .catch((e: unknown) =>
-        toast.error(
-          `読み込み失敗: ${e instanceof Error ? e.message : String(e)}`
-        )
-      )
-      .finally(() => setLoading(false))
+    let cancelled = false
+    getRooms(PAGE_SIZE)
+      .then((data) => {
+        if (cancelled) return
+        setRooms(data.rooms || [])
+        setNextCursor(getNextRoomsCursor(data))
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          toast.error(
+            `読み込み失敗: ${e instanceof Error ? e.message : String(e)}`
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const handleClick = (room: Room) => {
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loading || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const data = await getRooms(PAGE_SIZE, nextCursor)
+      const merged = appendUniqueRooms(rooms, data.rooms || [])
+      setRooms(merged)
+      const cursor = getNextRoomsCursor(data)
+      // Stop on a repeated cursor or a page with no new rooms; otherwise the
+      // sentinel keeps firing when the API ignores `cursor`.
+      const addedNew = merged.length > rooms.length
+      setNextCursor(cursor === nextCursor || !addedNew ? null : cursor)
+    } catch (e: unknown) {
+      toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`)
+      setNextCursor(null)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [rooms, nextCursor, loading, loadingMore])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !nextCursor) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadMore()
+      },
+      { rootMargin: "300px" }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+    // `loading` gates the sentinel's mount, so re-attach once the list shows.
+  }, [nextCursor, loading, loadMore])
+
+  const rememberRoom = (room: Room) => {
     const plot = room.plot
     sessionStorage.setItem("chat_plot_name", plot?.name || room.title || "")
     sessionStorage.setItem("chat_plot_img", plot?.imageUrl || "")
-    navigate(`/chat/${room.id}`)
   }
 
   return (
@@ -83,12 +143,13 @@ export function RoomsPage() {
               const preview = getPreview(lastMessage)
               const time = lastMessage?.createdAt
                 ? timeAgo(lastMessage.createdAt)
-                : ""  
+                : ""
               return (
                 <div key={room.id}>
-                  <button
+                  <Link
+                    to={`/chat/${room.id}`}
                     className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-secondary/50"
-                    onClick={() => handleClick(room)}
+                    onClick={() => rememberRoom(room)}
                   >
                     <Avatar className="size-12 flex-shrink-0">
                       <CachedAvatarImage src={plot?.imageUrl} alt={plot?.name} />
@@ -112,13 +173,22 @@ export function RoomsPage() {
                         {room.unreadCount}
                       </Badge>
                     )}
-                  </button>
+                  </Link>
                   {i < rooms.length - 1 && (
                     <Separator className="ml-17 w-[calc(100%-68px)]" />
                   )}
                 </div>
               )
             })}
+            {nextCursor && (
+              <div
+                ref={sentinelRef}
+                className="flex justify-center py-4 text-xs text-muted-foreground"
+                aria-live="polite"
+              >
+                {loadingMore ? "読み込み中…" : ""}
+              </div>
+            )}
           </div>
         )}
       </div>

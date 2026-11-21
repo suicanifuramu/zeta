@@ -25,19 +25,30 @@ export function useHomePlots(): UseHomePlotsReturn {
   const seenIds = useRef(new Set<string>(cachedSeenIds))
   const sentinelRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<string | null>(cachedCursor)
+  // A reset bumps the generation; responses from an older generation are dropped
+  // so they cannot append into the freshly reset list or move the cursor.
+  const generationRef = useRef(0)
+  const inFlightRef = useRef(false)
 
   const loadPlots = useCallback(async (reset = false) => {
+    // Load-more is skipped while any request is running. A reset always proceeds.
+    if (!reset && inFlightRef.current) return
     if (reset) {
+      generationRef.current += 1
       seenIds.current.clear()
       setPlots([])
       setLoading(true)
+      setLoadingMore(false)
       setHasMore(true)
       cursorRef.current = null
     } else {
       setLoadingMore(true)
     }
+    const generation = generationRef.current
+    inFlightRef.current = true
     try {
       const data = await getHomePlots(20, cursorRef.current || undefined)
+      if (generation !== generationRef.current) return
       const newPlots = (data.plots || []).filter(
         (p: Plot) => !seenIds.current.has(p.id)
       )
@@ -60,11 +71,15 @@ export function useHomePlots(): UseHomePlotsReturn {
         cachedHasMore = more
       }
     } catch (e: unknown) {
+      if (generation !== generationRef.current) return
       toast.error(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`)
       setHasMore(false)
     } finally {
-      setLoading(false)
-      setLoadingMore(false)
+      if (generation === generationRef.current) {
+        inFlightRef.current = false
+        setLoading(false)
+        setLoadingMore(false)
+      }
     }
   }, [])
 
@@ -96,13 +111,15 @@ export function useHomePlots(): UseHomePlotsReturn {
     if (!sentinel) return
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasMore && !loadingMore) loadPlots()
+        if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
+          loadPlots()
+        }
       },
       { rootMargin: "300px" }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, loadPlots])
+  }, [hasMore, loadingMore, loading, loadPlots])
 
   return {
     plots,

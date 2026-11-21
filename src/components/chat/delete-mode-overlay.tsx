@@ -7,6 +7,8 @@ interface DeleteModeOverlayProps {
   deleting: boolean
   onDelete: () => void
   onCancel: () => void
+  /** Opens the room reset confirmation; the long-press on the trash button is the only other path. */
+  onReset: () => void
 }
 
 export function DeleteModeOverlay({
@@ -15,13 +17,14 @@ export function DeleteModeOverlay({
   deleting,
   onDelete,
   onCancel,
+  onReset,
 }: DeleteModeOverlayProps) {
   if (!deleteMode) return null
 
   return (
-    <div className="animate-slide-up absolute bottom-6 left-1/2 z-30 -translate-x-1/2">
-      <div className="glass flex items-center gap-3 rounded-2xl border border-destructive/30 px-5 py-3 shadow-lg shadow-destructive/10">
-        <div className="text-sm whitespace-nowrap">
+    <div className="animate-slide-up pointer-events-none absolute inset-x-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center">
+      <div className="glass pointer-events-auto flex w-full max-w-md flex-col items-center gap-2 rounded-2xl border border-destructive/30 px-4 py-3 shadow-lg shadow-destructive/10">
+        <div className="text-center text-sm">
           {selectedMsgId ? (
             <span className="font-medium text-destructive">
               選択以降を削除
@@ -32,7 +35,16 @@ export function DeleteModeOverlay({
             </span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={onReset}
+            disabled={deleting}
+          >
+            ルームをリセット
+          </Button>
           <Button
             variant="outline"
             size="sm"

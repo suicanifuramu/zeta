@@ -69,14 +69,15 @@ function validateImageDimensions(
   file: File,
   minDimension = USER_IMAGE_MIN_DIMENSION
 ): Promise<boolean> {
-  return new Promise((resolve) => {
+  const objectUrl = URL.createObjectURL(file)
+  return new Promise<boolean>((resolve) => {
     const img = new Image()
     img.onload = () => {
       resolve(img.width >= minDimension && img.height >= minDimension)
     }
     img.onerror = () => resolve(false)
-    img.src = URL.createObjectURL(file)
-  })
+    img.src = objectUrl
+  }).finally(() => URL.revokeObjectURL(objectUrl))
 }
 
 function CreateProfileSheet({

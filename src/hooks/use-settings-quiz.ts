@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import * as quizClient from "@/lib/quiz-client"
 
 export function useSettingsQuiz() {
-  const [quizStatus, setQuizStatus] = useState("確認中...")
+  const [quizStatus, setQuizStatus] = useState("確認中…")
 
   useEffect(() => {
     void (async () => {
@@ -15,7 +15,7 @@ export function useSettingsQuiz() {
   }, [])
 
   const runQuiz = async () => {
-    setQuizStatus("実行中...")
+    setQuizStatus("実行中…")
     const result = await quizClient.runQuizAutomation()
     setQuizStatus(result)
     return result

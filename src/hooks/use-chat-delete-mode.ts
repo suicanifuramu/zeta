@@ -1,11 +1,10 @@
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
-import { deleteMessages, getMessages } from "@/lib/api"
-import type { RuntimeMessage } from "@/lib/types"
+import { deleteMessages } from "@/lib/api"
 
 export function useChatDeleteMode(
   roomId: string | undefined,
-  setMessages: React.Dispatch<React.SetStateAction<RuntimeMessage[]>>
+  reloadLatestMessages: () => Promise<void>
 ) {
   const [deleteMode, setDeleteMode] = useState(false)
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null)
@@ -16,8 +15,7 @@ export function useChatDeleteMode(
     setDeleting(true)
     try {
       await deleteMessages(roomId, selectedMsgId)
-      const data = await getMessages(roomId, 50)
-      setMessages(data.messages || [])
+      await reloadLatestMessages()
       toast.success("メッセージを削除しました")
       setDeleteMode(false)
       setSelectedMsgId(null)
@@ -26,7 +24,7 @@ export function useChatDeleteMode(
     } finally {
       setDeleting(false)
     }
-  }, [roomId, selectedMsgId, setMessages])
+  }, [roomId, selectedMsgId, reloadLatestMessages])
 
   const exitDeleteMode = useCallback(() => {
     setDeleteMode(false)
@@ -37,14 +35,13 @@ export function useChatDeleteMode(
     setDeleteMode(true)
     if (!roomId) return
     try {
-      const data = await getMessages(roomId, 50)
-      setMessages(data.messages || [])
+      await reloadLatestMessages()
     } catch (e: unknown) {
       toast.error(
         `履歴の同期に失敗しました: ${e instanceof Error ? e.message : String(e)}`
       )
     }
-  }, [roomId, setMessages])
+  }, [roomId, reloadLatestMessages])
 
   return {
     deleteMode,

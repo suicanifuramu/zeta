@@ -9,6 +9,7 @@ import {
   refreshSession,
   setDeviceId,
   setGender,
+  updateRefreshToken,
 } from "@/lib/auth"
 import { getMyProfile } from "@/lib/api"
 
@@ -21,8 +22,14 @@ export function useSettingsSession() {
     setRefreshing(true)
     try {
       setDeviceId(deviceId)
-      if (refreshToken) importTokens(refreshToken)
-      await refreshSession()
+      const input = refreshToken.trim()
+      // importTokens guesses that a bare 3-part dotted string is an access token,
+      // so only cookie/JSON input goes through it; a plain value is the refresh token.
+      if (input.includes("=") || input.startsWith("{")) importTokens(input)
+      else if (input) updateRefreshToken(input)
+      // Force the network call so the newly entered credentials are used even
+      // while the current access token is still valid.
+      await refreshSession(true)
       setRefreshToken(getRefreshToken())
       const profile = await getMyProfile()
       setGender(profile.gender)

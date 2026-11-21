@@ -15,8 +15,20 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { ImageCropDialog } from "@/components/image-crop-dialog"
 import { getAccessToken } from "@/lib/auth"
+import { APP_VERSION } from "@/lib/headers"
 import { useSettingsSession } from "@/hooks/use-settings-session"
 import { useSettingsOverview } from "@/hooks/use-settings-overview"
 import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
@@ -79,19 +91,21 @@ export function SettingsPage() {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const objectUrl = URL.createObjectURL(file)
     const valid = await new Promise<boolean>((resolve) => {
       const img = new Image()
       img.onload = () => resolve(img.width >= 224 && img.height >= 224)
       img.onerror = () => resolve(false)
-      img.src = URL.createObjectURL(file)
-    })
+      img.src = objectUrl
+    }).finally(() => URL.revokeObjectURL(objectUrl))
+    // Reset on both paths so re-selecting the same file fires onChange again.
+    if (fileInputRef.current) fileInputRef.current.value = ""
     if (!valid) {
       toast.error("画像は224px以上である必要があります")
       return
     }
     setCropFile(file)
     setCropOpen(true)
-    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   const handleCropComplete = (imageUrl: string) => {
@@ -195,9 +209,27 @@ export function SettingsPage() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                ログアウト
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    ログアウト
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ログアウトしますか？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      この端末に保存されたセッション情報を削除します。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleLogout}>
+                      ログアウト
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 size="sm"
                 onClick={handleRefreshSession}
@@ -456,7 +488,10 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Zeta Chat Client v2.0.0 — React + shadcn/ui
+              Zeta Chat Client — React + shadcn/ui
+            </p>
+            <p className="text-sm text-muted-foreground tabular-nums">
+              エミュレート中のクライアントバージョン: {APP_VERSION}
             </p>
             <p className="text-sm text-muted-foreground">API: api.zeta-ai.io</p>
           </CardContent>
