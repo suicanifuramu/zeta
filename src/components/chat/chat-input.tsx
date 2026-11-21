@@ -98,13 +98,9 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key !== "Enter") return
+              if (e.key !== "Enter" || e.shiftKey) return
               // Enter during IME composition confirms the conversion, not the message.
               if (e.nativeEvent.isComposing || e.keyCode === 229) return
-              // Touch keyboards have no Shift, so plain Enter inserts a newline there.
-              const isTouch = window.matchMedia("(pointer: coarse)").matches
-              const isModifiedSend = e.ctrlKey || e.metaKey
-              if (!isModifiedSend && (isTouch || e.shiftKey)) return
               e.preventDefault()
               ;(inputRef as React.RefObject<HTMLTextAreaElement | null>)?.current?.focus({ preventScroll: true })
               onSend()

@@ -276,7 +276,6 @@ export function ChatPage() {
         deleting={deleting}
         onDelete={handleDeleteMessages}
         onCancel={exitDeleteMode}
-        onReset={handleResetConfirmOpen}
       />
 
       <RecommendPanel
