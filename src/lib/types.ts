@@ -694,41 +694,87 @@ export interface DraftAbout {
   [key: string]: unknown
 }
 
+/**
+ * Enum members of the creator editor's "ストーリー演出" settings. Each list is
+ * complete and in the official app's declaration order (confirmed from its
+ * GraphQL enum map and its Japanese labels).
+ */
+export type DraftStyleDifficulty = "EASY" | "NORMAL" | "HARD" | "NIGHTMARE"
+export type DraftStylePacing = "FAST" | "NATURAL" | "SLOW"
+export type DraftStylePov = "FIRST_PERSON" | "SECOND_PERSON" | "THIRD_PERSON"
+export type DraftStyleTense = "PAST" | "PRESENT"
+export type DraftStyleResponseLength = "SHORT" | "MEDIUM" | "LONG" | "DYNAMIC"
+export type DraftStyleDevelopmentStyle =
+  "DIALOGUE_FOCUSED" | "DEFAULT" | "ACTION_FOCUSED"
+export type DraftStyleMood =
+  | "ROMANCE"
+  | "HEALING"
+  | "ANGST"
+  | "YANDERE"
+  | "FANTASY"
+  | "ACTION"
+  | "MYSTERY"
+  | "HORROR"
+export type DraftStorytellingStyle =
+  | "JANE_AUSTEN"
+  | "DON_WINSLOW"
+  | "HENRY_MILLER"
+  | "LOUISA_MAY_ALCOTT"
+  | "QUENTIN_TARANTINO"
+  | "JK_ROWLING"
+  | "NISIO_ISIN"
+  | "STEPHEN_KING"
+
 export interface DraftStylePreset {
-  difficulty?: string
-  pacing?: string
-  pov?: string
-  tense?: string
-  responseLength?: string
-  developmentStyle?: string
-  moods?: string[]
-  storytellingStyle?: string | null
-  [key: string]: unknown
+  difficulty?: DraftStyleDifficulty
+  pacing?: DraftStylePacing
+  pov?: DraftStylePov
+  tense?: DraftStyleTense
+  responseLength?: DraftStyleResponseLength
+  developmentStyle?: DraftStyleDevelopmentStyle
+  moods?: DraftStyleMood[]
+  storytellingStyle?: DraftStorytellingStyle | null
 }
+
+/** Info box scene rows, in the official app's order. */
+export type DraftInfoBoxSceneType =
+  "DATE" | "TIME" | "LOCATION" | "WEATHER" | "SITUATION"
+/** `DATE` scene display format (`年月日` / `時間経過`). */
+export type DraftInfoBoxDateFormat = "DATE" | "DAY_COUNT"
 
 export interface DraftInfoBoxScene {
-  type: string
+  type: DraftInfoBoxSceneType
   enabled: boolean
-  format?: string
-  [key: string]: unknown
+  format?: DraftInfoBoxDateFormat
 }
 
+/** Info box character item rows, in the official app's order. */
+export type DraftInfoBoxItemType =
+  | "MOOD"
+  | "CONDITION"
+  | "OUTFIT"
+  | "POSE"
+  | "GOAL"
+  | "RELATIONSHIP"
+  | "INNER_THOUGHT"
+  | "INVENTORY"
+
 export interface DraftInfoBoxItem {
-  type: string
+  type: DraftInfoBoxItemType
   enabled: boolean
-  [key: string]: unknown
 }
 
 export interface DraftInfoBoxSetting {
   scenes: DraftInfoBoxScene[]
   characters: DraftInfoBoxItem[]
-  [key: string]: unknown
 }
+
+/** `cyoaSetting.type`: choices written as sentences or as keywords. */
+export type DraftCyoaType = "DIALOGUE" | "KEYWORD"
 
 export interface DraftCyoaSetting {
   enabled: boolean
-  type: string
-  [key: string]: unknown
+  type: DraftCyoaType
 }
 
 export interface DraftPluginEntry {

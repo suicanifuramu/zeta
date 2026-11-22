@@ -12,12 +12,18 @@ type ScalarKey =
   | "responseLength"
   | "developmentStyle"
 
+type Mood = NonNullable<DraftStylePreset["moods"]>[number]
+type StorytellingStyle = NonNullable<DraftStylePreset["storytellingStyle"]>
+
 interface Option {
   value: string
   label: string
 }
 
-/** Enum values seen in the official app, with its Japanese labels. */
+/**
+ * Enum values of the official app, with its Japanese labels. Every member the
+ * app knows is present, in the app's declaration order.
+ */
 const SCALAR_GROUPS: { key: ScalarKey; label: string; options: Option[] }[] = [
   {
     key: "difficulty",
@@ -33,9 +39,9 @@ const SCALAR_GROUPS: { key: ScalarKey; label: string; options: Option[] }[] = [
     key: "pacing",
     label: "展開の速さ",
     options: [
-      { value: "SLOW", label: "遅い" },
-      { value: "NATURAL", label: "自然" },
       { value: "FAST", label: "速い" },
+      { value: "NATURAL", label: "自然" },
+      { value: "SLOW", label: "遅い" },
     ],
   },
   {
@@ -60,6 +66,7 @@ const SCALAR_GROUPS: { key: ScalarKey; label: string; options: Option[] }[] = [
     label: "返答の長さ",
     options: [
       { value: "SHORT", label: "短い" },
+      { value: "MEDIUM", label: "中間" },
       { value: "LONG", label: "長い" },
       { value: "DYNAMIC", label: "自動" },
     ],
@@ -68,14 +75,14 @@ const SCALAR_GROUPS: { key: ScalarKey; label: string; options: Option[] }[] = [
     key: "developmentStyle",
     label: "ストーリー展開",
     options: [
-      { value: "DEFAULT", label: "基本" },
       { value: "DIALOGUE_FOCUSED", label: "会話多め" },
+      { value: "DEFAULT", label: "基本" },
       { value: "ACTION_FOCUSED", label: "行動多め" },
     ],
   },
 ]
 
-const MOOD_OPTIONS: Option[] = [
+const MOOD_OPTIONS: { value: Mood; label: string }[] = [
   { value: "ROMANCE", label: "ロマンス" },
   { value: "HEALING", label: "癒し" },
   { value: "ANGST", label: "シリアス" },
@@ -86,13 +93,14 @@ const MOOD_OPTIONS: Option[] = [
   { value: "HORROR", label: "ホラー" },
 ]
 
-/** Values observed in the official app's requests. The complete list is not confirmed. */
-const STORYTELLING_OPTIONS: Option[] = [
+/** Every member of the official app's `storytellingStyle` enum, in its order. */
+const STORYTELLING_OPTIONS: { value: StorytellingStyle; label: string }[] = [
   { value: "JANE_AUSTEN", label: "恋愛心理小説" },
   { value: "DON_WINSLOW", label: "ハードボイルド" },
   { value: "HENRY_MILLER", label: "夜想文学" },
   { value: "LOUISA_MAY_ALCOTT", label: "温かな青春物語" },
   { value: "QUENTIN_TARANTINO", label: "アクション" },
+  { value: "JK_ROWLING", label: "王道ファンタジー" },
   { value: "NISIO_ISIN", label: "ライトノベル" },
   { value: "STEPHEN_KING", label: "心理ホラー" },
 ]
@@ -113,11 +121,15 @@ export function StyleSection() {
   }
 
   function setScalar(key: ScalarKey, value: string | null) {
-    if (value === null) patch({}, [key])
-    else patch({ [key]: value } as Partial<DraftStylePreset>)
+    ctrl.edit("settings", (d) => {
+      const base: Record<string, unknown> = { ...(d.stylePreset ?? {}) }
+      if (value === null) delete base[key]
+      else base[key] = value
+      return { ...d, stylePreset: base as DraftStylePreset }
+    })
   }
 
-  function toggleMood(value: string) {
+  function toggleMood(value: Mood) {
     const current = preset?.moods ?? []
     const next = current.includes(value)
       ? current.filter((m) => m !== value)
@@ -205,8 +217,8 @@ export function StyleSection() {
           value={preset?.storytellingStyle ?? ""}
           onChange={(e) => {
             const v = e.target.value
-            if (v === "") patch({ storytellingStyle: null })
-            else patch({ storytellingStyle: v })
+            const option = STORYTELLING_OPTIONS.find((o) => o.value === v)
+            patch({ storytellingStyle: option ? option.value : null })
           }}
           className="h-11 w-full max-w-sm rounded-lg border border-input bg-background px-3 text-base text-foreground"
         >

@@ -3,6 +3,8 @@ import type {
   DraftCharacter,
   DraftChatProfile,
   DraftExampleConversation,
+  DraftInfoBoxItemType,
+  DraftInfoBoxSceneType,
   DraftIntro,
   DraftIntroMessage,
   DraftPluginEntry,
@@ -503,24 +505,45 @@ export function withPluginEntry(
   return value === undefined ? rest : [...rest, { pluginId, value }]
 }
 
+/** Info box scene rows, in the official app's order. */
+export const INFO_BOX_SCENE_TYPES: readonly DraftInfoBoxSceneType[] = [
+  "DATE",
+  "TIME",
+  "LOCATION",
+  "WEATHER",
+  "SITUATION",
+]
+
+/** Info box character item rows, in the official app's order. */
+export const INFO_BOX_CHARACTER_ITEM_TYPES: readonly DraftInfoBoxItemType[] = [
+  "MOOD",
+  "CONDITION",
+  "OUTFIT",
+  "POSE",
+  "GOAL",
+  "RELATIONSHIP",
+  "INNER_THOUGHT",
+  "INVENTORY",
+]
+
 /** Japanese labels for the info box settings (values are the official app's enums). */
-export const SCENE_LABELS: Record<string, string> = {
+export const SCENE_LABELS: Record<DraftInfoBoxSceneType, string> = {
   DATE: "日付",
   TIME: "時間",
   LOCATION: "場所",
-  SITUATION: "状況",
   WEATHER: "天気",
+  SITUATION: "状況",
 }
 
-export const CHARACTER_ITEM_LABELS: Record<string, string> = {
+export const CHARACTER_ITEM_LABELS: Record<DraftInfoBoxItemType, string> = {
   MOOD: "気分",
   CONDITION: "状態",
   OUTFIT: "服装",
   POSE: "ポーズ",
   GOAL: "目標",
   RELATIONSHIP: "関係性",
-  INVENTORY: "所持品",
   INNER_THOUGHT: "本音",
+  INVENTORY: "所持品",
 }
 
 export function newCharacterPlaceholder(): DraftCharacter {

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
   CHARACTER_ITEM_LABELS,
+  INFO_BOX_CHARACTER_ITEM_TYPES,
   SCENE_LABELS,
   introTotalChars,
   newIntro,
@@ -26,20 +27,20 @@ import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 
 const NARRATOR_ID = "_NARRATOR_"
 
+/** Defaults for a newly enabled info box: the app's enum order, all rows on. */
 const DEFAULT_SCENES: DraftInfoBoxScene[] = [
   { type: "DATE", enabled: true, format: "DATE" },
   { type: "TIME", enabled: true },
   { type: "LOCATION", enabled: true },
-  { type: "SITUATION", enabled: true },
   { type: "WEATHER", enabled: true },
+  { type: "SITUATION", enabled: true },
 ]
 
-const DEFAULT_CHARACTER_ITEMS: DraftInfoBoxItem[] = Object.keys(
-  CHARACTER_ITEM_LABELS
-).map((type) => ({
-  type,
-  enabled: true,
-}))
+const DEFAULT_CHARACTER_ITEMS: DraftInfoBoxItem[] =
+  INFO_BOX_CHARACTER_ITEM_TYPES.map((type) => ({
+    type,
+    enabled: true,
+  }))
 
 export function IntroSection() {
   const { ctrl, messageFor } = usePlotEditor()
@@ -185,6 +186,30 @@ export function IntroSection() {
             }))
           }
         />
+        {cyoa?.enabled === true && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="cyoa-type" className="text-sm">
+              選択肢の形式
+            </label>
+            <select
+              id="cyoa-type"
+              value={cyoa.type ?? "DIALOGUE"}
+              onChange={(e) =>
+                ctrl.edit("settings", (d) => ({
+                  ...d,
+                  cyoaSetting: {
+                    enabled: d.cyoaSetting?.enabled ?? true,
+                    type: e.target.value === "KEYWORD" ? "KEYWORD" : "DIALOGUE",
+                  },
+                }))
+              }
+              className="h-11 rounded-lg border border-input bg-background px-3 text-base text-foreground"
+            >
+              <option value="DIALOGUE">文章型</option>
+              <option value="KEYWORD">キーワード型</option>
+            </select>
+          </div>
+        )}
         {choiceCount > 0 && (
           <FieldMessage tone="hint">
             イントロの選択肢（{choiceCount}
@@ -240,12 +265,15 @@ export function IntroSection() {
                         value={scene.format ?? "DATE"}
                         onChange={(e) =>
                           setInfoBoxScene(ctrl, index, {
-                            format: e.target.value,
+                            format:
+                              e.target.value === "DAY_COUNT"
+                                ? "DAY_COUNT"
+                                : "DATE",
                           })
                         }
                         className="h-11 rounded-lg border border-input bg-background px-3 text-base text-foreground"
                       >
-                        <option value="DATE">日付</option>
+                        <option value="DATE">年月日</option>
                         <option value="DAY_COUNT">時間経過</option>
                       </select>
                     </div>
