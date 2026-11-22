@@ -118,7 +118,7 @@ export function CreatePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6 md:max-w-5xl md:px-6 md:pt-10 md:pb-12">
+    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6 md:max-w-2xl md:px-6 md:pt-10 md:pb-12">
       <header className="flex items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
           <PenLine className="size-5 text-primary" aria-hidden="true" />
@@ -136,7 +136,7 @@ export function CreatePage() {
       </header>
 
       <Tabs value={tab} onValueChange={selectTab}>
-        <TabsList className="grid w-full grid-cols-3 group-data-horizontal/tabs:h-auto md:max-w-md">
+        <TabsList className="grid w-full grid-cols-3 group-data-horizontal/tabs:h-auto">
           <TabsTrigger value="draft" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
             作成中
           </TabsTrigger>
@@ -150,7 +150,7 @@ export function CreatePage() {
       </Tabs>
 
       {error && (
-        <div role="alert" className="space-y-3 rounded-lg border border-border p-4 md:max-w-md">
+        <div role="alert" className="space-y-3 rounded-lg border border-border p-4">
           <p className="text-sm text-destructive">読み込みに失敗しました（{error}）</p>
           <Button
             type="button"
@@ -165,23 +165,21 @@ export function CreatePage() {
 
       {loading && items.length === 0 && (
         <div
-          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3"
+          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0"
           aria-busy="true"
           aria-live="polite"
         >
           {/* Same size and shape as a card (64 px image + 12 px padding + 1 px border on each side).
-              Two placeholders on mobile. The last four are shown from md, where the list is a card grid. */}
+              Two placeholders on mobile; from md the list is a two-column grid, so four fit a full row pair. */}
           <Skeleton className="h-[90px] w-full rounded-xl" />
           <Skeleton className="h-[90px] w-full rounded-xl" />
-          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
-          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
           <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
           <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
         </div>
       )}
 
       {!loading && !error && items.length === 0 && (
-        <div className="space-y-3 rounded-xl border border-dashed border-border p-6 text-center md:max-w-md md:p-8">
+        <div className="space-y-3 rounded-xl border border-dashed border-border p-6 text-center md:p-8">
           <p className="text-sm text-muted-foreground">
             {`${LABEL_BY_TAB[tab]}のプロットはありません。`}
           </p>
@@ -200,7 +198,7 @@ export function CreatePage() {
 
       {items.length > 0 && (
         <ul
-          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3"
+          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0"
           role="list"
           aria-label={`${LABEL_BY_TAB[tab]}のプロット`}
         >
