@@ -118,7 +118,7 @@ export function CreatePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6 md:max-w-2xl md:px-6 md:pt-10 md:pb-12">
+    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6 md:max-w-2xl md:px-6 md:pt-10 md:pb-12 lg:max-w-6xl xl:max-w-7xl">
       <header className="flex items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
           <PenLine className="size-5 text-primary" aria-hidden="true" />
@@ -165,14 +165,16 @@ export function CreatePage() {
 
       {loading && items.length === 0 && (
         <div
-          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0"
+          className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-3"
           aria-busy="true"
           aria-live="polite"
         >
           {/* Same size and shape as a card (64 px image + 12 px padding + 1 px border on each side).
-              Two placeholders on mobile; from md the list is a two-column grid, so four fit a full row pair. */}
+              Two placeholders on mobile; from md the list is a multi-column grid, so more fit in one row. */}
           <Skeleton className="h-[90px] w-full rounded-xl" />
           <Skeleton className="h-[90px] w-full rounded-xl" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
           <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
           <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
         </div>
@@ -198,7 +200,7 @@ export function CreatePage() {
 
       {items.length > 0 && (
         <ul
-          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0"
+          className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-3"
           role="list"
           aria-label={`${LABEL_BY_TAB[tab]}のプロット`}
         >
@@ -209,7 +211,7 @@ export function CreatePage() {
               <li key={plot.id} className="min-w-0">
                 <Link
                   to={`/create/plots/${plot.id}`}
-                  className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted md:h-full"
+                  className="flex h-full min-h-11 items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted"
                 >
                   <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {plot.imageUrl && (
