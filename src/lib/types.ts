@@ -590,3 +590,312 @@ export interface SelectedUserPersonaResponse {
 export interface ImageUploadResponse {
   imageUrl: string
 }
+
+// ---------------------------------------------------------------------------
+// Creator (plot authoring). Wire shapes are taken from the official app's HAR.
+// Every object is open-ended (`[key: string]: unknown`) so that fields the UI
+// does not edit survive a round trip through PATCH/PUT.
+// ---------------------------------------------------------------------------
+
+export type CreatorPlotStatus =
+  | "PRERELEASE"
+  | "RELEASE"
+  | "FILTERED"
+  | "DELETED"
+  | "HARD_DELETED"
+  | (string & {})
+
+/** Character entry. A newly added character is sent as `{}` and gets its id from the server. */
+export interface DraftCharacter {
+  id?: string
+  name?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftChatProfile {
+  id: string
+  name?: string | null
+  imageUrl?: string | null
+  summary?: string | null
+  description?: string | null
+  isUsingDefaultName?: boolean
+  [key: string]: unknown
+}
+
+export interface DraftExampleMessage {
+  content?: string | null
+  sender?: string | null
+  senderName?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftExampleConversation {
+  messages: DraftExampleMessage[]
+  randomUsername?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftCyoaChoice {
+  title?: string
+  text?: string
+  [key: string]: unknown
+}
+
+export interface DraftIntroConversation {
+  /** Text, infoBox and image messages. Only text messages are edited in the UI. */
+  messages: DraftIntroMessage[]
+  cyoaChoices?: { choices: DraftCyoaChoice[] } | null
+  [key: string]: unknown
+}
+
+export interface DraftIntro {
+  conversation: DraftIntroConversation
+  publicConversationMessageCount?: number | null
+  playerCharacterSelectionIndex?: number | null
+  backgroundAudioUrl?: string | null
+  backgroundAudioDurationSeconds?: number | null
+  [key: string]: unknown
+}
+
+export interface DraftIntroTextMessage {
+  type: "text"
+  content: string
+  /** "BOT" or "USER" */
+  senderType: string
+  /** "_NARRATOR_" for the narrator, a character id for a character, null for the user. */
+  senderId: string | null
+  tempId?: string
+  [key: string]: unknown
+}
+
+export interface DraftIntroMessage {
+  type?: string
+  [key: string]: unknown
+}
+
+export interface DraftAboutBlock {
+  type?: string
+  content?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftAboutCharacter {
+  characterId?: string
+  name?: string | null
+  description?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftAbout {
+  contents: DraftAboutBlock[]
+  characters: DraftAboutCharacter[]
+  [key: string]: unknown
+}
+
+export interface DraftStylePreset {
+  difficulty?: string
+  pacing?: string
+  pov?: string
+  tense?: string
+  responseLength?: string
+  developmentStyle?: string
+  moods?: string[]
+  storytellingStyle?: string | null
+  [key: string]: unknown
+}
+
+export interface DraftInfoBoxScene {
+  type: string
+  enabled: boolean
+  format?: string
+  [key: string]: unknown
+}
+
+export interface DraftInfoBoxItem {
+  type: string
+  enabled: boolean
+  [key: string]: unknown
+}
+
+export interface DraftInfoBoxSetting {
+  scenes: DraftInfoBoxScene[]
+  characters: DraftInfoBoxItem[]
+  [key: string]: unknown
+}
+
+export interface DraftCyoaSetting {
+  enabled: boolean
+  type: string
+  [key: string]: unknown
+}
+
+export interface DraftPluginEntry {
+  pluginId: string
+  value: unknown
+  [key: string]: unknown
+}
+
+/** Editable draft of a plot. Unknown keys are kept in the index signature. */
+export interface PlotDraft {
+  name: string | null
+  imageUrl: string | null
+  shortDescription: string | null
+  longDescription: string | null
+  narrator: string | null
+  characters: DraftCharacter[]
+  chatProfiles: DraftChatProfile[]
+  exampleConversations: DraftExampleConversation[]
+  intros: DraftIntro[]
+  about: DraftAbout | null
+  hashtags: string[]
+  lorebookIds: string[]
+  creatorComment: string | null
+  isCreatorCommentPublic: boolean
+  isAboutPublic: boolean
+  isExampleConversationPublic: boolean
+  stylePreset: DraftStylePreset | null
+  infoBoxSetting: DraftInfoBoxSetting | null
+  cyoaSetting: DraftCyoaSetting | null
+  plugins: DraftPluginEntry[] | null
+  [key: string]: unknown
+}
+
+/** Plot as returned by GET /v1/plots/:id/creator (and by POST/PATCH/PUT). */
+export interface CreatorPlot {
+  id: string
+  status: CreatorPlotStatus
+  isPrivate: boolean
+  name: string | null
+  imageUrl: string | null
+  updatedAt: string | null
+  releasedAt: string | null
+  /** Non-null while the plot can still be edited; may also be returned after publishing. */
+  draft: Record<string, unknown> | null
+  [key: string]: unknown
+}
+
+export interface CreatorPlotListResponse {
+  plots: CreatorPlot[]
+  nextCursor: string | null
+}
+
+export interface ProfileImageStyle {
+  id: string
+  model: string
+  name: string
+  /** Pieces per generation (observed values: 0 and 4). */
+  price: number
+  hasDiscount: boolean
+  thumbnail: string
+  isZetaModel: boolean
+  defaultPrompt: string | null
+  negativePrompt: string | null
+  enabled: boolean
+  [key: string]: unknown
+}
+
+export interface ProfileImageResult {
+  id: string
+  prompt: string | null
+  defaultPrompt: string | null
+  negativePrompt: string | null
+  seed: number | null
+  style: ProfileImageStyle | null
+  /** Signed URL. Store and send it exactly as returned. */
+  imageUrl: string
+  saved?: boolean | null
+  createdAt?: string | null
+  expiredAt?: string | null
+  [key: string]: unknown
+}
+
+export interface ProfileImageHistoryResponse {
+  profileImages: ProfileImageResult[]
+  nextCursor: string | null
+}
+
+export interface ProfileImageJobStatus {
+  status: string
+  userStatus?: string | null
+  blockDays?: number | null
+  profileImageResultId?: string | null
+}
+
+export interface ImageSetResult {
+  type: string
+  imageUrl: string | null
+  [key: string]: unknown
+}
+
+export interface CropCoordinates {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+export type KeywordTestType = "ABUSING_PLOT_PROMPT" | "ABUSING_PLOT_HASHTAG"
+
+export interface LorebookSummary {
+  id: string
+  title: string
+  description?: string | null
+  [key: string]: unknown
+}
+
+export interface LorebookListItem {
+  lorebook: LorebookSummary
+  coverImageUrl?: string | null
+}
+
+export interface LorebookListResponse {
+  lorebooks: LorebookListItem[]
+  nextCursor: string | null
+}
+
+export interface PluginCatalogItem {
+  id: string
+  displayName: string
+  paid: boolean
+}
+
+/** One entry of GET /v1/plots/:id/plugins. `value` is published, `draftValue` is the draft. */
+export interface PlotPluginState {
+  pluginId: string
+  displayName: string
+  state: string
+  paid: boolean
+  value: unknown
+  draftValue: unknown
+  constraints: Record<string, unknown> | null
+}
+
+/** One dice theme from GET /v1/dice-themes. */
+export interface DiceTheme {
+  id: string
+  name: string
+}
+
+export interface GalleryImage {
+  imageUrl: string
+  aspectRatio: number
+}
+
+export type CommentWindowStatus = "ON" | "OFF"
+
+export interface WallpaperPreset {
+  id: string
+  name: string | null
+  imageUrl: string | null
+}
+
+export type ReviewState = "NONE" | "REVIEWING" | "REJECTED" | (string & {})
+
+export interface ExampleChatStreamEvent {
+  event: string
+  chunkMessage?: { contents?: { type?: string; speakerName?: string | null; position?: string; text?: string }[] } | null
+  replyMessage?: { senderType?: string; contents?: { type?: string; speakerName?: string | null; position?: string; text?: string }[] } | null
+  index?: number | null
+}

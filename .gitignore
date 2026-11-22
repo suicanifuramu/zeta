@@ -42,6 +42,7 @@ out/
 
 # Scratchpads / Temporary files
 *.txt
+work/
 
 # MCP and Skills (fetched from external sources)
 .mcp.json

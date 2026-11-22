@@ -5,12 +5,34 @@ import {
   refreshSession,
 } from "./auth"
 import { getCommonHeaders, setAppVersion, APP_VERSION } from "./headers"
+import type { PreparedImage } from "./image-upload"
 import { z } from "zod"
 import {
   CharacterImageResponseSchema,
+  CheckPlotNameSchema,
+  CommentSettingSchema,
+  DiceThemesSchema,
+  GalleryListSchema,
+  PhoneManifestSchema,
+  PluginPutResponseSchema,
+  PlotPluginsSchema,
+  PluginCatalogSchema,
+  CreatorPlotListSchema,
+  CreatorPlotSchema,
+  HashtagAutocompleteSchema,
+  ImageSetResultsSchema,
   ImageUploadResponseSchema,
+  ImageUrlResponseSchema,
+  KeywordTestSchema,
+  LorebookDetailSchema,
+  LorebookListSchema,
   MyPlotChatProfileResponseSchema,
   PlotDetailResponseSchema,
+  ProfileImageHistorySchema,
+  ProfileImageJobIdsSchema,
+  ProfileImageJobStatusSchema,
+  ProfileImageResultSchema,
+  ProfileImageStyleListSchema,
   SelectedUserPersonaResponseSchema,
   UserChatProfileSchema,
 } from "./schemas"
@@ -62,6 +84,24 @@ import type {
   SubscriptionResponse,
   UserChatProfile,
   UserChatProfilesResponse,
+  CommentWindowStatus,
+  CreatorPlot,
+  CreatorPlotListResponse,
+  CropCoordinates,
+  DiceTheme,
+  GalleryImage,
+  PluginCatalogItem,
+  PlotPluginState,
+  WallpaperPreset,
+  ExampleChatStreamEvent,
+  ImageSetResult,
+  KeywordTestType,
+  LorebookListResponse,
+  LorebookSummary,
+  ProfileImageHistoryResponse,
+  ProfileImageJobStatus,
+  ProfileImageResult,
+  ProfileImageStyle,
 } from "./types"
 
 const BASE = "https://api.zeta-ai.io"
@@ -142,6 +182,36 @@ async function fetchEventStream(
   return res
 }
 
+/**
+ * Thrown for non-2xx responses. `message` keeps the historical format; `code` and
+ * `serverMessage` come from the JSON body (e.g. PLOT_NAME_CONSTRAINT_VIOLATION).
+ */
+export class ApiRequestError extends Error {
+  readonly status: number
+  readonly code: string | null
+  readonly serverMessage: string | null
+
+  constructor(message: string, status: number, code: string | null, serverMessage: string | null) {
+    super(message)
+    this.name = "ApiRequestError"
+    this.status = status
+    this.code = code
+    this.serverMessage = serverMessage
+  }
+}
+
+function parseErrorBody(text: string): { code: string | null; message: string | null } {
+  try {
+    const body = JSON.parse(text) as { code?: unknown; message?: unknown }
+    return {
+      code: typeof body.code === "string" ? body.code : null,
+      message: typeof body.message === "string" ? body.message : null,
+    }
+  } catch {
+    return { code: null, message: null }
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { headers?: Record<string, string> } = {},
@@ -165,15 +235,24 @@ async function request<T>(
       setAppVersion(minVersion)
       return request<T>(path, options, retry, false)
     }
-    throw new Error(
-      `${options.method || "GET"} ${path} -> 400: ${text.slice(0, 160)}`
+    // The body is already consumed here, so the code is parsed from `text` now.
+    const parsed = parseErrorBody(text)
+    throw new ApiRequestError(
+      `${options.method || "GET"} ${path} -> 400: ${text.slice(0, 160)}`,
+      400,
+      parsed.code,
+      parsed.message
     )
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "")
-    throw new Error(
-      `${options.method || "GET"} ${path} -> ${res.status}${text ? `: ${text.slice(0, 160)}` : ""}`
+    const parsed = parseErrorBody(text)
+    throw new ApiRequestError(
+      `${options.method || "GET"} ${path} -> ${res.status}${text ? `: ${text.slice(0, 160)}` : ""}`,
+      res.status,
+      parsed.code,
+      parsed.message
     )
   }
 
@@ -404,8 +483,15 @@ export function getActiveRoomId(plotId: string): Promise<ActiveRoomIdResponse> {
   )
 }
 
-export function createRoom(plotId: string): Promise<CreateRoomResponse> {
-  return post<CreateRoomResponse>("/v1/rooms", { plotId })
+export function createRoom(
+  plotId: string,
+  intent?: string
+): Promise<CreateRoomResponse> {
+  // Without an intent the body stays exactly as before; the creator flow passes "AUTO".
+  return post<CreateRoomResponse>(
+    "/v1/rooms",
+    intent ? { plotId, intent } : { plotId }
+  )
 }
 
 export function getRooms(limit = 30, cursor = ""): Promise<ApiRoomsResponse> {
@@ -928,4 +1014,509 @@ async function readSSE<T>(
   }
 
   if (onDone) await onDone()
+}
+
+// ---------------------------------------------------------------------------
+// Creator (plot authoring)
+// ---------------------------------------------------------------------------
+
+const CREATOR_MODES = "STORY_CHAT,VISUAL_NOVEL"
+
+/**
+ * One page of the creator's plots. `status` is RELEASE or PRERELEASE. `isPrivate`
+ * filters both (LIVE: verified for PRERELEASE and RELEASE); omit it for all.
+ */
+export function listCreatorPlots({
+  status,
+  isPrivate,
+  limit = 15,
+  cursor,
+}: {
+  status: "PRERELEASE" | "RELEASE"
+  isPrivate?: boolean
+  limit?: number
+  cursor?: string | null
+}): Promise<CreatorPlotListResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    "orderBy.property": "UPDATED_AT",
+    "orderBy.direction": "DESC",
+    status,
+    modes: CREATOR_MODES,
+  })
+  if (isPrivate !== undefined) params.set("isPrivate", String(isPrivate))
+  if (cursor) params.set("cursor", cursor)
+  return get<unknown>(`/v1/plots/creator?${params.toString()}`).then(
+    (data) =>
+      validate(CreatorPlotListSchema, data, "listCreatorPlots") as CreatorPlotListResponse
+  )
+}
+
+/** Creates an empty PRERELEASE plot (no body). */
+export function createCreatorPlot(): Promise<CreatorPlot> {
+  return post<unknown>("/v1/plots").then(
+    (data) => validate(CreatorPlotSchema, data, "createCreatorPlot") as CreatorPlot
+  )
+}
+
+export function getCreatorPlot(plotId: string): Promise<CreatorPlot> {
+  return get<unknown>(`/v1/plots/${plotId}/creator`).then(
+    (data) => validate(CreatorPlotSchema, data, "getCreatorPlot") as CreatorPlot
+  )
+}
+
+/** Partial section save. Callers must send whole sections (see plot-draft.ts). */
+export function patchCreatorPlot(
+  plotId: string,
+  body: Record<string, unknown>
+): Promise<CreatorPlot> {
+  return patch<unknown>(`/v1/plots/${plotId}`, body).then(
+    (data) => validate(CreatorPlotSchema, data, "patchCreatorPlot") as CreatorPlot
+  )
+}
+
+/** Full-document save used right before publishing. */
+export function putCreatorPlot(
+  plotId: string,
+  body: Record<string, unknown>
+): Promise<CreatorPlot> {
+  return put<unknown>(`/v1/plots/${plotId}`, body).then(
+    (data) => validate(CreatorPlotSchema, data, "putCreatorPlot") as CreatorPlot
+  )
+}
+
+export function setCreatorPlotPrivate(
+  plotId: string,
+  isPrivate: boolean
+): Promise<CreatorPlot> {
+  return patch<unknown>(`/v1/plots/${plotId}/private`, { isPrivate }).then(
+    (data) => validate(CreatorPlotSchema, data, "setCreatorPlotPrivate") as CreatorPlot
+  )
+}
+
+/** RELEASE publishes (or re-publishes) the draft; DELETE deletes the plot immediately (LIVE I1/I2). */
+export function setCreatorPlotStatus(plotId: string, status: "RELEASE" | "DELETE"): Promise<CreatorPlot> {
+  return patch<unknown>(`/v1/plots/${plotId}/status`, { status }).then(
+    (data) => validate(CreatorPlotSchema, data, "setCreatorPlotStatus") as CreatorPlot
+  )
+}
+
+export function publishCreatorPlot(plotId: string): Promise<CreatorPlot> {
+  return setCreatorPlotStatus(plotId, "RELEASE")
+}
+
+export function deleteCreatorPlot(plotId: string): Promise<CreatorPlot> {
+  return setCreatorPlotStatus(plotId, "DELETE")
+}
+
+/** Returns the warning keywords for a plot name (empty when clean). */
+export function checkPlotName(name: string): Promise<string[]> {
+  return get<unknown>(`/v1/plots/check-name?name=${encodeURIComponent(name)}`).then(
+    (data) =>
+      (validate(CheckPlotNameSchema, data, "checkPlotName") as { warnKeywords?: string[] | null })
+        .warnKeywords ?? []
+  )
+}
+
+export function testKeywords(type: KeywordTestType, text: string): Promise<boolean> {
+  return post<unknown>("/v1/keywords/test", { type, text }).then(
+    (data) =>
+      (validate(KeywordTestSchema, data, "testKeywords") as { hasAbusingKeyword: boolean })
+        .hasAbusingKeyword
+  )
+}
+
+export function searchHashtagSuggestions(keyword: string): Promise<string[]> {
+  return get<unknown>(
+    `/v1/plots/search/autocomplete?keyword=${encodeURIComponent(keyword)}`
+  ).then((data) => {
+    const parsed = validate(HashtagAutocompleteSchema, data, "searchHashtagSuggestions") as {
+      hashtags: { hashtag: string }[]
+    }
+    return parsed.hashtags.map((h) => h.hashtag)
+  })
+}
+
+export function getProfileImageStyles(): Promise<ProfileImageStyle[]> {
+  return get<unknown>("/v1/plots/profile-image/styles").then(
+    (data) =>
+      (validate(ProfileImageStyleListSchema, data, "getProfileImageStyles") as {
+        styles: ProfileImageStyle[]
+      }).styles
+  )
+}
+
+export function registerProfileImageJobs(
+  plotId: string,
+  body: {
+    prompt: string
+    quantity: number
+    styleId: string
+    defaultPrompt: string
+    negativePrompt: string
+  }
+): Promise<string[]> {
+  return post<unknown>(`/v1/plots/profile-image/${plotId}/job/register`, body).then(
+    (data) =>
+      (validate(ProfileImageJobIdsSchema, data, "registerProfileImageJobs") as {
+        jobIds: string[]
+      }).jobIds
+  )
+}
+
+export function getProfileImageJob(jobId: string): Promise<ProfileImageJobStatus> {
+  return get<unknown>(`/v1/plots/profile-image/job/${jobId}`).then(
+    (data) =>
+      validate(ProfileImageJobStatusSchema, data, "getProfileImageJob") as ProfileImageJobStatus
+  )
+}
+
+export function getProfileImageHistory(
+  plotId: string,
+  { limit = 10, cursor }: { limit?: number; cursor?: string | null } = {}
+): Promise<ProfileImageHistoryResponse> {
+  const cursorPart = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""
+  return get<unknown>(
+    `/v1/plots/profile-image/${plotId}/history?limit=${limit}${cursorPart}`
+  ).then(
+    (data) =>
+      validate(ProfileImageHistorySchema, data, "getProfileImageHistory") as ProfileImageHistoryResponse
+  )
+}
+
+export function getSavedProfileImages({
+  limit = 20,
+  cursor,
+}: { limit?: number; cursor?: string | null } = {}): Promise<ProfileImageHistoryResponse> {
+  const cursorPart = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""
+  return get<unknown>(
+    `/v1/plots/saved-profile-image/list?limit=${limit}${cursorPart}`
+  ).then(
+    (data) =>
+      validate(ProfileImageHistorySchema, data, "getSavedProfileImages") as ProfileImageHistoryResponse
+  )
+}
+
+export function getProfileImageResult(resultId: string): Promise<ProfileImageResult> {
+  return get<unknown>(`/v1/plots/profile-image/${resultId}`).then(
+    (data) =>
+      validate(ProfileImageResultSchema, data, "getProfileImageResult") as ProfileImageResult
+  )
+}
+
+function requestForm<T>(path: string, method: "POST" | "PUT", form: FormData): Promise<T> {
+  // No Content-Type header: the browser must set the multipart boundary.
+  return ensureAccessToken().then(() =>
+    request<T>(path, { method, body: form, headers: {} })
+  )
+}
+
+/** Registers a generated image (by its server URL) as a character image. */
+export function addCharacterImage(
+  plotId: string,
+  characterId: string,
+  imageUrl: string
+): Promise<ImageSetResult[]> {
+  const form = new FormData()
+  form.append("imageUrls", imageUrl)
+  return requestForm<unknown>(
+    `/v2/plots/${plotId}/characters/${characterId}/images`,
+    "POST",
+    form
+  ).then(
+    (data) =>
+      (validate(ImageSetResultsSchema, data, "addCharacterImage") as { results: ImageSetResult[] })
+        .results
+  )
+}
+
+export function cropCharacterImage(
+  plotId: string,
+  characterId: string,
+  imageUrl: string,
+  cropCoordinates: CropCoordinates
+): Promise<string> {
+  return post<unknown>(`/v2/plots/${plotId}/characters/${characterId}/images/crop`, {
+    imageUrl,
+    cropCoordinates,
+  }).then(
+    (data) =>
+      (validate(ImageUrlResponseSchema, data, "cropCharacterImage") as { imageUrl: string })
+        .imageUrl
+  )
+}
+
+/** Sets a chat profile image. `profileImageResultId` is the generation result id (history item id). */
+export function setChatProfileImage(
+  plotId: string,
+  chatProfileId: string,
+  imageUrl: string,
+  profileImageResultId: string | null
+): Promise<string> {
+  const form = new FormData()
+  form.append("imageUrl", imageUrl)
+  if (profileImageResultId) form.append("profileImageResultId", profileImageResultId)
+  return requestForm<unknown>(
+    `/v2/plots/${plotId}/chat-profiles/${chatProfileId}/images`,
+    "PUT",
+    form
+  ).then(
+    (data) =>
+      (validate(ImageUrlResponseSchema, data, "setChatProfileImage") as { imageUrl: string })
+        .imageUrl
+  )
+}
+
+/** Adds a generated image as the plot cover. The server stores it on the draft. */
+export function addPlotCoverImage(
+  plotId: string,
+  imageUrl: string
+): Promise<ImageSetResult[]> {
+  const form = new FormData()
+  form.append("imageUrls", imageUrl)
+  return requestForm<unknown>(`/v2/plots/${plotId}/images`, "POST", form).then(
+    (data) =>
+      (validate(ImageSetResultsSchema, data, "addPlotCoverImage") as { results: ImageSetResult[] })
+        .results
+  )
+}
+
+export interface ExampleChatRequestMessage {
+  senderType: "BOT" | "USER"
+  contents: {
+    type: "TEXT"
+    speakerName?: string
+    position: "LEFT" | "RIGHT"
+    text: string
+  }[]
+  messageTime: string
+}
+
+/** Streams the next example-conversation reply (SSE). Resolves when the stream ends. */
+export async function streamExampleChat(
+  plotId: string,
+  messages: ExampleChatRequestMessage[],
+  {
+    signal,
+    onEvent,
+  }: { signal?: AbortSignal; onEvent: (event: ExampleChatStreamEvent) => void }
+): Promise<void> {
+  const res = await fetchEventStream(
+    `/v1/plots/${plotId}/example-chat`,
+    JSON.stringify({ messages }),
+    signal
+  )
+  await readSSE<ExampleChatStreamEvent>(res, onEvent, undefined, signal)
+}
+
+export function getLorebookRecommendations({
+  limit = 20,
+  cursor,
+}: { limit?: number; cursor?: string | null } = {}): Promise<LorebookListResponse> {
+  const cursorPart = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""
+  return get<unknown>(
+    `/v1/lorebooks/discovery/recommend?limit=${limit}${cursorPart}`
+  ).then(
+    (data) => validate(LorebookListSchema, data, "getLorebookRecommendations") as LorebookListResponse
+  )
+}
+
+// ---- Plugins -----------------------------------------------------------------
+
+export function getPluginCatalog(): Promise<PluginCatalogItem[]> {
+  return get<unknown>("/v1/plugins").then((data) => {
+    const parsed = validate(PluginCatalogSchema, data, "getPluginCatalog") as {
+      plugins: { id: string; displayName?: string | null; paid?: boolean | null }[]
+    }
+    return parsed.plugins.map((p) => ({
+      id: p.id,
+      displayName: p.displayName ?? p.id,
+      paid: p.paid === true,
+    }))
+  })
+}
+
+/** value = published, draftValue = draft (LIVE A2/C4). */
+export function getPlotPlugins(plotId: string): Promise<PlotPluginState[]> {
+  return get<unknown>(`/v1/plots/${plotId}/plugins`).then((data) => {
+    const parsed = validate(PlotPluginsSchema, data, "getPlotPlugins") as {
+      plugins: {
+        pluginId: string
+        displayName?: string | null
+        state?: string | null
+        paid?: boolean | null
+        value?: unknown
+        draftValue?: unknown
+        constraints?: Record<string, unknown> | null
+      }[]
+    }
+    return parsed.plugins.map((p) => ({
+      pluginId: p.pluginId,
+      displayName: p.displayName ?? p.pluginId,
+      state: p.state ?? "AVAILABLE",
+      paid: p.paid === true,
+      value: p.value ?? null,
+      draftValue: p.draftValue ?? null,
+      constraints: p.constraints ?? null,
+    }))
+  })
+}
+
+/** Dice themes for the dice editor. The response is `{items:[{id,name}]}` (LIVE). */
+export function getDiceThemes(): Promise<DiceTheme[]> {
+  return get<unknown>("/v1/dice-themes").then((data) => {
+    const parsed = validate(DiceThemesSchema, data, "getDiceThemes") as {
+      items: { id: string; name?: string | null }[]
+    }
+    return parsed.items.map((t) => ({ id: t.id, name: t.name ?? t.id }))
+  })
+}
+
+export function getPhoneWallpaperPresets(): Promise<WallpaperPreset[]> {
+  return get<unknown>("/v1/plugins/phone-peek/manifest").then((data) => {
+    const parsed = validate(PhoneManifestSchema, data, "getPhoneWallpaperPresets") as {
+      manifest?: {
+        wallpaperPresets?: { id: string; name?: string | null; imageUrl?: string | null }[] | null
+      } | null
+    }
+    return (parsed.manifest?.wallpaperPresets ?? []).map((p) => ({
+      id: p.id,
+      name: p.name ?? null,
+      imageUrl: p.imageUrl ?? null,
+    }))
+  })
+}
+
+/**
+ * Dedicated editors only (bgm, event-cut). LIVE C1: any other plugin answers 400 PLUGIN_ID_INVALID.
+ * Resolves with the value the server stored; callers mirror that value, not the one they sent.
+ */
+export function putPlotPlugin(
+  plotId: string,
+  pluginId: string,
+  value: unknown
+): Promise<{ pluginId: string; value: unknown }> {
+  return put<unknown>(`/v1/plots/${plotId}/plugins`, { pluginId, value }).then((data) => {
+    const parsed = validate(PluginPutResponseSchema, data, "putPlotPlugin") as {
+      pluginId: string
+      value?: unknown
+    }
+    return { pluginId: parsed.pluginId, value: parsed.value ?? null }
+  })
+}
+
+// ---- Comment window ----------------------------------------------------------
+
+export function getCommentWindowStatus(plotId: string): Promise<CommentWindowStatus> {
+  return get<unknown>(`/v1/creator/plots/${plotId}/comment-setting`).then((data) =>
+    (validate(CommentSettingSchema, data, "getCommentWindowStatus") as { windowStatus: string })
+      .windowStatus === "OFF"
+      ? "OFF"
+      : "ON"
+  )
+}
+
+/** Request key is `status` (LIVE J1); the response carries `windowStatus`. */
+export function setCommentWindowStatus(plotId: string, status: CommentWindowStatus): Promise<CommentWindowStatus> {
+  return patch<unknown>(`/v1/creator/plots/${plotId}/comment-setting`, { status }).then((data) =>
+    (validate(CommentSettingSchema, data, "setCommentWindowStatus") as { windowStatus: string })
+      .windowStatus === "OFF"
+      ? "OFF"
+      : "ON"
+  )
+}
+
+// ---- Image gallery (local upload, replace, delete) ---------------------------
+
+function galleryFrom(data: unknown, endpoint: string): GalleryImage[] {
+  const parsed = validate(GalleryListSchema, data, endpoint) as {
+    images: { imageUrl: string; aspectRatio?: number | null }[]
+  }
+  return parsed.images.map((i) => ({ imageUrl: i.imageUrl, aspectRatio: i.aspectRatio ?? 1 }))
+}
+
+export function listCharacterGallery(plotId: string, characterId: string): Promise<GalleryImage[]> {
+  return get<unknown>(`/v2/plots/${plotId}/characters/${characterId}/images/creator`).then((data) =>
+    galleryFrom(data, "listCharacterGallery")
+  )
+}
+
+export function listCoverGallery(plotId: string): Promise<GalleryImage[]> {
+  return get<unknown>(`/v2/plots/${plotId}/images/creator`).then((data) => galleryFrom(data, "listCoverGallery"))
+}
+
+function appendGalleryAddFields(form: FormData, image: PreparedImage) {
+  form.append("images", image.blob, image.fileName)
+  form.append("widths", String(image.width))
+  form.append("heights", String(image.height))
+  form.append("aspectRatios", String(image.aspectRatio))
+}
+
+function appendReplaceFields(form: FormData, image: PreparedImage) {
+  form.append("image", image.blob, image.fileName)
+  form.append("width", String(image.width))
+  form.append("height", String(image.height))
+  form.append("aspectRatio", String(image.aspectRatio))
+}
+
+/** Adds an uploaded file to a character's gallery (multipart `images` + sizes). */
+export function uploadCharacterImage(
+  plotId: string,
+  characterId: string,
+  image: PreparedImage
+): Promise<ImageSetResult[]> {
+  const form = new FormData()
+  appendGalleryAddFields(form, image)
+  return requestForm<unknown>(`/v2/plots/${plotId}/characters/${characterId}/images`, "POST", form).then(
+    (data) =>
+      (validate(ImageSetResultsSchema, data, "uploadCharacterImage") as { results: ImageSetResult[] }).results
+  )
+}
+
+/** Replaces the gallery item at `sequence` (LIVE D3: `sequence` is required, 0-based). */
+export function replaceCharacterImage(
+  plotId: string,
+  characterId: string,
+  image: PreparedImage,
+  sequence: number
+): Promise<string> {
+  const form = new FormData()
+  appendReplaceFields(form, image)
+  form.append("sequence", String(sequence))
+  return requestForm<unknown>(`/v2/plots/${plotId}/characters/${characterId}/images`, "PUT", form).then(
+    (data) => (validate(ImageUrlResponseSchema, data, "replaceCharacterImage") as { imageUrl: string }).imageUrl
+  )
+}
+
+/** LIVE D6: DELETE with a JSON body `{sequence}`. */
+export function deleteCharacterImage(plotId: string, characterId: string, sequence: number): Promise<unknown> {
+  return del<unknown>(`/v2/plots/${plotId}/characters/${characterId}/images`, { sequence })
+}
+
+export function uploadCoverImage(plotId: string, image: PreparedImage): Promise<ImageSetResult[]> {
+  const form = new FormData()
+  appendGalleryAddFields(form, image)
+  return requestForm<unknown>(`/v2/plots/${plotId}/images`, "POST", form).then(
+    (data) => (validate(ImageSetResultsSchema, data, "uploadCoverImage") as { results: ImageSetResult[] }).results
+  )
+}
+
+/** LIVE D8: DELETE with `{sequence}`. */
+export function deleteCoverImage(plotId: string, sequence: number): Promise<unknown> {
+  return del<unknown>(`/v2/plots/${plotId}/images`, { sequence })
+}
+
+/** Local file for a chat profile (LIVE D9: no profileImageResultId needed). */
+export function uploadChatProfileImage(plotId: string, chatProfileId: string, image: PreparedImage): Promise<string> {
+  const form = new FormData()
+  appendReplaceFields(form, image)
+  return requestForm<unknown>(`/v2/plots/${plotId}/chat-profiles/${chatProfileId}/images`, "PUT", form).then(
+    (data) => (validate(ImageUrlResponseSchema, data, "uploadChatProfileImage") as { imageUrl: string }).imageUrl
+  )
+}
+
+export function getLorebookDetail(lorebookId: string): Promise<LorebookSummary> {
+  return get<unknown>(`/v1/lorebooks/${lorebookId}`).then(
+    (data) => validate(LorebookDetailSchema, data, "getLorebookDetail") as LorebookSummary
+  )
 }

@@ -31,6 +31,12 @@ const SearchPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("@/pages/settings").then((m) => ({ default: m.SettingsPage }))
 )
+const CreatePage = lazy(() =>
+  import("@/pages/create").then((m) => ({ default: m.CreatePage }))
+)
+const PlotEditorPage = lazy(() =>
+  import("@/pages/plot-editor").then((m) => ({ default: m.PlotEditorPage }))
+)
 
 function PageSpinner() {
   return (
@@ -51,6 +57,7 @@ function ScrollToTop() {
       : pathname === "/rooms" ? "Rooms"
       : pathname === "/search" ? "Search"
       : pathname === "/settings" ? "Settings"
+      : pathname.startsWith("/create") ? "Create"
       : "Unknown"
     startSentryTransaction(page)
   }, [pathname])
@@ -90,8 +97,10 @@ export default function App() {
             <Route path="rooms" element={<RoomsPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="create" element={<CreatePage />} />
           </Route>
           <Route path="chat/:roomId" element={<ChatRoute />} />
+          <Route path="create/plots/:plotId" element={<PlotEditorPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

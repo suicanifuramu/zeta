@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { Home, Search, Star, MessageCircle, Settings } from "lucide-react"
+import { Home, Search, Star, MessageCircle, PenLine, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "/search", label: "検索", icon: Search },
   { to: "/ranking", label: "ランキング", icon: Star },
   { to: "/rooms", label: "チャット", icon: MessageCircle },
+  { to: "/create", label: "作成", icon: PenLine },
   { to: "/settings", label: "設定", icon: Settings },
 ]
 

@@ -195,3 +195,193 @@ export const PlotDetailResponseSchema = z.object({
   chatCount: z.number().optional(),
   viewCount: z.number().optional(),
 })
+
+// ---------------------------------------------------------------------------
+// Creator (plot authoring). `looseObject` keeps unknown keys: the editor sends
+// the draft back, so nothing it does not edit may be dropped during parsing.
+// ---------------------------------------------------------------------------
+
+export const CreatorPlotSchema = z.looseObject({
+  id: z.string(),
+  status: z.string(),
+  isPrivate: z.boolean().nullish(),
+  name: z.string().nullish(),
+  imageUrl: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+  releasedAt: z.string().nullish(),
+  draft: z.looseObject({}).nullish(),
+})
+
+export const CreatorPlotListSchema = z.looseObject({
+  plots: z.array(CreatorPlotSchema),
+  nextCursor: z.string().nullish(),
+})
+
+export const ImageSetResultsSchema = z.looseObject({
+  results: z.array(
+    z.looseObject({
+      type: z.string(),
+      imageUrl: z.string().nullish(),
+    })
+  ),
+})
+
+export const ImageUrlResponseSchema = z.looseObject({
+  imageUrl: z.string(),
+})
+
+export const ProfileImageStyleListSchema = z.looseObject({
+  styles: z.array(
+    z.looseObject({
+      id: z.string(),
+      model: z.string(),
+      name: z.string(),
+      price: z.number(),
+      hasDiscount: z.boolean().nullish(),
+      thumbnail: z.string(),
+      isZetaModel: z.boolean(),
+      defaultPrompt: z.string().nullish(),
+      negativePrompt: z.string().nullish(),
+      enabled: z.boolean().nullish(),
+    })
+  ),
+})
+
+export const ProfileImageJobIdsSchema = z.looseObject({
+  jobIds: z.array(z.string()),
+})
+
+export const ProfileImageJobStatusSchema = z.looseObject({
+  status: z.string(),
+  userStatus: z.string().nullish(),
+  blockDays: z.number().nullish(),
+  profileImageResultId: z.string().nullish(),
+})
+
+export const ProfileImageResultSchema = z.looseObject({
+  id: z.string(),
+  prompt: z.string().nullish(),
+  defaultPrompt: z.string().nullish(),
+  negativePrompt: z.string().nullish(),
+  seed: z.number().nullish(),
+  style: z.looseObject({}).nullish(),
+  imageUrl: z.string(),
+  saved: z.boolean().nullish(),
+  createdAt: z.string().nullish(),
+  expiredAt: z.string().nullish(),
+})
+
+export const ProfileImageHistorySchema = z.looseObject({
+  profileImages: z.array(ProfileImageResultSchema),
+  nextCursor: z.string().nullish(),
+})
+
+export const KeywordTestSchema = z.looseObject({
+  hasAbusingKeyword: z.boolean(),
+})
+
+export const CheckPlotNameSchema = z.looseObject({
+  warnKeywords: z.array(z.string()).nullish(),
+})
+
+export const HashtagAutocompleteSchema = z.looseObject({
+  hashtags: z.array(
+    z.looseObject({
+      hashtag: z.string(),
+      count: z.number().nullish(),
+    })
+  ),
+})
+
+export const LorebookListSchema = z.looseObject({
+  lorebooks: z.array(
+    z.looseObject({
+      lorebook: z.looseObject({
+        id: z.string(),
+        title: z.string(),
+        description: z.string().nullish(),
+      }),
+      coverImageUrl: z.string().nullish(),
+    })
+  ),
+  nextCursor: z.string().nullish(),
+})
+
+export const LorebookDetailSchema = z.looseObject({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullish(),
+})
+
+export const PluginCatalogSchema = z.looseObject({
+  plugins: z.array(
+    z.looseObject({
+      id: z.string(),
+      displayName: z.string().nullish(),
+      paid: z.boolean().nullish(),
+    })
+  ),
+})
+
+export const PlotPluginsSchema = z.looseObject({
+  plugins: z.array(
+    z.looseObject({
+      pluginId: z.string(),
+      displayName: z.string().nullish(),
+      state: z.string().nullish(),
+      paid: z.boolean().nullish(),
+      value: z.unknown().nullish(),
+      draftValue: z.unknown().nullish(),
+      constraints: z.looseObject({}).nullish(),
+    })
+  ),
+})
+
+/** GET /v1/dice-themes → `{items:[{id,name}]}` (LIVE: glm-max PHASE4-RESULTS §2-6). */
+export const DiceThemesSchema = z.looseObject({
+  items: z.array(
+    z.looseObject({
+      id: z.string(),
+      name: z.string().nullish(),
+    })
+  ),
+})
+
+/** PUT /v1/plots/:id/plugins → `{pluginId, value}`; `value` is the server's stored value (LIVE C2). */
+export const PluginPutResponseSchema = z.looseObject({
+  pluginId: z.string(),
+  value: z.unknown().nullish(),
+})
+
+export const PhoneManifestSchema = z.looseObject({
+  manifest: z
+    .looseObject({
+      wallpaperPresets: z
+        .array(
+          z.looseObject({
+            id: z.string(),
+            name: z.string().nullish(),
+            imageUrl: z.string().nullish(),
+          })
+        )
+        .nullish(),
+    })
+    .nullish(),
+})
+
+export const CommentSettingSchema = z.looseObject({
+  windowStatus: z.string(),
+})
+
+export const GalleryListSchema = z.looseObject({
+  images: z.array(
+    z.looseObject({
+      imageUrl: z.string(),
+      aspectRatio: z.number().nullish(),
+    })
+  ),
+})
+
+export const CreatedRoomSchema = z.looseObject({
+  id: z.string(),
+})
