@@ -59,16 +59,28 @@ export function PlotEditorPage() {
   }
 
   if (!plot || plot.id !== plotId) {
+    // Mirrors the editor: one column below lg; from lg the tab list on the left and the panel on the right.
     return (
       <div
-        className="mx-auto max-w-2xl space-y-4 p-6"
+        className="mx-auto max-w-2xl space-y-4 p-6 lg:grid lg:max-w-6xl lg:grid-cols-[14rem_minmax(0,1fr)] lg:space-y-0 lg:gap-x-8 lg:gap-y-4"
         aria-busy="true"
         aria-live="polite"
       >
-        <p className="text-sm text-muted-foreground">読み込み中…</p>
-        <Skeleton className="h-10 w-2/3" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
+        <p className="text-sm text-muted-foreground lg:col-span-2">
+          読み込み中…
+        </p>
+        <div aria-hidden="true" className="hidden space-y-1.5 lg:block">
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-full" />
+        </div>
+        <div className="space-y-4 lg:max-w-3xl lg:min-w-0">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </div>
     )
   }

@@ -15,6 +15,8 @@ function Tabs({
     <TabsPrimitive.Root
       data-slot="tabs"
       data-orientation={orientation}
+      // Radix uses this for arrow keys (Up/Down when vertical) and aria-orientation.
+      orientation={orientation}
       className={cn(
         "group/tabs flex gap-2 data-horizontal:flex-col",
         className

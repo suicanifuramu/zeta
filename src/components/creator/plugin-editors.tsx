@@ -42,7 +42,7 @@ function asStr(v: unknown): string {
 }
 
 const SELECT_CLASS =
-  "h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground"
+  "h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground md:max-w-sm"
 
 function TextField({
   id,

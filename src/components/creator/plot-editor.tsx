@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePlotDraft, type PlotDraftController } from "@/hooks/use-plot-draft"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { deletePlotVerified } from "@/lib/plot-delete"
 import type { CreatorPlot, PlotDraft } from "@/lib/types"
 import { publishIssues, type LimitIssue } from "@/lib/plot-draft"
@@ -41,6 +42,9 @@ const NO_ERRORS: Record<string, string> = {}
 const FOCUS_RETRY_FRAMES = 120
 /** Space kept between the sticky header and a focused element. */
 const SCROLL_GAP_PX = 16
+/** Tab panel. Below lg it sits 24 px under the horizontal tab row; from lg it is top-aligned beside the vertical list. */
+const PANEL_CLASS =
+  "mt-6 focus-visible:outline-none lg:mt-0 lg:min-w-0 lg:max-w-3xl"
 
 function isNativelyFocusable(el: HTMLElement): boolean {
   return el.matches("button, input, select, textarea, a[href]")
@@ -81,6 +85,11 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
   const [publishTried, setPublishTried] = useState(false)
   const [focusRequest, setFocusRequest] = useState<{ id: string; nonce: number } | null>(null)
   const headerRef = useRef<HTMLElement>(null)
+  // From lg the tab list is a sticky sidebar that sits just below the header, so the header height is tracked.
+  const [headerHeight, setHeaderHeight] = useState(0)
+  // Below lg the tabs are a horizontal row; from lg they are a vertical list (Up/Down keys follow it).
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+  const orientation = isDesktop ? "vertical" : "horizontal"
 
   const requested = searchParams.get("tab")
   const tab: PlotEditorTab = isTabKey(requested) ? requested : "info"
@@ -103,6 +112,16 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
   useEffect(() => {
     document.title = `${title} | 作成`
   }, [title])
+
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const measure = () => setHeaderHeight(el.offsetHeight)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Move focus to the first problem after its tab is shown and any dialog has closed. The target may
   // mount a frame or two later (and the dialog's focus return runs on close), so retry per frame.
@@ -226,7 +245,7 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
     <PlotEditorContext.Provider value={contextValue}>
       <div className="flex min-h-dvh flex-col">
         <header ref={headerRef} className="glass sticky top-0 z-40 border-b border-border">
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-3 py-2">
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-3 py-2 lg:max-w-6xl lg:px-6">
             <Button
               type="button"
               variant="ghost"
@@ -255,39 +274,56 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-16 pt-4">
+        {/* Below lg: one column. From lg: the tab list on the left, the tab panels and the publish alert on the right. */}
+        <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-16 lg:grid lg:max-w-6xl lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-x-8 lg:px-6 lg:pt-6">
           {!ctrl.hasDraft && (
-            <p role="note" className="mb-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+            <p role="note" className="mb-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground lg:col-span-2">
               下書きの情報を読み込めないため、この画面では編集できません。
             </p>
           )}
           {ctrl.meta.reviewState === "REJECTED" && (
-            <p role="alert" className="mb-4 rounded-lg border border-destructive/40 px-4 py-3 text-sm text-destructive">
+            <p role="alert" className="mb-4 rounded-lg border border-destructive/40 px-4 py-3 text-sm text-destructive lg:col-span-2">
               審査で却下されました。内容を確認して修正してください。
             </p>
           )}
 
-          <Tabs value={tab} onValueChange={selectTab}>
+          {/* From lg the root is `display: contents`, so its list and panels are grid items of <main>. */}
+          <Tabs
+            value={tab}
+            orientation={orientation}
+            onValueChange={selectTab}
+            className="lg:contents"
+          >
             {/* The list is as tall as its 44 px triggers (the shadcn default h-8 would clip them). */}
-            <TabsList className="grid w-full grid-cols-5 group-data-horizontal/tabs:h-auto">
-              <TabsTrigger value="info" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
+            <TabsList
+              className="grid w-full grid-cols-5 group-data-horizontal/tabs:h-auto lg:sticky lg:flex lg:flex-col lg:gap-1 lg:self-start"
+              style={{ top: headerHeight + SCROLL_GAP_PX }}
+            >
+              {/* On a phone each cell is about 65 px wide: 2 px side padding leaves room for five 12 px characters. */}
+              <TabsTrigger value="info" className="min-h-11 cursor-pointer px-0.5 text-xs sm:px-1 sm:text-sm lg:px-3">
                 情報
               </TabsTrigger>
-              <TabsTrigger value="content" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
+              <TabsTrigger value="content" className="min-h-11 cursor-pointer px-0.5 text-xs sm:px-1 sm:text-sm lg:px-3">
                 内容
               </TabsTrigger>
-              <TabsTrigger value="intro" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
-                イントロ・状況例
+              <TabsTrigger
+                value="intro"
+                className="min-h-11 cursor-pointer px-0.5 text-xs leading-tight whitespace-normal sm:px-1 sm:text-sm lg:px-3"
+              >
+                {/* Too long for one line in a narrow cell: wraps only after "・" (break-keep + wbr). */}
+                <span className="break-keep text-center lg:text-left">
+                  イントロ・<wbr />状況例
+                </span>
               </TabsTrigger>
-              <TabsTrigger value="style" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
+              <TabsTrigger value="style" className="min-h-11 cursor-pointer px-0.5 text-xs sm:px-1 sm:text-sm lg:px-3">
                 演出
               </TabsTrigger>
-              <TabsTrigger value="plugin" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
+              <TabsTrigger value="plugin" className="min-h-11 cursor-pointer px-0.5 text-xs sm:px-1 sm:text-sm lg:px-3">
                 プラグイン
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="mt-6 focus-visible:outline-none">
+            <TabsContent value="info" className={PANEL_CLASS}>
               <fieldset disabled={locked} className="min-w-0 space-y-10 border-0 p-0">
                 <BasicSection />
                 <CharactersSection />
@@ -322,26 +358,26 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
               ) : null}
             </TabsContent>
 
-            <TabsContent value="content" className="mt-6 focus-visible:outline-none">
+            <TabsContent value="content" className={PANEL_CLASS}>
               <fieldset disabled={locked} className="min-w-0 border-0 p-0">
                 <PublicitySection />
               </fieldset>
             </TabsContent>
 
-            <TabsContent value="intro" className="mt-6 focus-visible:outline-none">
+            <TabsContent value="intro" className={PANEL_CLASS}>
               <fieldset disabled={locked} className="min-w-0 space-y-10 border-0 p-0">
                 <IntroSection />
                 <ExampleChatSection />
               </fieldset>
             </TabsContent>
 
-            <TabsContent value="style" className="mt-6 focus-visible:outline-none">
+            <TabsContent value="style" className={PANEL_CLASS}>
               <fieldset disabled={locked} className="min-w-0 border-0 p-0">
                 <StyleSection />
               </fieldset>
             </TabsContent>
 
-            <TabsContent value="plugin" className="mt-6 focus-visible:outline-none">
+            <TabsContent value="plugin" className={PANEL_CLASS}>
               <fieldset disabled={locked} className="min-w-0 border-0 p-0">
                 <PluginsSection />
               </fieldset>
@@ -349,7 +385,7 @@ export function PlotEditor({ plot }: { plot: CreatorPlot }) {
           </Tabs>
 
           {(Object.keys(errors).length > 0 || (publishTried && liveIssues.length > 0)) && (
-            <div className="mt-6">
+            <div className="mt-6 lg:col-start-2 lg:max-w-3xl lg:min-w-0">
               <FieldMessage role="alert">
                 公開できない項目があります。赤いメッセージの項目を修正してください。
               </FieldMessage>

@@ -118,9 +118,9 @@ export function CreatePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6">
+    <div className="mx-auto w-full max-w-lg space-y-6 px-4 pt-6 pb-6 md:max-w-5xl md:px-6 md:pt-10 md:pb-12">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
+        <h1 className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
           <PenLine className="size-5 text-primary" aria-hidden="true" />
           作成
         </h1>
@@ -136,7 +136,7 @@ export function CreatePage() {
       </header>
 
       <Tabs value={tab} onValueChange={selectTab}>
-        <TabsList className="grid w-full grid-cols-3 group-data-horizontal/tabs:h-auto">
+        <TabsList className="grid w-full grid-cols-3 group-data-horizontal/tabs:h-auto md:max-w-md">
           <TabsTrigger value="draft" className="min-h-11 cursor-pointer px-1 text-xs sm:text-sm">
             作成中
           </TabsTrigger>
@@ -150,7 +150,7 @@ export function CreatePage() {
       </Tabs>
 
       {error && (
-        <div role="alert" className="space-y-3 rounded-lg border border-border p-4">
+        <div role="alert" className="space-y-3 rounded-lg border border-border p-4 md:max-w-md">
           <p className="text-sm text-destructive">読み込みに失敗しました（{error}）</p>
           <Button
             type="button"
@@ -164,14 +164,24 @@ export function CreatePage() {
       )}
 
       {loading && items.length === 0 && (
-        <div className="space-y-3" aria-busy="true" aria-live="polite">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
+        <div
+          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          {/* Same size and shape as a card (64 px image + 12 px padding + 1 px border on each side).
+              Two placeholders on mobile. The last four are shown from md, where the list is a card grid. */}
+          <Skeleton className="h-[90px] w-full rounded-xl" />
+          <Skeleton className="h-[90px] w-full rounded-xl" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
+          <Skeleton className="hidden h-[90px] w-full rounded-xl md:block" />
         </div>
       )}
 
       {!loading && !error && items.length === 0 && (
-        <div className="space-y-3 rounded-xl border border-dashed border-border p-6 text-center">
+        <div className="space-y-3 rounded-xl border border-dashed border-border p-6 text-center md:max-w-md md:p-8">
           <p className="text-sm text-muted-foreground">
             {`${LABEL_BY_TAB[tab]}のプロットはありません。`}
           </p>
@@ -189,15 +199,19 @@ export function CreatePage() {
       )}
 
       {items.length > 0 && (
-        <ul className="space-y-3" role="list" aria-label={`${LABEL_BY_TAB[tab]}のプロット`}>
+        <ul
+          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3"
+          role="list"
+          aria-label={`${LABEL_BY_TAB[tab]}のプロット`}
+        >
           {items.map((plot) => {
             const draftName = typeof plot.draft?.name === "string" ? plot.draft.name : ""
             const name = (plot.name ?? draftName).trim()
             return (
-              <li key={plot.id}>
+              <li key={plot.id} className="min-w-0">
                 <Link
                   to={`/create/plots/${plot.id}`}
-                  className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted"
+                  className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted md:h-full"
                 >
                   <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {plot.imageUrl && (
@@ -235,15 +249,17 @@ export function CreatePage() {
       )}
 
       {cursor && (
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full cursor-pointer"
-          disabled={loading}
-          onClick={() => void loadMore()}
-        >
-          {loading ? "読み込み中…" : "もっと見る"}
-        </Button>
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 w-full cursor-pointer md:w-auto md:min-w-48"
+            disabled={loading}
+            onClick={() => void loadMore()}
+          >
+            {loading ? "読み込み中…" : "もっと見る"}
+          </Button>
+        </div>
       )}
     </div>
   )
