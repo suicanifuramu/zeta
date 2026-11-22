@@ -1,16 +1,18 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import {
-  clearSession,
   getAuthState,
   getDeviceId,
   getRefreshToken,
-  importTokens,
-  refreshSession,
-  setDeviceId,
+  parseTokenInput,
+  replaceSession,
   setGender,
-  updateRefreshToken,
 } from "@/lib/auth"
+import { getActiveAccountId, setActiveAccountId } from "@/lib/accounts"
+import {
+  ensureCurrentAccount,
+  logoutActiveAccount,
+} from "@/lib/account-session"
 import { getMyProfile } from "@/lib/api"
 
 export function useSettingsSession() {
@@ -19,22 +21,58 @@ export function useSettingsSession() {
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefreshSession = async () => {
+    const previousActiveId = getActiveAccountId()
+    let replaced = false
     setRefreshing(true)
     try {
-      setDeviceId(deviceId)
+      // Drop the active marker first: if these credentials belong to another
+      // account, token rotation must not overwrite the current account's copy.
+      setActiveAccountId(null)
+
       const input = refreshToken.trim()
-      // importTokens guesses that a bare 3-part dotted string is an access token,
-      // so only cookie/JSON input goes through it; a plain value is the refresh token.
-      if (input.includes("=") || input.startsWith("{")) importTokens(input)
-      else if (input) updateRefreshToken(input)
-      // Force the network call so the newly entered credentials are used even
-      // while the current access token is still valid.
-      await refreshSession(true)
+      const parsed = parseTokenInput(input)
+      const nextDeviceId = (parsed.deviceId || deviceId).trim()
+      let nextRefreshToken = parsed.refreshToken || ""
+      if (!nextRefreshToken && !parsed.accessToken) nextRefreshToken = input
+      if (!nextRefreshToken) nextRefreshToken = getRefreshToken()
+
+      // Replaces the live credentials and refreshes them. On failure the
+      // previous session is restored inside replaceSession().
+      await replaceSession({
+        deviceId: nextDeviceId,
+        refreshToken: nextRefreshToken,
+      })
+      replaced = true
+
+      setDeviceIdState(getDeviceId())
       setRefreshToken(getRefreshToken())
-      const profile = await getMyProfile()
-      setGender(profile.gender)
+
+      // The session is valid already; a profile fetch failure must not roll
+      // back freshly rotated tokens.
+      let profile: Awaited<ReturnType<typeof getMyProfile>> | undefined
+      try {
+        profile = await getMyProfile()
+        setGender(profile.gender)
+      } catch {
+        profile = undefined
+      }
+
+      await ensureCurrentAccount({
+        profile: profile
+          ? {
+              name: profile.name || profile.nickname || profile.username || "",
+              imageUrl: profile.profileImageUrl || "",
+              gender: profile.gender,
+            }
+          : undefined,
+      })
+      // The profile call may have rotated the refresh token again.
+      setRefreshToken(getRefreshToken())
       toast.success("セッションを更新しました")
     } catch (e: unknown) {
+      if (!replaced) setActiveAccountId(previousActiveId)
+      setDeviceIdState(getDeviceId())
+      setRefreshToken(getRefreshToken())
       toast.error(e instanceof Error ? e.message : String(e))
     } finally {
       setRefreshing(false)
@@ -42,7 +80,7 @@ export function useSettingsSession() {
   }
 
   const handleLogout = async () => {
-    await clearSession()
+    await logoutActiveAccount()
     setRefreshToken("")
     toast.info("ローカルセッションを削除しました")
   }

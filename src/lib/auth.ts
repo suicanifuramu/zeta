@@ -4,6 +4,7 @@
 
 import { getCommonHeaders } from "./headers"
 import { logger } from "./log"
+import { setActiveAccountId, syncActiveAccount } from "./accounts"
 
 const ACCESS_TOKEN_KEY = "zeta_access_token"
 const REFRESH_TOKEN_KEY = "zeta_refresh_token"
@@ -17,8 +18,11 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let localAuthLoaded = false
 let savedDeviceId = ""
 let savedRefreshToken = ""
+// Bumped whenever the live session is replaced or cleared, so an in-flight
+// refresh cannot write its result back after a logout or account switch.
+let sessionGeneration = 0
 
-interface ParsedTokens {
+export interface ParsedTokens {
   accessToken?: string
   refreshToken?: string
   deviceId?: string
@@ -95,6 +99,8 @@ function storeRefreshToken(token: string): void {
   if (normalized) {
     savedRefreshToken = normalized
     saveLocalAuth()
+    // Keep the saved account's copy in sync when the server rotates the token.
+    syncActiveAccount({ refreshToken: normalized })
   }
 }
 
@@ -200,6 +206,12 @@ export function importTokens(input: string): void {
   scheduleRefresh()
 }
 
+// Parses the same cookie / JSON / bare-token inputs that importTokens accepts,
+// without mutating the stored session.
+export function parseTokenInput(input: string): ParsedTokens {
+  return readJsonToken(input)
+}
+
 export interface AuthState {
   hasAccessToken: boolean
   hasRefreshToken: boolean
@@ -234,6 +246,7 @@ let refreshPromise: Promise<string> | null = null
 
 export async function refreshSession(forceNetwork = false): Promise<string> {
   if (refreshPromise) return refreshPromise
+  const generation = sessionGeneration
   refreshPromise = (async () => {
     try {
       await loadLocalAuth(true)
@@ -278,6 +291,9 @@ export async function refreshSession(forceNetwork = false): Promise<string> {
 
       const data = (await res.json()) as { accessToken?: string; refreshToken?: string }
       if (!data.accessToken) throw new Error("accessToken is missing in response")
+      if (generation !== sessionGeneration) {
+        throw new Error("Session changed during refresh")
+      }
 
       storeAccessToken(data.accessToken)
       if (data.refreshToken) storeRefreshToken(data.refreshToken)
@@ -350,13 +366,92 @@ export async function initAuth(): Promise<boolean> {
 }
 
 export async function clearSession(): Promise<void> {
+  sessionGeneration++
   clearRefreshTimer()
   accessToken = null
   savedRefreshToken = ""
   sessionStorage.removeItem(ACCESS_TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   clearGender()
+  setActiveAccountId(null)
   window.dispatchEvent(
     new CustomEvent("zeta-auth-updated", { detail: getAuthState() })
   )
+}
+
+export interface SessionSnapshot {
+  accessToken: string | null
+  refreshToken: string
+  deviceId: string
+  gender: string
+}
+
+export function snapshotSession(): SessionSnapshot {
+  return {
+    accessToken,
+    refreshToken: savedRefreshToken,
+    deviceId: savedDeviceId,
+    gender: getGender(),
+  }
+}
+
+export function restoreSession(snapshot: SessionSnapshot): void {
+  sessionGeneration++
+  clearRefreshTimer()
+  accessToken = snapshot.accessToken
+  savedDeviceId = snapshot.deviceId
+  savedRefreshToken = snapshot.refreshToken
+  if (accessToken) sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  else sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+  if (snapshot.gender) localStorage.setItem(GENDER_KEY, snapshot.gender)
+  else localStorage.removeItem(GENDER_KEY)
+  saveLocalAuth()
+  scheduleRefresh()
+  window.dispatchEvent(
+    new CustomEvent("zeta-auth-updated", { detail: getAuthState() })
+  )
+}
+
+// Replaces the live credentials with another account's and forces a refresh.
+// Restores the previous session if the new credentials are rejected, so a bad
+// token never destroys the session the user is currently using.
+export async function replaceSession(credentials: {
+  deviceId: string
+  refreshToken: string
+  gender?: string
+}): Promise<void> {
+  // Let a background refresh finish first; otherwise refreshSession() would
+  // return that in-flight promise and keep the old account's token.
+  if (refreshPromise) {
+    try {
+      await refreshPromise
+    } catch {
+      // The old session may already be invalid; proceed with the new one.
+    }
+  }
+
+  const deviceId = String(credentials.deviceId || "").trim()
+  const refreshToken = normalizeBearerToken(credentials.refreshToken)
+  if (!deviceId || !refreshToken) {
+    throw new Error("Device ID と Refresh Token を入力してください")
+  }
+
+  const snapshot = snapshotSession()
+
+  sessionGeneration++
+  setActiveAccountId(null)
+  clearRefreshTimer()
+  accessToken = null
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+  savedDeviceId = deviceId
+  savedRefreshToken = refreshToken
+  saveLocalAuth()
+  if (credentials.gender !== undefined) setGender(credentials.gender)
+
+  try {
+    await refreshSession(true)
+  } catch (e) {
+    restoreSession(snapshot)
+    throw e
+  }
 }

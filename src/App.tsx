@@ -72,7 +72,7 @@ function ChatRoute() {
 }
 
 export default function App() {
-  const { ready } = useAuth()
+  const { ready, userId, deviceId } = useAuth()
   useQuizAutomation()
 
   if (!ready) {
@@ -90,7 +90,9 @@ export default function App() {
     <>
       <ScrollToTop />
       <Suspense fallback={<PageSpinner />}>
-        <Routes>
+        {/* Remount the routed page when the account changes so room lists,
+            chats and other per-account state are fetched from scratch. */}
+        <Routes key={`${userId || "anonymous"}:${deviceId}`}>
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="ranking" element={<RankingPage />} />

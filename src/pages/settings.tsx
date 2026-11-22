@@ -30,6 +30,7 @@ import { ImageCropDialog } from "@/components/image-crop-dialog"
 import { getAccessToken } from "@/lib/auth"
 import { APP_VERSION } from "@/lib/headers"
 import { useSettingsSession } from "@/hooks/use-settings-session"
+import { useSettingsAccounts } from "@/hooks/use-settings-accounts"
 import { useSettingsOverview } from "@/hooks/use-settings-overview"
 import { useSettingsProfiles } from "@/hooks/use-settings-profiles"
 import { useSettingsQuiz } from "@/hooks/use-settings-quiz"
@@ -62,6 +63,14 @@ export function SettingsPage() {
     handleLogout,
     authState,
   } = useSettingsSession()
+
+  const {
+    accounts,
+    activeAccountId,
+    switchingId,
+    switchAccount,
+    deleteAccount,
+  } = useSettingsAccounts()
 
   const { overview, loadingOverview, loadOverview } = useSettingsOverview()
 
@@ -145,6 +154,94 @@ export function SettingsPage() {
       </header>
 
       <div className="flex flex-col gap-4 px-5 pb-8">
+        {/* Accounts Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>アカウント切替</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {accounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                ログイン中のアカウントはこの画面を開くと自動で保存されます。
+              </p>
+            ) : (
+              accounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center gap-3 rounded-lg bg-secondary/30 p-3"
+                >
+                  <Avatar className="size-10">
+                    <AvatarImage src={account.imageUrl || undefined} />
+                    <AvatarFallback>{account.label?.[0] || "?"}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {account.label}
+                      </span>
+                      {account.id === activeAccountId && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          使用中
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      User ID: {account.userId || "-"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {account.id !== activeAccountId && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={switchingId !== null || refreshing}
+                        onClick={() => switchAccount(account)}
+                      >
+                        {switchingId === account.id && (
+                          <Spinner className="mr-1 size-3" />
+                        )}
+                        切替
+                      </Button>
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-destructive"
+                          disabled={switchingId !== null || refreshing}
+                        >
+                          削除
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            「{account.label}」を削除しますか？
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {account.id === activeAccountId
+                              ? "このアカウントは使用中です。削除するとログアウトします。"
+                              : "この端末に保存された認証情報を削除します。"}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteAccount(account)}
+                          >
+                            削除
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
         {/* Session Card */}
         <Card>
           <CardHeader>
@@ -211,7 +308,11 @@ export function SettingsPage() {
             <div className="flex flex-wrap gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={switchingId !== null || refreshing}
+                  >
                     ログアウト
                   </Button>
                 </AlertDialogTrigger>
@@ -219,7 +320,7 @@ export function SettingsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>ログアウトしますか？</AlertDialogTitle>
                     <AlertDialogDescription>
-                      この端末に保存されたセッション情報を削除します。
+                      このアカウントの保存済み認証情報を削除してログアウトします。他の保存済みアカウントは残ります。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -233,7 +334,7 @@ export function SettingsPage() {
               <Button
                 size="sm"
                 onClick={handleRefreshSession}
-                disabled={refreshing}
+                disabled={refreshing || switchingId !== null}
               >
                 {refreshing && <Spinner className="mr-1 size-3" />}
                 セッション更新

@@ -16,6 +16,7 @@ interface AuthState {
   hasAccessToken: boolean
   hasRefreshToken: boolean
   userId: string
+  deviceId: string
   expiresAt: number
   expiresInSeconds: number
   gender: string
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthState>({
   hasAccessToken: false,
   hasRefreshToken: false,
   userId: "",
+  deviceId: "",
   expiresAt: 0,
   expiresInSeconds: 0,
   gender: "",
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasAccessToken: false,
     hasRefreshToken: false,
     userId: "",
+    deviceId: "",
     expiresAt: 0,
     expiresInSeconds: 0,
     gender: "",
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAccessToken: raw.hasAccessToken,
         hasRefreshToken: raw.hasRefreshToken,
         userId: raw.userId || "",
+        deviceId: raw.deviceId || "",
         expiresAt: raw.expiresAt,
         expiresInSeconds: raw.expiresInSeconds,
         gender: raw.gender || "",
@@ -72,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAccessToken: raw.hasAccessToken,
         hasRefreshToken: raw.hasRefreshToken,
         userId: raw.userId || "",
+        deviceId: raw.deviceId || "",
         expiresAt: raw.expiresAt,
         expiresInSeconds: raw.expiresInSeconds,
         gender: raw.gender || "",
